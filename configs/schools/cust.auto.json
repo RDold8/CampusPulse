@@ -1,0 +1,35 @@
+{
+  "schema_version": "0.1-draft",
+  "school": {
+    "key": "cn-cust", "name": "长春理工大学", "aliases": ["长理", "CUST"],
+    "country": "CN", "province": "吉林省", "city": "长春市",
+    "timezone": "Asia/Shanghai", "official_homepage": "https://www.cust.edu.cn/"
+  },
+  "status": "draft", "reviewed_at": "2026-10-03",
+  "categories": ["exam", "competition", "scholarship", "campus_activity", "academic_affairs", "career"],
+  "resource_discovery": {
+    "department_urls": [
+      "https://lib.cust.edu.cn/",
+      "https://yjs.cust.edu.cn/"
+    ],
+    "max_pages": 32
+  },
+  "fetch_defaults": {
+    "interval_minutes": 60, "jitter_seconds": 300, "per_host_concurrency": 1,
+    "min_request_interval_seconds": 3, "respect_source_policy": true, "conditional_requests": true
+  },
+  "sources": [],
+  "auto_discovery": {
+    "department_urls": [
+      "https://jwc.cust.edu.cn/",
+      "https://xgb.cust.edu.cn/",
+      "https://yjs.cust.edu.cn/yytz/py/index1.htm",
+      "https://tw.cust.edu.cn/",
+      "https://job.cust.edu.cn/tzgg/index.jhtml",
+      "https://yjs.cust.edu.cn/yytz/yg/index.htm",
+      "https://cwc.cust.edu.cn/",
+      "https://www.cust.edu.cn/tzgg2026/index.htm"
+    ],
+    "max_pages": 24
+  }
+}

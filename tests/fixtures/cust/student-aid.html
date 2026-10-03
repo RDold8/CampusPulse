@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>学工部</title>
+        <meta name="keywords" content="长春理工大学学生工作部"/>
+        <meta name="description" content="长春理工大学学生工作部">
+        <link rel="shortcut icon" href="favorite.ico" type="image/x-icon"/>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+        <!-- 全局样式 -->
+        <link rel="stylesheet" href="../../css/global.css">
+        <!-- 首页样式 -->
+        <link rel="stylesheet" href="../../css/index.css">
+        <link rel="stylesheet" href="../../css/lrtk.css" type="text/css">
+    </head>
+    <style type="text/css">
+        .headStyle4yp70ui6z2,
+        .headStyle4yp70ui6z2 div,
+        .headStyle4yp70ui6z2 td {
+            font-size: 12px;
+            font-family: 宋体;
+            color: #000000;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 14px;
+        }
+
+        .defaultButtonStyle {
+            font-size: 12px;
+            font-family: 宋体;
+            height: 20px;
+            color: #000000;
+            BORDER: #AFD5F5 1px solid;
+            margin: 0;
+            padding: 0;
+            FILTER: progid:DXImageTransform.Microsoft.Gradient(GradientType=0,StartColorStr=#ffffff, EndColorStr=#BDDBF7);
+            CURSOR: pointer;
+            line-height: 14px;
+            background: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#BDDBF7));
+            background: -moz-linear-gradient(top,#ffffff,#BDDBF7);
+            background: -ms-linear-gradient(top,#ffffff 0%,#bddbf7 100%);
+        }
+
+        .defaultinputStyle {
+            font-size: 12px;
+            font-family: 宋体;
+            height: 20px;
+            border: 1px solid #AFD5F5;
+            line-height: 14px;
+        }
+
+        .colHeader {
+            font-size: 12px;
+            font-family: 宋体;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 a,
+        .pageList .this-page {
+            font-size: 12px;
+            font-family: 宋体;
+            display: inline-block;
+            height: 14px;
+            padding: 2px 4px;
+            border: solid 1px #AFD5F5;
+            background: #fff;
+            text-decoration: none;
+            MARGIN-RIGHT: 1px;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 a:visited {
+            font-size: 12px;
+            font-family: 宋体;
+            color: #000000;
+            text-decoration: none;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 .PrevDisabled {
+            font-size: 12px;
+            font-family: 宋体;
+            display: inline-block;
+            height: 14px;
+            margin-right: 3px;
+            padding: 2px 4px;
+            background: #fff;
+            color: #ccc;
+            border: solid 1px #AFD5F5;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 .SelectList {
+            font-size: 12px;
+            font-family: 宋体;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 .Prev {
+            font-size: 12px;
+            font-family: 宋体;
+            margin-right: 3px;
+            padding: 2px 4px;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 .break {
+            font-size: 12px;
+            font-family: 宋体;
+            border: none;
+            text-decoration: none;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 .NextDisabled {
+            font-size: 12px;
+            font-family: 宋体;
+            display: inline-block;
+            height: 14px;
+            margin-left: 2px;
+            padding: 2px 4px;
+            background: #fff;
+            color: #ccc;
+            border: solid 1px #AFD5F5;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 .Next {
+            font-size: 12px;
+            font-family: 宋体;
+            margin-left: 2px;
+            padding: 2px 4px;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 .this-page {
+            font-size: 12px;
+            font-family: 宋体;
+            display: inline-block;
+            height: 14px;
+            padding: 2px 4px;
+            border: solid 1px #AFD5F5;
+            background: #E1F0FD;
+            font-weight: bold;
+            color: black;
+            MARGIN-RIGHT: 1px;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 a:hover {
+            font-size: 12px;
+            font-family: 宋体;
+            color: black;
+            background: #EFF7FE;
+            border-color: #AFD5F5;
+            text-decoration: none;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 a:link {
+            font-size: 12px;
+            font-family: 宋体;
+            color: #000000;
+            text-decoration: none;
+            line-height: 14px;
+        }
+
+        .headStyle4yp70ui6z2 a:active {
+            font-size: 12px;
+            font-family: 宋体;
+            color: black;
+            text-decoration: none;
+            background: #EFF7FE;
+            line-height: 14px;
+        }
+    </style>
+    <body>
+
+<header>  
+    <div class="top-bar">
+                <A class="logo" href="index.htm">
+            <img src="../../images/global/logo.png" alt="" style="height: 50px;">
+        </A>
+        <div class="identity">
+            <div>
+                <a href="../../index.htm" title="首页">首页</a>
+            </div>
+                            <div>
+                    <span></span>
+                                            <a href="../../jgjs/bmjs/index.htm" title="机构介绍">机构介绍</a>
+                        <ul>
+                                                            <li>
+                                    <a href="../../jgjs/bmjs/index.htm" title="部门介绍">部门介绍</a>
+                                </li>
+                                                            <li>
+                                    <a href="../../jgjs/jgsz/index.htm" title="机构设置">机构设置</a>
+                                </li>
+                                                    </ul>
+                                    </div>
+                            <div>
+                    <span></span>
+                                            <a href="../sxjyk/index.htm" title="工作导航">工作导航</a>
+                        <ul>
+                                                            <li>
+                                    <a href="../sxjyk/index.htm" title="思想教育科">思想教育科</a>
+                                </li>
+                                                            <li>
+                                    <a href="../xsglk/index.htm" title="学生管理科">学生管理科</a>
+                                </li>
+                                                            <li>
+                                    <a href="index.htm" title="学生资助管理中心">学生资助管理中心</a>
+                                </li>
+                                                            <li>
+                                    <a href="../xljkjyyzxzx/index.htm" title="心理健康教育与咨询中心">心理健康教育与咨询中心</a>
+                                </li>
+                                                            <li>
+                                    <a href="../ssmzxsglbgs/index.htm" title="少数民族学生管理办公室">少数民族学生管理办公室</a>
+                                </li>
+                                                            <li>
+                                    <a href="../wzbbgs/index.htm" title="武装部办公室">武装部办公室</a>
+                                </li>
+                                                    </ul>
+                                    </div>
+                            <div>
+                    <span></span>
+                                            <a href="../../djgz/index.htm" title="党建工作">党建工作</a>
+                                    </div>
+                            <div>
+                    <span></span>
+                                            <a href="../../xgfc/index.htm" title="学工风采">学工风采</a>
+                                    </div>
+                            <div>
+                    <span></span>
+                                            <a href="../../xzzq/index.htm" title="下载专区">下载专区</a>
+                                    </div>
+                    </div>
+    </div>
+    <!-- page-banner 二级页面导航栏图片 -->
+            <div class="page-banner" style="background: url(../../images/2022-01/88a7ddc925cf4fad8535e60377888e63.jpg)
+         no-repeat top center;">
+            <div class="wrap">
+            <div class="crumbs">
+                <i></i>
+                <!--  如果是文章页，则显示文章的Nav  -->
+                                                     <a href="../../index.htm">首页</a>&raquo;
+                 <a href="../index.htm">工作导航</a>&raquo;
+        学生资助管理中心
+                            </div>
+            <div class="title">学生资助管理中心</div>
+        </div>
+    </div>
+</header>
+<div class="page-main">
+    <div class="wrap clearfix">
+        <!-- 侧边导航 -->
+        <div class="sidebar">
+                            <div
+                    class="
+                        link
+                                            ">
+                    <a href="../sxjyk/index.htm" title="思想教育科">思想教育科</a>
+                </div>
+                            <div
+                    class="
+                        link
+                                            ">
+                    <a href="../xsglk/index.htm" title="学生管理科">学生管理科</a>
+                </div>
+                            <div
+                    class="
+                        link
+                                                    cur1
+                                            ">
+                    <a href="index.htm" title="学生资助管理中心">学生资助管理中心</a>
+                </div>
+                            <div
+                    class="
+                        link
+                                            ">
+                    <a href="../xljkjyyzxzx/index.htm" title="心理健康教育与咨询中心">心理健康教育与咨询中心</a>
+                </div>
+                            <div
+                    class="
+                        link
+                                            ">
+                    <a href="../ssmzxsglbgs/index.htm" title="少数民族学生管理办公室">少数民族学生管理办公室</a>
+                </div>
+                            <div
+                    class="
+                        link
+                                            ">
+                    <a href="../wzbbgs/index.htm" title="武装部办公室">武装部办公室</a>
+                </div>
+                    </div>
+        <div class="content">
+            <div class="title">
+                <hr>
+                <h1>
+                                        学生资助管理中心
+                </h1>
+            </div>
+            <script language="javascript" src="/../../js/statpagedown.js"></script>
+            <ul class="article-list">
+                                                    <li>
+                        <a href="36810a01561246488383dea5bdb15f92.htm" title="长春理工大学学生勤工助学活动管理规定" target="_blank">长春理工大学学生勤工助学活动管理规定</a>
+                        <span>2021-10-29</span>
+                    </li>
+                                    <li>
+                        <a href="../../docs/2021-10/8ce12f4dcf8b43c5831c52bd03e56bf4.pdf" title="关于印发《长春理工大学正荣助学金评选办法》的通知（长理工学字[2010]15号）" target="_blank">关于印发《长春理工大学正荣助学金评选办法》的通知（长理工学字[2010]15号）</a>
+                        <span>2021-10-29</span>
+                    </li>
+                                    <li>
+                        <a href="../../docs/2021-10/f086b60d3ac142869ae939bd7b8a1f4a.pdf" title="关于印发《长春理工大学正荣奖学金评选办法（本科）》的通知（长理工学字[2010]18号）" target="_blank">关于印发《长春理工大学正荣奖学金评选办法（本科）》的通知（长理工学字[2010]18号）</a>
+                        <span>2021-10-29</span>
+                    </li>
+                                    <li>
+                        <a href="../../docs/2021-10/a999b5b8ce864497ac74f9be94e3bddc.pdf" title="关于印发《长春理工大学学生减免学费规定》的通知（长理工学字[2009]19号）" target="_blank">关于印发《长春理工大学学生减免学费规定》的通知（长理工学字[2009]19号）</a>
+                        <span>2021-10-29</span>
+                    </li>
+                                    <li>
+                        <a href="../../docs/2021-10/7b20ddd5ed1d42558818d73f0d0d4f62.pdf" title="关于印发《长春理工大学省政府奖学金评选办法》的通知(长理工学字〔2017〕8号)" target="_blank">关于印发《长春理工大学省政府奖学金评选办法》的通知(长理工学字〔2017〕8号)</a>
+                        <span>2021-10-29</span>
+                    </li>
+                                    <li>
+                        <a href="../../docs/2021-10/53f82cfe27734194810e4f57f8315d38.pdf" title="关于印发《长春理工大学国家助学贷款工作管理办法(试行)》的通知（长理工学字[2012]17号）" target="_blank">关于印发《长春理工大学国家助学贷款工作管理办法(试行)》的通知（长理工学字[2012]17号）</a>
+                        <span>2021-10-29</span>
+                    </li>
+                                    <li>
+                        <a href="../../docs/2021-10/4fe044d9b6a14125af71dcdcfaca48f1.pdf" title="关于印发《长春理工大学本科生资助对象认定与管理暂行办法》的通知(长理工学字〔2019〕17 号)" target="_blank">关于印发《长春理工大学本科生资助对象认定与管理暂行办法》的通知(长理工学字〔2019〕17 号)</a>
+                        <span>2021-10-29</span>
+                    </li>
+                                    <li>
+                        <a href="../../docs/2021-10/303acee659a4477c90dcc8efee27fad5.pdf" title="关于印发《长春理工大学本科生国家助学金评选办法》的通知(长理工学字〔2019〕20 号)" target="_blank">关于印发《长春理工大学本科生国家助学金评选办法》的通知(长理工学字〔2019〕20 号)</a>
+                        <span>2021-10-29</span>
+                    </li>
+                                    <li>
+                        <a href="../../docs/2021-10/47a1c84fbc3e4b75a04f95d0b82c99ac.pdf" title="关于印发《长春理工大学本科生国家励志奖学金评选办法》的通知(长理工学字〔2019〕19 号)" target="_blank">关于印发《长春理工大学本科生国家励志奖学金评选办法》的通知(长理工学字〔2019〕19 号)</a>
+                        <span>2021-10-29</span>
+                    </li>
+                                    <li>
+                        <a href="../../docs/2021-10/ed8f0a4f0d9e44bb9ac30cc7f4d4e88f.pdf" title="关于印发《长春理工大学本科生国家奖学金评审办法》的通知(长理工学字〔2019〕18 号)" target="_blank">关于印发《长春理工大学本科生国家奖学金评审办法》的通知(长理工学字〔2019〕18 号)</a>
+                        <span>2021-10-29</span>
+                    </li>
+                            </ul>
+            
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <script>
+                _showDynClickBatch([
+                    'dynclicks_u7_2897',
+                    'dynclicks_u7_2409',
+                    'dynclicks_u7_2408',
+                    'dynclicks_u7_2407',
+                    'dynclicks_u7_1012',
+                    'dynclicks_u7_1996',
+                    'dynclicks_u7_1986',
+                    'dynclicks_u7_1971',
+                    'dynclicks_u7_1011',
+                    'dynclicks_u7_1010',
+                    'dynclicks_u7_1009',
+                    'dynclicks_u7_1008'
+                ], [
+                    2897,
+                    2409,
+                    2408,
+                    2407,
+                    1012,
+                    1996,
+                    1986,
+                    1971,
+                    1011,
+                    1010,
+                    1009,
+                    1008
+                ], "wbnews", 1405686817)
+            </script>
+        </div>
+    </div>
+</div>
+
+
+<div class="footer">
+    <div class="wrap">
+        <div class="qrCode">
+                                                <div>
+                        <img src="../../images/2022-01/93e7a7e3057b4465a6a77125aecb2e3c.jpg" 
+                        alt="长春理工大学心理志愿团">
+                        <span>长春理工大学心理志愿团</span>
+                    </div>
+                                                                                                                                                                                    </div>
+        <div class="selects">
+            <span>友情链接：</span>
+            <a href="https://www.gfbzb.gov.cn/" target="_blank" title="全国征兵网">全国征兵网</a>
+            <a href="https://www.psy.com.cn/" target="_blank" title="中国心理网">中国心理网</a>
+            <a href="http://www.xszz.cee.edu.cn/" target="_blank" title="全国学生资助管理中心">全国学生资助管理中心</a>
+            <a href="https://ehall.cust.edu.cn/" target="_blank" title="校园123">校园123</a>
+        </div>
+        <div class="contacts">
+            <div class="tel">
+                联系电话：
+            </div>
+            <div class="tel">
+                <p>思想教育科 85582235</p>
+                <p>学生资助管理中心 85582650</p>
+                <p>少数民族学生管理办公室 85582673</p>
+            </div>
+            <div class="tel">
+                <p>学生管理科 85582649</p>
+                <p>心理健康教育与咨询中心 85582545</p>
+                <p>武装部办公室 85582719</p>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    /* 底部联系方式 */
+    .contacts {
+        margin: 20px auto;
+        width: fit-content;
+    }
+
+    .tel {
+        display: inline-block;
+        text-align: left;
+        font-size: 12px;
+        margin-right: 10px;
+        vertical-align: top;
+    }
+
+    /* 底部二维码 */
+    .qrCode {
+        width: fit-content;
+        margin: 0px auto;
+    }
+
+    .qrCode > div {
+        display: inline-block;
+        vertical-align: top;
+        text-align: center;
+        margin: 20px 10px;
+        margin-top: 0px;
+    }
+
+    .qrCode > div > img {
+        margin: 0px auto;
+        width: 140px;
+        height: 140px;
+        display: block;
+    }
+
+    .qrCode > div > span {
+        margin: 0px auto;
+        display: block;
+        width: 135px;
+    }
+</style></body>
+</html><script type='text/javascript' src='../../g_style/g_index.js'></script>
+</body></html>

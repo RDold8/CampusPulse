@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>招聘快讯列表 - 吉林大学就业网</title>
+<meta charset="UTF-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0,minimum-scale=1.0,user-scalable=0"
+/>
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="icon" href="/static/jlu-favicon.ico" type="image/x-icon" />
+<link
+  rel="stylesheet"
+  type="text/css"
+  href="/static/mportal/css/main.css?version=20201017"
+/>
+<link
+  rel="stylesheet"
+  href="https://at.alicdn.com/t/font_1002632_pvsu3efk71k.css"
+/>
+<script src="/static/jquery/1.11.3/jquery.min.js"></script>
+<script src="/static/dayjs/1.8.35/dayjs.min.js"></script>
+
+<script type="text/javascript">
+  var ctx = '/mportal',
+    ctxPortal = '/portal',
+    ctxStatic = '/static';
+</script>
+<style type="text/css">
+  .m-search-pop {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<nav class="m-nav">
+    <a class="m-nav-navbar"><i class="iconfont icon-daohang"></i></a>
+    <h1 class="m-nav-title">吉林大学就业创业</h1>
+    <a class="m-nav-cal">
+        <i class="iconfont icon-rili2"></i>
+    </a>
+</nav><div class="m-menu">
+    <a href="/mportal">
+        <span>首页</span>
+    </a>
+    <h1>中心简介</h1>
+    <ul>
+        <li>
+            <a href="/mportal/page/zxzz">
+                <i class="iconfont icon-safetycertificate"></i>
+                <span>中心职责</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/page/znsz">
+                <i class="iconfont icon-setting"></i>
+                <span>职能设置</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/page/lxfs">
+                <i class="iconfont icon-phone"></i>
+                <span>联系方式</span>
+            </a>
+        </li>
+    </ul>
+
+    <h1>招聘信息</h1>
+    <ul>
+        <li>
+            <a href="/mportal/recruit/list?type=1">
+                <i class="iconfont icon-bank"></i>
+                <span>校园招聘</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/recruit/list?type=2">
+                <i class="iconfont icon-sound"></i>
+                <span>招聘快讯</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/recruit/list?type=3">
+                <i class="iconfont icon-experiment"></i>
+                <span>实习实践信息</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/article/list?cid=765aa6f06206424bb08c7ad33df600c0">
+                <i class="iconfont icon-fileprotect"></i>
+                <span>笔面试通知</span>
+            </a>
+        </li>
+    </ul>
+
+    <h1>就业指导</h1>
+    <ul>
+        <li>
+            <a href="/mportal/article/list?cid=c3575791a5454b6a9f24a9409be5c52d">
+                <i class="iconfont icon-like"></i>
+                <span>就业指导活动</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/article/list?cid=62f4e2840a9f4d9a86ed2915f585d75a">
+                <i class="iconfont icon-container"></i>
+                <span>就业创业政策</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/article/list?cid=310ab77435994876b47d80ce614a293a">
+                <i class="iconfont icon-filedone"></i>
+                <span>基层项目</span>
+            </a>
+        </li>
+        <li>
+            <a href="/portal/gjzz">
+                <i class="iconfont icon-earth"></i>
+                <span>国际组织</span>
+            </a>
+        </li>
+    </ul>
+
+    <h1>就业服务</h1>
+    <ul>
+        <li>
+            <a href="/mportal/article/list?cid=b9c6dab5ea454c0ab6a2fd3709d14451">
+                <i class="iconfont icon-deploymentunit"></i>
+                <span>工作流程</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/article/list?cid=db261aa2d1f04b46a912e1e37d8919ed">
+                <i class="iconfont icon-laptop"></i>
+                <span>办公指南</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/article/list?cid=a45030fa1ae54dc1a586684564b9480b">
+                <i class="iconfont icon-audit"></i>
+                <span>报到政策</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/article/list?cid=ff9a48cf3d814eeaad99a3d1cede59ed">
+                <i class="iconfont icon-info-circle"></i>
+                <span>常见问题</span>
+            </a>
+        </li>
+    </ul>
+
+    <h1>毕业生信息</h1>
+    <ul>
+        <li>
+            <a href="/mportal/studentSource/list">
+                <i class="iconfont icon-team"></i>
+                <span>生源信息</span>
+            </a>
+        </li>
+        <li>
+            <a href="/mportal/article/list?cid=jyzp_wjxz">
+                <i class="iconfont icon-USB"></i>
+                <span>资料下载</span>
+            </a>
+        </li>
+    </ul>
+
+    <a href="#" class="m-menu-close"><i class="iconfont icon-close-circle"></i></a>
+</div><div class="date-list c" style="display: none">
+  <p>
+    <a onclick="changeDay(-1)" class="btn-nav fr prev-nav"
+      ><i class="iconfont icon-left-circle-fill"></i
+    ></a>
+    <b id="monthDay"></b>
+    <a class="btn-nav fr next-nav" onclick="changeDay(1)"
+      ><i class="iconfont icon-left-circle-fill"></i
+    ></a>
+  </p>
+  <div class="calendarMrt">
+    <div class="w98">
+      <span>日</span>
+      <span>一</span>
+      <span>二</span>
+      <span>三</span>
+      <span>四</span>
+      <span>五</span>
+      <span>六</span>
+    </div>
+    <div class="addDay"></div>
+  </div>
+  <a href="#" class="date-list-close"
+    ><i class="iconfont icon-close-circle"></i
+  ></a>
+  <small
+    >日历中红色背景日期表示有新的校园招聘信息，点击可以查看详细招聘列表。</small
+  >
+</div>
+<script
+  src="/static/mportal/js/mrt.js?version=20220912"
+  type="text/javascript"
+  charset="utf-8"
+></script>
+<script>
+  $(function () {
+    $('.btn-close').click(function () {
+      $('div.calendar-shadow').hide();
+    });
+    $('body').on('click', '.remind', function () {
+      var _date = $(this).attr('id').replace(/_/, '').replace(/_/g, '-');
+      $('div.calendar-shadow').show();
+      getCalendarDayEvent(_date, 'calendar_eventList');
+    });
+  });
+</script>
+<div class="calendar-shadow">
+  <div class="dateList">
+    <section>
+      <h1>招聘日历</h1>
+      <i class="iconfont icon-close-circle-fill btn-close"></i>
+    </section>
+
+    <ul id="calendar_eventList"></ul>
+  </div>
+</div>
+<form id="recruit" style="display:inline" action="/mportal/recruit/list" method="get"><input id="type" name="type" type="hidden" value="2"/><div class="">    
+    <div class="m-search-model">
+        <input id="keyword" name="keyword" placeholder="关键字" class="form-control" type="text" value=""/><button class="btn btn-default" type="submit">搜索</button>
+    </div>
+    <div class="m-select-model">
+       	<select name="filterParams[companyNatureCategory]" onchange="this.form.submit()" class="form-control">
+       		<option value="">全部单位分类</option>
+		    <option value="10" >科研/机关/事业单位</option>
+		    <option value="20" >教育教学单位</option>
+		    <option value="30" >国企/三资/民营</option>
+		    <option value="40" >医院/部队</option>
+		    <option value="50" >基层/选调</option>
+		    <option value="60" >国际组织</option>
+		    </select>
+    </div>
+
+</div>
+</form><section class="m-recruit-tt" style="justify-content:center;">
+    <h1 style="text-align:center;">招聘快讯</h1>
+</section>
+<ul class="m-recruit-content" id="ul_load_more_content">
+
+    <li>
+        <a href="/mportal/recruit/details?id=5fb182429b564d9d91c9942d3b930f73">
+            [置顶]【吉林大学邀请函】东北五校2027届毕业生秋季双选会吉林大学专场</a>
+        <div>
+            <span>
+	            Sep 20, 2026</span>
+            <span>
+	            吉林大学就业中心 / 891</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=b2d33c99e0af479a9af89adb78960476">
+            [置顶]&ldquo;海量职位，乘风而来&rdquo; Job One 网络招聘会前程无忧线上双选会专属求职活动</a>
+        <div>
+            <span>
+	            Sep 17, 2026</span>
+            <span>
+	            前锦网络信息技术（上海）有限公司 / 398</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=0f44e3b745a3421580d3a5b8e72eb0c3">
+            大连银行2027届秋季校园招聘公告</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            大连银行股份有限公司 / 103</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=060a18707d0144c5a257c290df7809cc">
+            中邮投资2027年度校园招聘公告</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            北京网聘信息技术有限公司 / 99</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=58e20981634548aaae4f646da689f79b">
+            中国石油吉林石化公司2026年秋季高校毕业生招聘公告</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            中国石油天然气股份有限公司吉林石化分公司 / 180</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=3dff0911d6ee42d4b67950954b3e6f43">
+            中建八局城市发展有限公司2027届校园招聘</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            山东中建城市发展有限公司 / 73</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=d019029bc34749da8ae2de1e2972166f">
+            中国银行股份有限公司河南省分行2027届校园招聘公告</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            中国银行股份有限公司河南省分行 / 78</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=7edd946ef5ea420dbd672438a376cec1">
+            中国联通湖南省分公司2027校园招聘</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            中国联合网络通信有限公司湖南省分公司 / 37</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=3eb1bd3869ec4bd4aeb711cf068b542d">
+            东风康明斯发动机有限公司2027届校园招聘</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            前锦网络信息技术（上海）有限公司 / 66</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=eb051833e1474644ab1d95602962adc9">
+            中国建设银行西藏自治区分行2027年度校园招聘公告</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            北京网聘信息技术有限公司 / 33</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=8c622907a06f4ee4825c7660d55b3135">
+            天津港（集团）有限公司2027年面向高等院校应届 大学毕业生招聘简章</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            北京网聘信息技术有限公司 / 71</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=801f1527720f4f2a9da6649e1b3c4574">
+            东莞证券2027届&ldquo;新力量&rdquo;总部业务管培生校园招聘简章</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            东莞证券股份有限公司 / 30</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=966dbd70f17349c5b5719977d5d10f82">
+            中国农业发展银行浙江省分行  2027年度校园招聘正式启动</a>
+        <div>
+            <span>
+	            Sep 29, 2026</span>
+            <span>
+	            中国农业发展银行浙江省分行 / 31</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=44a9a5e2d4074c5aae6fe3055ceed96e">
+            中建港航局集团有限公司校园招聘</a>
+        <div>
+            <span>
+	            Sep 28, 2026</span>
+            <span>
+	            中建港航局集团有限公司 / 36</span>
+        </div>
+    </li>
+    <li>
+        <a href="/mportal/recruit/details?id=188ab7b72bc249acba877a999d2d93b8">
+            广汽集团2027届校园招聘</a>
+        <div>
+            <span>
+	            Sep 28, 2026</span>
+            <span>
+	            前锦网络信息技术（上海）有限公司 / 59</span>
+        </div>
+    </li>
+    </ul>
+
+<div class="div_loading"><img width="60" src="/static/images/loading.gif" alt=""></div>
+<div style="overflow:hidden; height:100%;text-align: center; margin: 10px;" class="alert alert-success">共 6234 条记录</div>
+<!-- Search -->
+<div class="m-search-pop">
+    <form name="searchForm" id="searchForm" action="/mportal/recruit/search" method="get">
+        <label>类别</label>
+        <select name="type">
+            <option value="">全部类别</option>
+		    <option value="1" >校园招聘</option>
+		    <option value="2" selected>招聘快讯</option>
+		    <option value="3" >实习招聘</option>
+		    <option value="5" >空中宣讲</option>
+		    </select>
+
+        <label>单位分类</label>
+        <select name="filterParams[companyNatureCategory]">
+            <option value="">全部分类</option>
+		    <option value="10" >科研/机关/事业单位</option>
+		    <option value="20" >教育教学单位</option>
+		    <option value="30" >国企/三资/民营</option>
+		    <option value="40" >医院/部队</option>
+		    <option value="50" >基层/选调</option>
+		    <option value="60" >国际组织</option>
+		    </select>
+        
+        <label>宣讲校区</label>
+       	<select name="campusArea" id="searchFormCampusArea">
+       		<option value="">全部校区</option>
+		    <option value="1" >前卫校区</option>
+		    <option value="2" >南岭校区</option>
+		    <option value="3" >新民校区</option>
+		    <option value="4" >南湖校区</option>
+		    <option value="5" >朝阳校区</option>
+		    <option value="6" >和平校区</option>
+		    </select>
+
+        <label>日期</label>
+        <input type="date" name="filterParams[date]" placeholder="选择日期"/> 
+
+        <label>关键词</label>
+        <input type="text" name="keyword" />
+        <button type="submit">搜&nbsp;&nbsp;索</button>
+    </form>
+</div>
+
+<!-- Footer -->
+<ul class="m-ft">
+    <li>
+        <a href="javascript:history.go(-1)">
+            <i class="iconfont icon-left"></i>
+            <span>返回上一级</span>
+        </a>
+    </li>
+    <li>
+        <a class="btn-search-pop">
+            <i class="iconfont icon-sousuo2"></i>
+            <span>招聘搜索</span>
+        </a>
+    </li>
+    <li>
+        <a class="f-btn-b-cal">
+            <i class="iconfont icon-rili2"></i>
+            <span>招聘日历</span>
+        </a>
+    </li>
+    <li>
+        <a href="/mportal">
+            <i class="iconfont icon-home"></i>
+            <span>返回首页</span>
+        </a>
+    </li>
+</ul>
+<script>
+    // 初始化
+    var calState = 1,menuState = 1;
+    var currDocWidth = document.body.clientWidth;
+    $('.date-list').css("width",currDocWidth);
+    $('.m-menu').css("width",currDocWidth);
+    $('.date-list').css("margin-left",-currDocWidth);
+    $('.date-list').css("margin-right","0");
+    $('.m-menu').css("margin-left",-currDocWidth);
+    $('.m-menu').css("margin-right","0");
+    
+    // Menu
+    $('.m-nav-navbar').on('click',function(){
+        $('.date-list').hide();
+        $('.date-list').css("margin-left",-currDocWidth);
+        calState = 1;
+        menuPopDom ();
+        $('.m-search-pop').hide();
+    });
+
+    // Cal
+    $('.m-nav-cal,.f-btn-b-cal').on('click',function(){    
+        $('.m-menu').hide();
+        $('.m-menu').css("margin-left",-currDocWidth);
+        menuState = 1;
+        calPopDom ();
+        $('.m-search-pop').hide();
+    });
+
+    // Search
+    $('.btn-search-pop').on('click',() => {
+        menuState = 1;
+        calState = 1;
+        $('.m-search-pop').slideToggle(200);
+        $('.m-menu').hide();
+        $('.date-list').hide();
+        $('.m-menu').css("margin-left",-currDocWidth);
+        $('.date-list').css("margin-left",-currDocWidth);
+    });
+
+    // Cal Close Button
+    $('.date-list-close').on('click',() => {
+        $('.date-list').animate({display:'block',width:currDocWidth,marginLeft:-currDocWidth,marginRight:'0'},200);
+        calState = 1;
+    })
+
+    // Menu Close Button
+    $('.m-menu-close').on('click',() => {
+        $('.m-menu').animate({display:'block',width:currDocWidth,marginLeft:-currDocWidth,marginRight:'0'},200);
+        menuState = 1;
+    })
+
+    // 
+    var calPopDom = () => {
+        $('.date-list').css("display","block");
+        if(calState == 0) {
+            $('.date-list').animate({display:'block',width:currDocWidth,marginLeft:-currDocWidth,marginRight:'0'},200);
+            calState = 1;
+        }else {
+            $('.date-list').animate({display:'block',width:currDocWidth,marginLeft:'0',marginRight:'0'},200);
+            calState = 0;
+        };
+    };
+
+    var menuPopDom = () => {
+        $('.m-menu').css("display","block");
+        if(menuState == 0) {
+            $('.m-menu').animate({display:'block',width:currDocWidth,marginLeft:-currDocWidth,marginRight:'0'},200);
+            menuState = 1;
+        }else {
+            $('.m-menu').animate({display:'block',width:currDocWidth,marginLeft:'0',marginRight:'0'},200);
+            menuState = 0;
+        };
+    };
+</script><script>
+$(document).ready(function() {
+	var pageNo = 1; //current page
+	var loading  = false; //to prevents multipal ajax loads
+	var total_pages = 416; //total page
+	
+	function load_more() {
+	    if($(window).scrollTop() + $(window).height() > $(document).height() - 150)  //user scrolled to bottom of the page?
+	    {
+
+	        if(pageNo < total_pages && loading==false) //there's more data to load
+	        {
+	            loading = true; //prevent further ajax loading
+	            $('.div_loading').show();
+
+
+	            var _url = '/mportal/recruit/listJson';
+	            var _form_data = {'pageNo': pageNo+1, 'type' : '2', 'keyword':'', 'filterParams[companyNatureCategory]' : ''};
+	            $.ajax({
+
+	                type: "GET",
+	                dataType: "json",
+	                url: _url,//提交的URL
+	                data: _form_data, // 要提交的表单,必须使用name属性
+	                success: function (result) {
+	                    if (result.code == '0') {
+	                        var _html = '';
+	                        for (_k in result.data) {
+	                        	var itemTime, itemMeta;
+	                        	if (result.data[_k].type == '1') {
+	                        		itemTime = dayjs(result.data[_k].conferenceDt).format('MM月DD日HH:mm');
+	                        		itemMeta = result.data[_k].address + '(' + result.data[_k].hits + ')';
+	                        	}
+	                        	else {
+	                        		itemTime = dayjs(result.data[_k].createDate).format('YYYY-MM-DD');
+	                        		itemMeta = result.data[_k].company.name + '(' + result.data[_k].hits + ')';
+	                        	}
+	                        	_html += `
+		                            <li>
+		                                <a href="${ctx}/recruit/details?id=${ result.data[_k].id }">
+	                                    ${ result.data[_k].weight < 0 ? '[置顶]' : '' }${ result.data[_k].title }
+	                                	</a>
+		                            	<div>
+		                                <span>
+		                    	            ${itemTime}
+		                                </span>
+		                                <span>
+		                                	${itemMeta}
+		                                </span>
+		                            </div>
+		                        </li>
+	                        	`;
+	                        }
+	                        $('#ul_load_more_content').append(_html);
+	                        pageNo++;
+	                        loading = false;
+	                        $('.div_loading').hide();
+	                        load_more();
+	                    }
+	                },
+	                error: function (request) {
+	                    loading = false;
+	                    $('.div_loading').hide();
+	                }
+	            });
+
+	        }
+	    }
+	}
+	
+    $('.div_loading').hide();
+
+    $(window).scroll(function() { //detect page scroll
+        load_more();
+    });
+    load_more();
+});
+
+
+</script>
+</body>
+
+</html>
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?f3a1f3ff8d120912a12ab2de0a25b16a";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>

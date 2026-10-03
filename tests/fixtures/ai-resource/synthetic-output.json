@@ -1,0 +1,96 @@
+{
+  "schema_version": "campuspulse.ai-resource.output.v1",
+  "request_id": "synthetic-library-001",
+  "school_id": "synthetic-school",
+  "resource_id": "synthetic-platform",
+  "resource_url": "https://publisher.example.org/",
+  "claims": [
+    {
+      "kind": "purpose",
+      "value": "检索工程学论文",
+      "evidence": [
+        {
+          "source_id": "source-1",
+          "source_url": "https://library.example.edu.cn/notices/trial",
+          "quote": "该平台用于检索工程学论文。"
+        }
+      ]
+    },
+    {
+      "kind": "school_status",
+      "value": "trial",
+      "evidence": [
+        {
+          "source_id": "source-1",
+          "source_url": "https://library.example.edu.cn/notices/trial",
+          "quote": "本校提供 Sample Journal A 的试用，试用日期 2026-09-20 至 2026-12-31。"
+        }
+      ]
+    },
+    {
+      "kind": "scope",
+      "value": "Sample Journal A",
+      "evidence": [
+        {
+          "source_id": "source-1",
+          "source_url": "https://library.example.edu.cn/notices/trial",
+          "quote": "本校提供 Sample Journal A 的试用"
+        }
+      ]
+    },
+    {
+      "kind": "campus_access",
+      "value": "校内 IP",
+      "evidence": [
+        {
+          "source_id": "source-1",
+          "source_url": "https://library.example.edu.cn/notices/trial",
+          "quote": "仅供校内 IP 使用"
+        }
+      ]
+    },
+    {
+      "kind": "off_campus_access",
+      "value": null,
+      "evidence": []
+    },
+    {
+      "kind": "login_condition",
+      "value": "个人手机号注册",
+      "evidence": [
+        {
+          "source_id": "source-1",
+          "source_url": "https://library.example.edu.cn/notices/trial",
+          "quote": "需要先用个人手机号注册。"
+        }
+      ]
+    }
+  ],
+  "trial": {
+    "starts_on": "2026-09-20",
+    "ends_on": "2026-12-31",
+    "evidence": [
+      {
+        "source_id": "source-1",
+        "source_url": "https://library.example.edu.cn/notices/trial",
+        "quote": "试用日期 2026-09-20 至 2026-12-31。"
+      }
+    ]
+  },
+  "unknowns": [
+    "校外使用方式、实际账号权限和续订情况均未知。"
+  ],
+  "candidate_links": [
+    {
+      "title": "资源指南",
+      "url": "https://library.example.edu.cn/guides/research",
+      "evidence": [
+        {
+          "source_id": "source-1",
+          "source_url": "https://library.example.edu.cn/notices/trial",
+          "quote": "资源指南 https://library.example.edu.cn/guides/research。"
+        }
+      ]
+    }
+  ]
+}

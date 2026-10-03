@@ -1,0 +1,35 @@
+{
+  "schema_version": "0.1-draft",
+  "school": {
+    "key": "cn-beihua", "name": "北华大学", "aliases": ["北华", "BEIHUA"],
+    "country": "CN", "province": "吉林省", "city": "吉林市",
+    "timezone": "Asia/Shanghai", "official_homepage": "https://www.beihua.edu.cn/"
+  },
+  "status": "draft", "reviewed_at": "2026-10-03",
+  "categories": ["exam", "competition", "scholarship", "campus_activity", "academic_affairs", "career"],
+  "resource_discovery": {
+    "department_urls": [
+      "https://dean.beihua.edu.cn/",
+      "https://www.beihua.edu.cn/xgzx/"
+    ],
+    "max_pages": 32
+  },
+  "fetch_defaults": {
+    "interval_minutes": 60, "jitter_seconds": 300, "per_host_concurrency": 1,
+    "min_request_interval_seconds": 3, "respect_source_policy": true, "conditional_requests": true
+  },
+  "sources": [],
+  "auto_discovery": {
+    "department_urls": [
+      "https://dean.beihua.edu.cn/index/jwgg.htm",
+      "https://dean.beihua.edu.cn/index/gszl.htm",
+      "https://www.beihua.edu.cn/xgzx/index/tzgg.htm",
+      "https://www.beihua.edu.cn/xgzx/pypj.htm",
+      "https://www.beihua.edu.cn/xgzx/zzdk.htm",
+      "https://youth.beihua.edu.cn/index/tzgg.htm",
+      "https://zsjyc.beihua.edu.cn/",
+      "https://jcc.beihua.edu.cn/"
+    ],
+    "max_pages": 24
+  }
+}

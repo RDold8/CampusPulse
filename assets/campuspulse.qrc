@@ -1,0 +1,26 @@
+<RCC>
+  <qresource prefix="/campuspulse">
+    <file alias="campuspulse.svg">campuspulse.svg</file>
+    <file alias="icons/campuspulse-16.png">icons/campuspulse-16.png</file>
+    <file alias="icons/campuspulse-24.png">icons/campuspulse-24.png</file>
+    <file alias="icons/campuspulse-32.png">icons/campuspulse-32.png</file>
+    <file alias="icons/campuspulse-48.png">icons/campuspulse-48.png</file>
+    <file alias="icons/campuspulse-64.png">icons/campuspulse-64.png</file>
+    <file alias="icons/campuspulse-128.png">icons/campuspulse-128.png</file>
+    <file alias="icons/campuspulse-256.png">icons/campuspulse-256.png</file>
+    <file alias="navigation/notices-24.png">navigation/notices-24.png</file>
+    <file alias="navigation/notices-48.png">navigation/notices-48.png</file>
+    <file alias="navigation/sources-24.png">navigation/sources-24.png</file>
+    <file alias="navigation/sources-48.png">navigation/sources-48.png</file>
+    <file alias="navigation/subscriptions-24.png">navigation/subscriptions-24.png</file>
+    <file alias="navigation/subscriptions-48.png">navigation/subscriptions-48.png</file>
+    <file alias="navigation/tasks-24.png">navigation/tasks-24.png</file>
+    <file alias="navigation/tasks-48.png">navigation/tasks-48.png</file>
+    <file alias="navigation/universities-24.png">navigation/universities-24.png</file>
+    <file alias="navigation/universities-48.png">navigation/universities-48.png</file>
+    <file alias="navigation/ai-24.png">navigation/ai-24.png</file>
+    <file alias="navigation/ai-48.png">navigation/ai-48.png</file>
+    <file alias="navigation/calendar-24.png">navigation/calendar-24.png</file>
+    <file alias="navigation/calendar-48.png">navigation/calendar-48.png</file>
+  </qresource>
+</RCC>

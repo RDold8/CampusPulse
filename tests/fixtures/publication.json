@@ -1,0 +1,262 @@
+{
+  "prepared_on": "2026-10-04",
+  "scope": "Public source fixtures; email and mobile contact strings replaced, no attachments downloaded",
+  "original_fixture_archive": "Local ignored evidence/github-publication/original-fixtures; not committed",
+  "original_hash_meaning": "SHA-256 before contact redaction; published_sha256 refers to the repository fixture",
+  "files": [
+    {
+      "file": "tests/fixtures/beihua/academic-publicity-detail.html",
+      "original_sha256": "2deb97259c5ca46cb933a33d4b9d73630ba6f586704da32ed7efea39641ba64e",
+      "published_sha256": "dbfa37f4481dd6d5168ced8f68ba0a9bda13be8df2ba3d3efd2ea33eacdc76ed",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/beihua/student-aid-detail.html",
+      "original_sha256": "3d8bb06b28af4d5da45e4acdfd76e3a31c18a52aa69346f21fc6c0a922cf5687",
+      "published_sha256": "dfe1d9f2aaf35c5e6e5a709fb0713dd4773fb6f1f7fe7423c37ac284887bc04e",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/beihua/student-detail.html",
+      "original_sha256": "2d2d3db3412de8bb0a8653d7b77080a943ff30058754ca69eeae1ccbaa9dd610",
+      "published_sha256": "fe22297e2c19c6b59c3ad4340ddb5fb892508165fd917081178f6fa7ff90df66",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/beihua/student-scholarship-detail.html",
+      "original_sha256": "edc420bac805cb609ecd3c818fee2e33bd8ac6504ca0ea9c5fdd3b21a7bfefc1",
+      "published_sha256": "1bf45bf05c854b3992b6cd5aec8ebd8a71cdafe24d994550d6812103e44e1b06",
+      "redactions": {
+        "email": 2,
+        "mobile": 2
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/career-brief.html",
+      "original_sha256": "4f89cabe80c212d7b2ca7e53b550b09b61856e420e3fecfb128571d2884fa2b5",
+      "published_sha256": "30fb53aea439e02c57cc4f046a3ca7d986da2bd1a24aaac2f9532ebd5a0b86a4",
+      "redactions": {
+        "email": 2,
+        "mobile": 2
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/career-detail.html",
+      "original_sha256": "d60a428118f50aac3eb3fe2883bab0f5c9a2f77be6a921d5deace1717aa87189",
+      "published_sha256": "db3a956bbf29b9de57f9ff0f9179cd5daf21aa2fcf20c3332d651d77eb99203b",
+      "redactions": {
+        "email": 2,
+        "mobile": 2
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/career-navigation.html",
+      "original_sha256": "dd4a1ad9ee3914bf494e2e4dfc164f44ce8290bffce36dc42fb2f0e00803501a",
+      "published_sha256": "d9cd6f12b601a38cbe2bbbd5070a700c6e0744d0275961901d27dd186fae967b",
+      "redactions": {
+        "email": 5
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/career-notices.html",
+      "original_sha256": "74a336f16b5d8dd460d6a61f22508a565da3ef5cf19bfb9f0a0b3a03ed95d07a",
+      "published_sha256": "47adfc74bd12e8ce1ff8ff0cf12151c211689cf111819f0fba2e78e3fae87c92",
+      "redactions": {
+        "email": 2,
+        "mobile": 2
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/career.html",
+      "original_sha256": "c66e3ec7043968026eebd7077f90898399dff981af191db0336c8d87830fdb18",
+      "published_sha256": "4d3d324575f251d50fe25855d202f37e59c1b035d26842c77f34d7ce23c35416",
+      "redactions": {
+        "email": 2,
+        "mobile": 2
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/competition-detail.html",
+      "original_sha256": "885adeffda40f25c022fa0beaa4e20a8685de7236c198e1ab56ab64c43fc885e",
+      "published_sha256": "f7d06a9571ee73f210008cce6aed4718ac32f80eb0a63b3887be43a8a75e2c92",
+      "redactions": {
+        "email": 5
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/competition-payment-detail.html",
+      "original_sha256": "963ec9f44c08e976af6abfa638e7f2abe54c1dc71f87fcea53e7a9457ff9dc0e",
+      "published_sha256": "47fadda89e93eb6920b0c90f69f097c1bcefc76ab01a60f78a78743ffa86b0a2",
+      "redactions": {
+        "email": 2
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/directory.html",
+      "original_sha256": "3c06c4714210d58165d22442528eac200dc34cb5867a1a641600dc0c71469cb8",
+      "published_sha256": "7e99c939002a7505b05ef87943395db280dd74ee34b3ee1c28f0c858a0b1a863",
+      "redactions": {
+        "email": 5
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/graduate-detail.html",
+      "original_sha256": "e7618bd54f5714ca3b805c32a9e6b46658c2eef5701a7a0671448982975ca0ed",
+      "published_sha256": "80b838f7d6cf431f2639b53fc67ce15c913a98acddb8475966a0bcb134644f00",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/graduate-exams.html",
+      "original_sha256": "5cd42fce10542d5cde82338f3aa88b620d6d21149958057721c0420c51c09c54",
+      "published_sha256": "9ef68f59e4aecf00a837034bda8d43eb625ee7ed5ff7c5fb418fdcc335d1c415",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/graduate-notices.html",
+      "original_sha256": "b6329abbf1ba39ce6a0fb29166dacb7a2d3a6052fad4c0647e643951c7eceeb8",
+      "published_sha256": "fc4c288cb282153bf1031fc04b8b1ed55e962daa4710de11aba1b5c4ee19d4d4",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/graduate-work-first-detail.html",
+      "original_sha256": "d1260e44b23ff0575122e2ec3d1ab6da6bc364e431f2c55d2c400e890add7c2b",
+      "published_sha256": "9bd298d8f6bc6e15f8ac760041ca7adf19773d362634e38299b7360fdb248fea",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/graduate-work.html",
+      "original_sha256": "af52b0e37f6c362a8761a667fba66251104eddc5fd5cc4bbc72da08fdf546b7e",
+      "published_sha256": "b56d94dc6504c0bf95fb2dddb76fc82ae9d8dce0a5c4bae313ac7be5ec87b165",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/home-detail.html",
+      "original_sha256": "ac81a1c51bd8d33dec48a147ac2909f944d6071f2f0d27898d259964b141abae",
+      "published_sha256": "3634d7e44380a7e20b84207504fa4e80f387fec20cc90ede746c5ceb89709830",
+      "redactions": {
+        "email": 5
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/home.html",
+      "original_sha256": "3a56961dc01818295fe9cc2763b47db6bfe81e981ad3d1082bfa535d07473111",
+      "published_sha256": "d6a8724f52df7a49f238fde04054950a1494e0ffc734676f9284a85334b4d37d",
+      "redactions": {
+        "email": 5
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/notices.html",
+      "original_sha256": "d633eac045129587377c6cc60e6cf3ca52ac98d01a3481016389f03ee9ac4061",
+      "published_sha256": "235db03763d77fae6d7f854cc8f5953b342fd5f03aa786bb68a6a828504f5915",
+      "redactions": {
+        "email": 5
+      }
+    },
+    {
+      "file": "tests/fixtures/cust/scholarship-detail.html",
+      "original_sha256": "a07c18513e962896e9cacbe64b46499771abce438efa26e170babbabc070f807",
+      "published_sha256": "31de301b747e722edcaacb52002bd086145f5ecaf6fc4c79ce83993e48b75faf",
+      "redactions": {
+        "email": 5
+      }
+    },
+    {
+      "file": "tests/fixtures/jlu/academic-detail.html",
+      "original_sha256": "1c44605133f210e49dc5d085ccec65e4e27b5cc51f616d1906430dc4486a1bcc",
+      "published_sha256": "4dbf46a1f9b9941b48d22150aa4b588d7a0d13c1c77c4c635c6deb55198ff049",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/jlu/academic-exam-detail.html",
+      "original_sha256": "a74c88dd12ea67232b262746519c744a35848759ef5ad2bba42ea9bd715a888f",
+      "published_sha256": "08993e76cc57c93155a84f7ff9d64c6a8a9c024d5a7e156b1f4a673c3a52f653",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/jlu/academic-exams.html",
+      "original_sha256": "e0d6c8aa1d68a780660e99f75cbd0b0d9fc204df65cc4c868917a0beebd8a66b",
+      "published_sha256": "f83005e27a9c41774f5a697e414de461bfbd2e226078610fc343c5c743ba406f",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/jlu/academic.html",
+      "original_sha256": "8919dba673a545603c886cb72ce25ea9eca6a92c397fe98cac69d942ce9ba09d",
+      "published_sha256": "68eef1e4d38aa81042932a3a97b65e5905e32738844a26b5feee25aa9afa5911",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/jlu/career-detail.html",
+      "original_sha256": "8a7569448ed117dc3126a6a0a4ce8b34d7a6385f7d77e1ee323013084b65c603",
+      "published_sha256": "5ff5991f47d95df0cdb23d5b9a6010ec697a364cf51cf1ed37216ac9ebb6bb20",
+      "redactions": {
+        "email": 2,
+        "mobile": 2
+      }
+    },
+    {
+      "file": "tests/fixtures/jlu/main-list.html",
+      "original_sha256": "a19e717ff6fdd9fec6593fc79727c1ad9fb6b3305a34b056c6c947041f4efb4f",
+      "published_sha256": "580fea6fe14518816cafeb14e9c03d318d34201ece4de91b9cbc951e041e5593",
+      "redactions": {
+        "email": 2
+      }
+    },
+    {
+      "file": "tests/fixtures/neepu/youth-detail.html",
+      "original_sha256": "eef365a8b985eae635f5588d43cbe32180f37875152fe59f51c169468c13b63f",
+      "published_sha256": "8f0943fec7f5d4894cb477133c586eeff49049c07d3fe96b58139fe094b39d03",
+      "redactions": {
+        "email": 2
+      }
+    },
+    {
+      "file": "tests/fixtures/resources/cust/library.html",
+      "original_sha256": "5399e5301fd9776085a51b50b59a0a0273cb1218e0b4be45c335e71597d96584",
+      "published_sha256": "f555bbf23b49bae5e0bcd159d7fad87f5f8e63186f6007a048a39ff03af272e3",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/resources/neepu/library-electronic.html",
+      "original_sha256": "e3f02bff2aa6eb52097423dd4e126c91b5f72b59a6f82a5f3f509d13b54361ee",
+      "published_sha256": "df23bc224bdc0fbc6ca7ae592f705d034f95e3af70332ebe07c985fe2606ff47",
+      "redactions": {
+        "email": 1
+      }
+    },
+    {
+      "file": "tests/fixtures/resources/neepu/library.html",
+      "original_sha256": "28fd624b8eaaa60272bba0bdbc15c57600ae21080ebd2c1f5a8e5f64a4b558f2",
+      "published_sha256": "862cfc33b928de2fb4f9e5e8a86ed2ab1742f5c69c74d5ff6a39f7fc65fcaaf2",
+      "redactions": {
+        "email": 1
+      }
+    }
+  ]
+}

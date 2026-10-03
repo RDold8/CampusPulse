@@ -1,0 +1,36 @@
+{
+  "fixtures": [
+    {
+      "file": "notices.html",
+      "url": "https://jwc.neepu.edu.cn/tzgg.htm",
+      "captured_at": "2026-10-01T15:37:00.760270+00:00",
+      "sha256": "c70f5aa996d1ecdd24211af7fb9733c657200f7718c8536d3da61cb70c00abea",
+      "charset": "UTF-8",
+      "list_rows": 20,
+      "scope": "Public webpage; attachments linked only; no attachment content captured"
+    },
+    {
+      "file": "retake.html",
+      "url": "https://jwc.neepu.edu.cn/kszx.htm",
+      "captured_at": "2026-10-01T15:37:00.767383+00:00",
+      "sha256": "b8d135453ff6435207a65bdd4207d70708984dce99e0ce21c171b24033f8f916",
+      "charset": "UTF-8",
+      "list_rows": 20,
+      "scope": "Public webpage; attachments linked only; no attachment content captured"
+    },
+    {
+      "file": "payment.html",
+      "url": "https://jwc.neepu.edu.cn/info/1014/12248.htm",
+      "captured_at": "2026-10-01T15:37:00.773549+00:00",
+      "sha256": "1412ade52f40acea0276928d8bcb5a4391ab403d62858cde1d48b0c915b50de1",
+      "charset": "UTF-8",
+      "list_rows": 0,
+      "scope": "Public webpage; attachments linked only; no attachment content captured"
+    }
+  ],
+  "robots_check": {
+    "url": "https://jwc.neepu.edu.cn/robots.txt",
+    "http_status": 404,
+    "meaning": "No robots file found at this URL; not a blanket permission statement"
+  }
+}

@@ -1,0 +1,16 @@
+/.venv/
+/.deps/
+/build/
+/dist/
+*.user
+__pycache__/
+/evidence/
+/aqtinstall.log
+*.log
+*.sqlite
+*.sqlite-*
+*.db
+.env
+.env.*
+!.env.example
+/.vs/

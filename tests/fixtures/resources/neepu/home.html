@@ -1,0 +1,573 @@
+﻿<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="360-site-verification" content="dae00c3b8748a122e2325bb1fc6c0904" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <!-- for 360browser to use webkit core as default-->
+    <meta name="renderer" content="webkit">
+    
+    <meta name="format-detection" content="telephone=no">
+    <title>东北电力大学</title><meta name="pageType" content="1">
+<meta name="pageTitle" content="东北电力大学">
+<META Name="keywords" Content="东北电力大学,东北电力学院,东北电力,Northeast Dianli University,NEEPU,Northeast Electric Power University" />
+
+    <link href="css/font-awesome.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+    <link href="css/swiper.min.css" rel="stylesheet">
+    <link href="css/home.css?v3" rel="stylesheet">
+    <script src="js/jq.min.js"></script>
+<!--[if lte IE 9]>
+    <link href="css/swiper2.min.css" rel="stylesheet">
+    <![endif]-->
+    <!--[if lt IE 9]>
+    <script src="js/html5.js"></script>
+    <![endif]-->
+    <style>
+        </style>
+<!--Announced by Visual SiteBuilder 9-->
+<link rel="stylesheet" type="text/css" href="_sitegray/_sitegray_d.css" />
+<script language="javascript" src="_sitegray/_sitegray.js"></script>
+<!-- CustomerNO:77656262657232307668475253555742000300004e57 -->
+<link rel="stylesheet" type="text/css" href="index.vsb.css" />
+<script type="text/javascript" src="/system/resource/js/vsbscreen.min.js" id="_vsbscreen" devices="pc|pad"></script>
+<script type="text/javascript" src="/system/resource/js/counter.js"></script>
+<script type="text/javascript">_jsq_(1001,'/index.jsp',-1,1360958473)</script>
+</head>
+<body>
+<header class="clearfix">
+    <div class="logo-search">
+        <div class="container">
+               <script language="javascript" src="/system/resource/js/dynclicks.js"></script>    
+    
+            
+            
+             <a href="index.htm" class="logo" title="东北电力大学首页">
+                <img src="images/2017050802_05.jpg" alt="">
+            </a>
+                             
+      
+
+            <div class="map">
+          <script language="javascript" src="/system/resource/js/openlink.js"></script>  <p>
+<a href="http://en.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27958)" target="_blank">English</a> | 
+<a href="http://mail.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27959)" target="_blank">邮件</a>
+</p>
+
+
+
+<script language="javascript" src="/system/resource/js/base64.js"></script><script language="javascript" src="/system/resource/js/jquery/jquery-latest.min.js"></script><script language="javascript" src="/system/resource/vue/vue.js"></script><script language="javascript" src="/system/resource/vue/bluebird.min.js"></script><script language="javascript" src="/system/resource/vue/axios.js"></script><script language="javascript" src="/system/resource/vue/polyfill.js"></script><script language="javascript" src="/system/resource/vue/token.js"></script><LINK href="/system/resource/vue/static/element/index.css" type="text/css" rel="stylesheet"><script language="javascript" src="/system/resource/vue/static/element/index.js"></script><script language="javascript" src="/system/resource/vue/static/public.js"></script><div id="divu2"></div>
+<script type="text/html" id="htmlu2">
+    <div id="appu2">
+        <div v-if="!isError" class="search">
+            <input type="text" class="input"  placeholder="站内搜索" autocomplete=off  v-model=query.keyWord @keyup.enter="onSubmit" >
+            <input type="submit" class="icon-search" name="submit_button"  value="" v-on:click="onSubmit()"  />
+        </div>
+        <div v-if="isError" style="color: #b30216; font-size:18px;text-align: center;padding:20px;">
+            应用维护中！
+        </div>
+    </div>
+</script>
+<script>
+    $("#divu2").html($("#htmlu2").text());
+</script>
+<script>
+    var appOwner = "1360958473";
+    var token = 'tourist';
+    var urlPrefix = "/aop_component/";
+
+    jQuery.support.cors = true;
+    $.ajaxSetup({
+        beforeSend:function(request, settings) {
+            request.setRequestHeader("Authorization", token);
+            request.setRequestHeader("owner", appOwner);
+        }
+    });
+
+    new Vue({
+        el: "#appu2",
+        data: function() {
+            return {
+                query:{
+                    keyWord:"",//搜索关键词
+                    owner:appOwner,
+                    token:token,
+                    urlPrefix:urlPrefix,
+                    lang:"i18n_zh_CN"
+                },
+                isError: false
+            }
+        },
+        mounted: function() {
+            var _this = this;
+            // _this.init();
+        },
+        methods:{
+            init:function(){
+                $.ajax({
+                    url: "/aop_component//webber/search/test",
+                    type:"get",
+                    success: function(response){
+                        if(response.code=="0000"){
+                        }else if(response.code =="220"){
+                            _this.isError = true;
+                            console.log(response);
+                        }else if(!response.code){
+                            _this.isError = true;
+                            console.log(response);
+                        }
+                    },
+                    error: function(response){
+                        _this.isError = true;
+                    }
+                });
+            },
+            onSubmit:function(e){
+                var url = "/views/search/modules/resultpcall/soso.html";
+                if ("10" == "1" || "10" == "2") {
+                    url = "http://202.198.8.53:8083/" + url;
+                }
+                var _this = this;
+                var query = _this.query;
+                if(url.indexOf("?")>-1){
+                    url =url.split("?")[0];
+                }
+                if(query.keyWord){
+                    var query=new Base64().encode(JSON.stringify(query));
+                    window.open(url+"?query="+query);
+                }else{alert("请填写搜索内容")}
+            },
+
+        }
+    })
+</script>
+            </div>
+        </div>
+    </div>
+    <nav>
+        <div class="wgt-navbar">
+            <div class="navbar-bg">
+                <div class="navbar-content container">
+                    <div class="navbar-content-box">
+                      <dl>
+                                </dl>
+   
+  <dl>
+<dt><a href="xqzl.htm" target="_blank">校情总览</a></dt>
+<dd>
+<div><a href="xqzl/xxgk.htm" target="_blank" style="font-size:14px;">学校概况</a></div>
+
+<div><a href="xqzl/lsyg.htm" target="_blank" style="font-size:14px;">历史沿革</a></div>
+
+<div><a href="xqzl/qqgh.htm" target="_blank" style="font-size:14px;">亲切关怀</a></div>
+
+<div><a href="xqzl/xrld.htm" target="_blank" style="font-size:14px;">现任领导</a></div>
+
+<div><a href="dp_content.jsp?urltype=tree.TreeTempUrl&wbtreeid=1016" target="_blank" style="font-size:14px;">东电英才</a></div>
+
+<div><a href="xqzl/xb.htm" target="_blank" style="font-size:14px;">校标</a></div>
+
+                                                                            </dd>
+                                </dl>
+   
+  <dl>
+<dt><a href="jgsz.htm" target="_blank">机构设置</a></dt>
+<dd>
+<div><a href="jgsz/jxdw.htm" target="_blank" style="font-size:14px;">教学单位</a></div>
+
+<div><a href="jgsz/dzglbm.htm" target="_blank" style="font-size:14px;">党政管理部门</a></div>
+
+<div><a href="jgsz/jxfzdw.htm" target="_blank" style="font-size:14px;">教学辅助单位</a></div>
+
+<div><a href="jgsz/qtzz.htm" target="_blank" style="font-size:14px;">群团组织</a></div>
+
+<div><a href="jgsz/jjjcjg.htm" target="_blank" style="font-size:14px;">纪检监察机构</a></div>
+
+                                                                            </dd>
+                                </dl>
+   
+  <dl>
+<dt><a href="jyjx2.htm" target="_blank">教育教学</a></dt>
+<dd>
+<div><a href="jyjx2/jxcg.htm" target="_blank" style="font-size:14px;">教学成果</a></div>
+
+<div><a href="jyjx2/jxdwjs.htm" target="_blank" style="font-size:14px;">教学队伍建设</a></div>
+
+<div><a href="jyjx2/kcjs.htm" target="_blank" style="font-size:14px;">课程建设</a></div>
+
+<div><a href="jyjx2/sysjs.htm" target="_blank" style="font-size:14px;">实验室建设</a></div>
+
+<div><a href="jyjx2/zyjs.htm" target="_blank" style="font-size:14px;">专业建设</a></div>
+
+                                                                            </dd>
+                                </dl>
+   
+  <dl>
+<dt><a href="szdw.htm" target="_blank">师资队伍</a></dt>
+<dd>
+<div><a href="szdw/szgk.htm" target="_blank" style="font-size:14px;">师资概况</a></div>
+
+<div><a href="dp_content.jsp?urltype=tree.TreeTempUrl&wbtreeid=1028" target="_blank" style="font-size:14px;">杰出人才</a></div>
+
+                                                                            </dd>
+                                </dl>
+   
+  <dl>
+<dt><a href="xkjs.htm" target="_blank">学科建设</a></dt>
+<dd>
+<div><a href="xkjs/zdxk.htm" target="_blank" style="font-size:14px;">重点学科</a></div>
+
+<div><a href="http://kyc.neepu.edu.cn/kypt.htm" target="_blank" style="font-size:14px;">科研平台</a></div>
+
+<div><a href="http://kyc.neepu.edu.cn/kydw.htm" target="_blank" style="font-size:14px;">创新团队</a></div>
+
+<div><a href="xkjs/bssssqxk.htm" target="_blank" style="font-size:14px;">博士硕士授权学科</a></div>
+
+                                                                            </dd>
+                                </dl>
+   
+  <dl>
+<dt><a href="kxyj.htm" target="_blank">科学研究</a></dt>
+<dd>
+<div><a href="kxyj/kygk_.htm" target="_blank" style="font-size:14px;">科研概况 </a></div>
+
+<div><a href="http://kyc.neepu.edu.cn/list.jsp?urltype=tree.TreeTempUrl&wbtreeid=1106" target="_blank" style="font-size:14px;">科研动态</a></div>
+
+<div><a href="http://scp.neepu.edu.cn/" target="_blank" style="font-size:14px;">国家大学科技园</a></div>
+
+                                                                            </dd>
+                                </dl>
+   
+  <dl>
+<dt><a href="https://zsjyc.neepu.edu.cn/" target="_blank">招生就业</a></dt>
+<dd>
+<div><a href="https://zsjyc.neepu.edu.cn " target="_blank" style="font-size:14px;">招生就业处</a></div>
+
+<div><a href="http://zs.neepu.edu.cn" target="_blank" style="font-size:14px;">本科生招生</a></div>
+
+<div><a href="http://grad.neepu.edu.cn" target="_blank" style="font-size:14px;">研究生招生</a></div>
+
+<div><a href="http://cie.neepu.edu.cn/" target="_blank" style="font-size:14px;">留学生招生</a></div>
+
+<div><a href="http://cae.neepu.edu.cn/" target="_blank" style="font-size:14px;">成人教育招生</a></div>
+
+<div><a href="http://jy.neepu.edu.cn/" target="_blank" style="font-size:14px;">就业信息</a></div>
+
+                                                                            </dd>
+                                </dl>
+   
+  <dl>
+<dt><a href="http://rczp.neepu.edu.cn/index.htm" target="_blank">人才招聘</a></dt>
+<dd>
+<div><a href="http://rczp.neepu.edu.cn/index.htm" target="_blank" style="font-size:14px;">人才招聘</a></div>
+
+                                                                            </dd>
+                                </dl>
+   
+  <dl>
+<dt><a href="http://oice.neepu.edu.cn/index.htm" target="_blank">国际交流</a></dt>
+<dd>
+<div><a href="http://cie.neepu.edu.cn/" target="_blank" style="font-size:14px;">留学生教育</a></div>
+
+<div><a href="http://oice.neepu.edu.cn/jwzj/pqzn.htm" target="_blank" style="font-size:14px;">境外专家聘任</a></div>
+
+<div><a href="https://oice.neepu.edu.cn/hzbx.htm" target="_blank" style="font-size:14px;">中外合作办学</a></div>
+
+<div><a href="https://oice.neepu.edu.cn/jlhz.htm" target="_blank" style="font-size:14px;">海外学习交流</a></div>
+
+                                                                            </dd>
+                                </dl>
+   
+  <dl>
+                                </dl>
+   
+  <dl>
+                                </dl>
+   
+  <dl>
+                                </dl>
+   
+  <dl>
+                                </dl>
+   
+  <dl>
+                                </dl>
+   
+  <dl>
+                                </dl>
+   
+  <dl>
+                                </dl>
+   
+  <dl>
+                                </dl>
+   
+  <dl>
+                                </dl>
+   
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+</header><!-- 1300px * 480px -->
+<div id="main-swiper" class="swiper-container clearfix">
+    <div class="swiper-wrapper">
+                          <div class="swiper-slide">
+            <a><img src="images/20260930.jpg" height="480" title=""></a>
+                <div class="description" data-swiper-parallax="-7500"></div>
+        </div>
+        <div class="swiper-slide">
+            <a><img src="images/2026033001.jpg" height="480" title=""></a>
+                <div class="description" data-swiper-parallax="-7500"></div>
+        </div>
+        <div class="swiper-slide">
+            <a href="https://www.neepu.edu.cn/info/1115/63565.htm" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 1010406)" target="_self"><img src="images/weixintupian_20240911171025.jpg" height="480" title=""></a>
+                <div class="description" data-swiper-parallax="-7500"></div>
+        </div>
+        <div class="swiper-slide">
+            <a href="http://dsxxjy.neepu.edu.cn/" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 44321)" target="_self"><img src="images/2022110701.jpg" height="480" title=""></a>
+                <div class="description" data-swiper-parallax="-7500"></div>
+        </div>
+
+
+                
+            </div>
+    <!-- Add Pagination -->
+      <div class="swiper-pagination"></div>
+
+      <!-- Add Arrows -->
+    <div class="swiper-button-next"></div>
+    <div class="swiper-button-prev"></div>
+</div>
+<div class="news w1200 clearfix">
+    <div class="headline section-head">
+                
+        <h1>东电要闻</h1>
+               <script language="javascript" src="/system/resource/js/centerCutImg.js"></script>
+
+<div class="headline-pic">
+            <a href="info/1109/78735.htm" target="_blank" title="学校举行2026级本科生开学典礼">
+                <img src="/__local/F/6B/4D/6F64931293CFEB34E7320DDF194_59E7EB73_B0CBD.jpg">
+            </a>
+        </div>
+        <div class="content">
+            <span class="title"><a href="info/1109/78735.htm" target="_blank" title="学校举行2026级本科生开学典礼" style="color:#f76e06;">学校举行2026级本科生开学典礼 </a></span>
+            <span class="date">[09月19日]</span>
+            <span class="summary">9月19日，东北电力大学2026级本科生开学典礼在体育馆主场馆举行，学校党委书记李书研、校长蔡国伟等学校领导出席，党委副书记王庆洲主持，相关职能部门和各学院负责同志，全体2026级本科生新同学参加。
+    </span>
+        </div>
+
+
+
+
+<script>_showDynClickBatch(['dynclicks_u5_78735'],[78735],"wbnews", 1360958473)</script>
+
+            </div>
+    <div class="notice-list section-head">
+        <h3><a href="cs1.htm" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27981)" target="_blank">更多</a>
+
+</h3>
+        <h1>通知公告</h1>
+       <script language="javascript" src="/system/resource/js/ajax.js"></script> <ul class="notice">
+<li>
+                <span class="title" style="width:390px">
+                    <a href="info/1117/27815.htm" title="咨询服务热线" target="_blank">咨询服务热线</a>
+                </span>
+                <span class="date">[06月27日]</span>
+</li>
+
+<li>
+                <span class="title" style="width:390px">
+                    <a href="info/1117/79125.htm" title="展讯：“雅风扇语”全国名家百扇书画邀请展" target="_blank">展讯：“雅风扇语”全国名家百扇书画邀请展</a>
+                </span>
+                <span class="date">[09月30日]</span>
+</li>
+
+<li>
+                <span class="title" style="width:390px">
+                    <a href="info/1117/79025.htm" title="开学第一课：纪念长征胜利90周年暨“青年明理大讲堂”（第二讲）的预告" target="_blank">开学第一课：纪念长征胜利90周年暨“青年明理大讲堂”（第二...</a>
+                </span>
+                <span class="date">[09月28日]</span>
+</li>
+
+<li>
+                <span class="title" style="width:390px">
+                    <a href="info/1117/79005.htm" title="第四周学校活动安排" target="_blank">第四周学校活动安排</a>
+                </span>
+                <span class="date">[09月27日]</span>
+</li>
+
+<li>
+                <span class="title" style="width:390px">
+                    <a href="info/1117/78625.htm" title="第二周学校活动安排" target="_blank">第二周学校活动安排</a>
+                </span>
+                <span class="date">[09月13日]</span>
+</li>
+
+</ul><script>_showDynClickBatch(['dynclicks_u7_27815','dynclicks_u7_79125','dynclicks_u7_79025','dynclicks_u7_79005','dynclicks_u7_78625'],[27815,79125,79025,79005,78625],"wbnews", 1360958473)</script>
+
+    </div>
+</div>
+<div class="w1200 clearfix">
+    <div class="latest-news">
+        <div class="section-head">
+            <h3><a href="cs2.htm" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27982)" target="_blank">进入东电新闻</a>
+
+</h3>
+            <h1>东电快讯</h1>
+                       <!---#begineditable "新闻图片文章" name="新闻图片文章" viewid="179658" tagname="新闻图片文章" contype="" stylesysid="" clone="" --><!--span style='font-size:9pt;color:black;line-height:120%;font-weight:normal;'>页面组件</span><!---#endeditable-->                                                                                                                                                                                            
+ <div class="news-content">
+                <span class="title"><a href="info/1115/78875.htm" target="_blank" title="民进中央副主席何志敏一行来我校调研">民进中央副主席何志敏一行来我校调研</a></span>
+                <span class="date">[09月23日]</span>
+            </div>
+
+
+
+ <div class="news-content">
+                <span class="title"><a href="info/1115/78885.htm" target="_blank" title="学校召开党外知识分子联谊会成立大会">学校召开党外知识分子联谊会成立大会</a></span>
+                <span class="date">[09月23日]</span>
+            </div>
+
+
+
+ <div class="news-content">
+                <span class="title"><a href="info/1115/78835.htm" target="_blank" title="东北电力大学举行2026级研究生开学典礼">东北电力大学举行2026级研究生开学典礼</a></span>
+                <span class="date">[09月21日]</span>
+            </div>
+
+
+
+ <div class="news-content">
+                <span class="title"><a href="info/1115/78855.htm" target="_blank" title="我校承办2026亚太人工智能大会“AI+电力能源论坛”">我校承办2026亚太人工智能大会“AI+电力能源论坛”</a></span>
+                <span class="date">[09月18日]</span>
+            </div>
+
+
+
+ <div class="news-content">
+                <span class="title"><a href="info/1115/78845.htm" target="_blank" title="2026年国际产学研用合作会议绿色低碳能源开发与利用分论坛在我校召开">2026年国际产学研用合作会议绿色低碳能源开发与利用分论坛在我校召开</a></span>
+                <span class="date">[09月17日]</span>
+            </div>
+
+
+
+ <div class="news-content">
+                <span class="title"><a href="info/1115/78795.htm" target="_blank" title="学校举行拉赫莫诺夫外籍专家荣誉教授聘任仪式暨学术报告会">学校举行拉赫莫诺夫外籍专家荣誉教授聘任仪式暨学术报告会</a></span>
+                <span class="date">[09月16日]</span>
+            </div>
+
+
+
+ <div class="news-content">
+                <span class="title"><a href="info/1115/78705.htm" target="_blank" title="学校2026级迎新工作顺利收官">学校2026级迎新工作顺利收官</a></span>
+                <span class="date">[09月15日]</span>
+            </div>
+
+
+<script>_showDynClickBatch(['dynclicks_u9_78875','dynclicks_u9_78885','dynclicks_u9_78835','dynclicks_u9_78855','dynclicks_u9_78845','dynclicks_u9_78795','dynclicks_u9_78705'],[78875,78885,78835,78855,78845,78795,78705],"wbnews", 1360958473)</script>
+
+    </div>
+    <div class="section-head key-access">
+        
+  
+                
+  <a href="https://xcb.neepu.edu.cn/index/jcdt.htm" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 44464)" target="_blank"><img src="images/2025d1.jpg" style="height:70.5px;width:124px;" /></a>
+                
+                
+  <a href="https://rczp.neepu.edu.cn/index.htm" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 34061)" target="_blank"><img src="images/2025d2.jpg" style="height:70.5px;width:124px;" /></a>
+                
+    
+
+  
+                
+  <a href="https://io.neepu.edu.cn/AIdxt.htm" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 1011583)" target="_blank"><img src="images/2025d3.jpg" style="height:70.5px;width:124px;" /></a>
+                
+                
+  <a href="https://xcb.neepu.edu.cn/index/mtzd.htm" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 43495)" target="_blank"><img src="images/2025d4.jpg" style="height:70.5px;width:124px;" /></a>
+                
+    
+
+  
+                
+  <a href="https://dsxxjy.neepu.edu.cn/" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 34064)" target="_blank" class="ab"><img src="images/2025111001.jpg" width="332" height="324" /></a>
+                
+    
+
+    </div>
+</div>
+<div id="quick-link" class="quick-link w1200 clearfix">
+       <ul>
+                <li style="margin-left:0"><a href="https://my.neepu.edu.cn" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 34125)" target="_blank"><img src="images/20250813.jpg" /></a></li>
+
+
+            <li><a href="https://www.neepu.edu.cn/xxgk/yjsgk.htm" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 34129)" target="_blank"><img src="images/2023110202.jpg" /></a></li>
+
+            <li><a href="http://jy.neepu.edu.cn" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 34127)" target="_blank"><img src="images/17/05/27/1jzqyglpqq/animg03.jpg" /></a></li>
+
+            <li><a href="http://www.gfbzb.gov.cn/" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 34128)" target="_blank"><img src="images/17/05/27/1jzqyglpqq/animg04.jpg" /></a></li>
+
+            <li><a href="xxgk/xxgk.htm" onclick="_addDynClicks(&#34;wbimage&#34;, 1360958473, 34126)" target="_blank"><img src="images/17/05/27/1jzqyglpqq/animg02.jpg" /></a></li>
+
+    </ul>
+</div>
+<div class="footer">
+<div>
+<UL>
+
+<a href="http://lib.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27974)" target="_blank">图   书                                           馆</a><span>|</span>
+
+<a href="http://io.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27975)" target="_blank">网信服务</a><span>|</span>
+
+<a href="http://jwc.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27987)" target="_blank">教务在线</a><span>|</span>
+
+<a href="http://kyc.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27968)" target="_blank">科研在线</a><span>|</span>
+
+<a href="http://xsc.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27969)" target="_blank">学工在线</a><span>|</span>
+
+<a href="http://xb.neepu.edu.cn" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27977)" target="_blank">学报在线</a><span>|</span>
+
+<a href="http://xyh.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27972)" target="_blank">校友之家</a><span>&nbsp;</span>
+
+<a href="https://720yun.com/t/e4vksm2e717?scene_id=48960780" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27973)" target="_blank">全景校园</a><span>|</span>
+
+<a href="info/1145/20002.htm" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27967)" target="_blank">东电校历</a><span>|</span>
+
+<a href="http://54shine.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27971)" target="_blank">54阳光网</a><span>|</span>
+
+<a href="http://neduxb.ihwrm.com/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27976)" target="_blank">电子校报</a><span>|</span>
+
+<a href="http://cae.neepu.edu.cn/" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27970)" target="_blank">继续教育</a><span>|</span>
+
+<a href="ddwh/xzjy.htm" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27978)" target="_blank">校长寄语</a><span>|</span>
+
+<a href="ldxx.htm" onclick="_addDynClicks(&#34;wburl&#34;, 1360958473, 27979)" target="_blank">领导信箱</a><span>&nbsp;</span>
+</UL>
+</div>
+
+</div>
+
+<div class="banquan">
+<!-- 版权内容请在本组件"内容配置-版权"处填写 -->
+<p style="font-size:14px">版权所有 © 东北电力大学&nbsp; &nbsp; &nbsp;地址:吉林市船营区长春路<span style="font-size: 12px;"></span>169号&nbsp; &nbsp;邮编:132012&nbsp; &nbsp;电话:86-432-64806433 吉ICP备16001485号-2&nbsp; 吉公网安备22020402000345号&nbsp; |<span style="color: #ffffff">&nbsp; </span><a href="info/1269/61295.htm" target="_self" style="text-decoration: "><span style="color: #ffffff">网站公约</span></a></p>
+
+</div>
+
+<script src="js/swiper.jquery.min.js"></script>
+<!--[if lte IE 9]>
+<script src="js/swiper2.jquery.min.js"></script>
+<![endif]-->
+<script src="js/plugin.min.js"></script>
+<script src="js/custom.js"></script>
+<a href="https://my.neepu.edu.cn" class="smart-campus">
+    <div class="smart-campus-icon">
+        <img src="https://www.neepu.edu.cn/__local/D/AD/69/CFDAE7FBF90F822C40E10BBBEE5_594E509B_1543E4.jpg" alt="校徽">
+    </div>
+    <div class="smart-campus-content">
+        <div class="smart-campus-title">智慧校园</div>
+        <div class="smart-campus-sub">融合门户入口</div>
+    </div>
+</a>
+</body></html>

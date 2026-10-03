@@ -1,0 +1,20 @@
+{
+  "schema_version": "0.1-draft",
+  "key": "generic-retake",
+  "version": 1,
+  "case_type": "retake",
+  "school_key": null,
+  "validation_state": "template_only",
+  "auto_publish": false,
+  "deadline_policy": "official_evidence_required",
+  "steps": [
+    {"key": "inspect", "action_type": "inspect_requirements", "title": "查看本次重修要求", "required_state": "unknown"},
+    {"key": "register", "action_type": "register", "title": "完成重修报名", "required_state": "unknown"},
+    {"key": "pay", "action_type": "pay", "title": "完成重修缴费", "required_state": "unknown"},
+    {"key": "verify", "action_type": "verify_result", "title": "核对重修有效名单", "required_state": "unknown"},
+    {"key": "schedule", "action_type": "view_schedule", "title": "查看重修课表及考试安排", "required_state": "unknown"}
+  ],
+  "suggested_order": ["inspect", "register", "pay", "verify", "schedule"],
+  "official_dependencies": [],
+  "notes": "仅为步骤候选，学校实例必须依据本次通知决定适用性、先后要求、入口与时间；不能将模板当作全国统一规定。"
+}

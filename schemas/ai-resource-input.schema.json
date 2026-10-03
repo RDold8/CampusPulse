@@ -1,0 +1,146 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "school",
+    "resource",
+    "as_of",
+    "sources"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "campuspulse.ai-resource.input.v1"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+    },
+    "school": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "school_id",
+        "root_host",
+        "trusted_source_hosts"
+      ],
+      "properties": {
+        "school_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+        },
+        "root_host": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 253
+        },
+        "trusted_source_hosts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 253
+          },
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_id",
+        "url"
+      ],
+      "properties": {
+        "resource_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 2048,
+          "format": "uri"
+        }
+      }
+    },
+    "as_of": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 10,
+      "format": "date"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "url",
+          "retrieved_at",
+          "published_on",
+          "sha256",
+          "text"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+          },
+          "url": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "retrieved_at": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 25,
+            "format": "date-time"
+          },
+          "published_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "minLength": 10,
+            "maxLength": 10
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 6
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://campuspulse.example/schemas/ai-resource-input.schema.json",
+  "title": "CampusPulse offline AI resource input v1",
+  "description": "trusted roots come from validated school configuration; sha256 is of exact UTF-8 text excerpt, not the original HTML."
+}

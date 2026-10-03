@@ -1,0 +1,470 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>电子资源-东北电力大学图书馆</title><meta name="pageType" content="2">
+<meta name="pageTitle" content="电子资源">
+<META Name="keywords" Content="东北电力大学图书馆" />
+
+    <link rel="shortcut icon" href="images/biaotilanbeijing.png" />
+    <link rel="icon" href="images/biaotilanbeijing.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="css/base.css">
+        <link rel="stylesheet" type="text/css" href="css/css3.css">
+    <link rel="stylesheet" type="text/css" href="style/css.css">
+    <link rel="stylesheet" type="text/css" href="style/lm.css">
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/jquery.nivo.slider.js"></script>
+    <script type="text/javascript" src="js/scripts.js"></script>
+    <script type="text/javascript" src="js/custom.js"></script>
+    <!--[if lt IE 9]>
+    <script src="js/html5.js" type="text/javascript"></script>
+    <![endif]-->
+<!--Announced by Visual SiteBuilder 9-->
+<link rel="stylesheet" type="text/css" href="_sitegray/_sitegray_d.css" />
+<script language="javascript" src="_sitegray/_sitegray.js"></script>
+<!-- CustomerNO:77656262657232307668475253555742000300004e57 -->
+<link rel="stylesheet" type="text/css" href="list.vsb.css" />
+<script type="text/javascript" src="/system/resource/js/counter.js"></script>
+<script type="text/javascript">_jsq_(1141,'/list.jsp',-1,1970167698)</script>
+</head>
+<SCRIPT language="javascript"> 
+<!-- 
+window.onerror=function(){return true;} 
+// --> 
+</SCRIPT> 
+<body>
+<div class="full-width-wrapper" id="header">
+    <div class="full-width-wrapper" id="abstract-bg">
+        <!--Banner-->
+        <div class="fixed-width-wrapper" id="banner">
+<!-- 网站logo图片地址请在本组件"内容配置-网站logo"处填写 -->
+
+<a href="index.htm" title="图书馆" class="logo">
+<img src="images/logojinyian.png" alt="Maxx - The Modern HTML template" height="100px" width="550px" class="logo_img"></a>
+
+
+
+
+            
+
+
+<script language="javascript" src="/system/resource/js/base64.js"></script><script language="javascript" src="/system/resource/js/jquery/jquery-latest.min.js"></script><script language="javascript" src="/system/resource/vue/vue.js"></script><script language="javascript" src="/system/resource/vue/bluebird.min.js"></script><script language="javascript" src="/system/resource/vue/axios.js"></script><script language="javascript" src="/system/resource/vue/polyfill.js"></script><script language="javascript" src="/system/resource/vue/token.js"></script><LINK href="/system/resource/vue/static/element/index.css" type="text/css" rel="stylesheet"><script language="javascript" src="/system/resource/vue/static/element/index.js"></script><script language="javascript" src="/system/resource/vue/static/public.js"></script><style>
+    #divu1{
+        margin-top:30px;
+        margin-left:75%;}
+    .tj{
+        letter-spacing: 5px;
+        color: white;
+        min-width: 40px;
+        max-width: 120px;
+        height: 33px;
+        top: 1px;
+        left:-4px;
+        width: 40px;
+        border-radius: 3px;
+        border-top-left-radius:0px;
+        border-bottom-left-radius:0px;
+        background-image:url(images/ico_search.png);
+        background-color:#808080;
+        background-size: 20px;
+        background-position: center center;
+        background-repeat: no-repeat;
+        position: relative;
+        border: 1px none;}
+    .tj:hover{
+        cursor:pointer;}
+    .qwss{
+        height: 32px;
+        font-size: 12px;
+        min-width: 190px;
+        max-width: 600px;
+        width: 60%;
+        
+        outline: none;
+        padding-left: 10px;
+        border-radius: 1px;
+        border: 1px solid #e4e7ed;}
+    
+    .qwss_tj_div{
+        width:300px;
+        height:70px;
+        background-color:rgba(2,81,0,1);
+        border-radius:3px;}
+    .qwss_tj_div_p{
+        margin:0px;
+        color:white;
+        font-size:16px;
+        text-align:center;
+        top:5px;
+        position:relative;}
+    .qwss_tj_div_input{
+        margin-left:30px;
+        margin-bottom:0px;
+        height:45px;
+        position:relative;
+        top: 10px;}
+    
+</style>
+<div id="divu1"></div>
+<script type="text/html" id="htmlu1">
+    <div id="appu1">
+        <div v-if="!isError" class="qwss_tj_div">
+            <p class="qwss_tj_div_p">开馆时间：7:00-21:50</p>
+            <div class="qwss_tj_div_input">
+            <input type="text" class="qwss" placeholder="全文搜索" autocomplete=off v-model=query.keyWord @keyup.enter="onSubmit">
+            <input class="tj" name="submit_button" type="button" value="" v-on:click="onSubmit()"/>
+            </div>
+        </div>
+        <div v-if="isError" style="color: #b30216; font-size:18px;text-align: center;padding:20px;">
+            应用维护中！
+        </div>
+    </div>
+</script>
+<script>
+    $("#divu1").html($("#htmlu1").text());
+</script>
+<script>
+    var appOwner = "1970167698";
+    var token = 'tourist';
+    var urlPrefix = "/aop_component/";
+
+    jQuery.support.cors = true;
+    $.ajaxSetup({
+        beforeSend: function (request, settings) {
+            request.setRequestHeader("Authorization", token);
+            request.setRequestHeader("owner", appOwner);
+        }
+    });
+
+    new Vue({
+        el: "#appu1",
+        data: function () {
+            return {
+                query: {
+                    keyWord: "",//搜索关键词
+                    owner: appOwner,
+                    token: token,
+                    urlPrefix: urlPrefix,
+                    lang:"i18n_zh_CN"
+                },
+                isError: false
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            // _this.init();
+        },
+        methods: {
+            init: function(){
+                $.ajax({
+                    url: "/aop_component//webber/search/test",
+                    type: "get",
+                    success: function (response) {
+                        if (response.code == "0000") {
+                        } else if (response.code == "220") {
+                            _this.isError = true;
+                            console.log(response);
+                        } else if (!response.code) {
+                            _this.isError = true;
+                            console.log(response);
+                        }
+                    },
+                    error: function (response) {
+                        _this.isError = true;
+                    }
+                });
+            },
+            onSubmit: function (e) {
+                var url = "/views/search/modules/resultpc/soso.html";
+                if ("10" == "1" || "10" == "2") {
+                    url = "http://202.198.8.53:8083/" + url;
+                }
+                var _this = this;
+                var query = _this.query;
+                if (url.indexOf("?") > -1) {
+                    url = url.split("?")[0];
+                }
+                if (query.keyWord) {
+                    var query = new Base64().encode(JSON.stringify(query));
+                    window.open(url + "?query=" + query);
+                } else {
+                    alert("请填写搜索内容")
+                }
+            },
+        }
+    })
+</script>
+        </div>
+        <!--/Banner-->
+        <!--Navigation + Search-->
+        <div class="fixed-width-wrapper border-radius-5px" id="navigation-bar">
+            <div id="g-navigation">
+                 <ul class="simple-drop-down-menu">
+<li class="home-page  border-radius-left-5px" class="listnava  " id="listLop">
+<a href="index.htm" target="_blank">首页</a>
+</li>
+<li class="listnava  " id="listLop">
+<a href="dzzn.htm" target="_blank" class="parent" style="pointer-events: none;">读者指南</a>
+<ul style="display: none;"> 
+<li><a href="info/1003/1382.htm" target="_blank" title="本馆简介" class="parent">本馆简介</a></li>
+<li><a href="info/1003/1412.htm" target="_blank" title="借阅服务" class="parent">借阅服务</a></li>
+<li><a href="info/1003/1422.htm" target="_blank" title="书证办理" class="parent">书证办理</a></li>
+<li style="border-bottom: none;"><a href="info/1003/6442.htm" target="_blank" title="入馆管理" class="parent">入馆管理</a></li>
+</ul>
+</li>
+<li class="listnava  " id="listLop">
+<a href="http://202.198.14.5:8080/reader/login.php" target="_blank">我的图书馆</a>
+</li>
+<li class="listnava  " id="listLop">
+<a href="http://202.198.14.5:8080/opac/" target="_blank">书目检索</a>
+</li>
+<li class="listnava  " id="listLop">
+<a href="http://202.198.14.5:8080/asord/asord_hist.php" target="_blank">读者荐购</a>
+</li>
+<li class="listnava  " id="listLop">
+<a href="ckzx.htm" target="_blank" class="parent" style="pointer-events: none;">参考咨询</a>
+<ul style="display: none;"> 
+<li><a href="info/1131/1452.htm" target="_blank" title="学术成果引证" class="parent">学术成果引证</a></li>
+<li><a href="info/1131/3762.htm" target="_blank" title="文献传递" class="parent">文献传递</a></li>
+<li><a href="info/1131/1522.htm" target="_blank" title="FAQ常见问题" class="parent">FAQ常见问题</a></li>
+<li style="border-bottom: none;"><a href="info/1131/3892.htm" target="_blank" title="中科院期刊分区" class="parent">中科院期刊分区</a></li>
+</ul>
+</li>
+<li class="listnava  " id="listLop">
+<a href="kcpx.htm" target="_blank" class="parent" style="pointer-events: none;">课程培训</a>
+<ul style="display: none;"> 
+<li><a href="info/1191/3512.htm" target="_blank" title="任课教师" class="parent">任课教师</a></li>
+<li><a href="info/1191/3532.htm" target="_blank" title="课程介绍" class="parent">课程介绍</a></li>
+<li style="border-bottom: none;"><a href="kcpx/dzpx.htm" target="_blank" title="读者培训" class="parent">读者培训</a></li>
+</ul>
+</li>
+<li class="listnava current " id="listLop">
+<a href="dzzy.htm" target="_blank" class="parent" style="pointer-events: none;">电子资源</a>
+<ul style="display: none;"> 
+<li><a href="dzzy/sjkdh.htm" target="_blank" title="数据库导航" class="parent">数据库导航</a></li>
+<li><a href="https://vpn.neepu.edu.cn/" target="_blank" title="VPN校外访问" class="parent">VPN校外访问</a></li>
+<li><a href="info/1141/1662.htm" target="_blank" title="常用阅读器下载" class="parent">常用阅读器下载</a></li>
+<li style="border-bottom: none;"><a href="https://ds.carsi.edu.cn/Shibboleth.sso/Login?entityID=https://idp.neepu.edu.cn/idp/shibboleth&target=https%3A%2F%2Fds.carsi.edu.cn%2Fwxds" target="_blank" title="CARSI" class="parent">CARSI</a></li>
+</ul>
+</li>
+<li class="listnava  " id="listLop">
+<a href="info/1491/1992.htm" target="_blank">联系我们</a>
+</li>
+</ul>
+<script>
+        $(function() {
+            $("#g-navigation>ul>li").hover(function() {
+                $(this.querySelector("ul")).slideToggle()
+            })
+        })
+</script>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--list_banner-->
+<div class="list_banner">    <script language="javascript" src="/system/resource/js/dynclicks.js"></script>
+          
+                
+                        <img src="images/dongbeidianlitushuguan5.jpg" border="0">
+              
+      
+
+</div>
+<!--main-->
+<div class="lm_main">
+    <div class="list-box">
+        <div class="left-nav fl">
+            <div class="nav-top">
+                <h3>
+电子资源</h3>
+            </div>
+            <div class="nav-mid">
+                <ul>
+    <li class="nav-mid-first"> 
+<a href="dzzy/sjkdh.htm" target="_blank" title="数据库导航">数据库导航</a></li>
+  
+    <li> 
+<a href="https://vpn.neepu.edu.cn/" target="_blank" title="VPN校外访问">VPN校外访问</a></li>
+  
+    <li> 
+<a href="info/1141/1662.htm" target="_blank" title="常用阅读器下载">常用阅读器下载</a></li>
+  
+    <li> 
+<a href="https://ds.carsi.edu.cn/Shibboleth.sso/Login?entityID=https://idp.neepu.edu.cn/idp/shibboleth&target=https%3A%2F%2Fds.carsi.edu.cn%2Fwxds" target="_blank" title="CARSI">CARSI</a></li>
+  
+  </ul>
+            </div>
+            <div class="nav-bottom">
+                
+            </div>
+        </div>
+        <div class="right-list fr">
+            <div class="right-list-tit">
+                <h3 class="fl">
+电子资源</h3>
+                <div class="local fr">
+    当前位置: 
+                        <a href="index.htm">首页</a>
+                >
+                <a href="dzzy.htm">电子资源</a>
+</div>
+                <div class="clear"></div>
+            </div>
+            <div class="list">
+                <ul class="lby-list"><script language="javascript" src="/system/resource/js/centerCutImg.js"></script><script language="javascript" src="/system/resource/js/ajax.js"></script><LI id="line_u8_0">
+<A href="dzzy/sjkdh.htm">
+数据库导航</A><SPAN>2023/11/10</SPAN>
+</LI>
+<LI id="line_u8_1">
+<A href="https://vpn.neepu.edu.cn/">
+VPN校外访问</A><SPAN>2023/11/10</SPAN>
+</LI>
+<LI id="line_u8_2">
+<A href="info/1141/1662.htm">
+常用阅读器下载</A><SPAN>2023/11/10</SPAN>
+</LI>
+<LI id="line_u8_3">
+<A href="https://ds.carsi.edu.cn/Shibboleth.sso/Login?entityID=https://idp.neepu.edu.cn/idp/shibboleth&target=https%3A%2F%2Fds.carsi.edu.cn%2Fwxds">
+CARSI</A><SPAN>2026/09/07</SPAN>
+</LI>
+<link rel="stylesheet" Content-type="text/css" href="/system/resource/css/pagedown/sys.css"><div class="pb_sys_common pb_sys_normal pb_sys_style1" style="margin-top:10px;text-align:center;"><span class="p_t">共4条</span> <span class="p_pages"><span class="p_first_d p_fun_d">首页</span><span class="p_prev_d p_fun_d">上页</span><span class="p_no_d">1</span><span class="p_next_d p_fun_d">下页</span><span class="p_last_d p_fun_d">尾页</span></span> <span class="p_t">共1页</span></div><script>_showDynClickBatch(['dynclicks_u8_1642','dynclicks_u8_1652','dynclicks_u8_1662','dynclicks_u8_8183'],[1642,1652,1662,8183],"wbnews", 1970167698)</script></ul>
+            </div>
+        </div>
+        <div class="clear"></div>
+    </div>
+</div>
+
+
+<!--end-->
+<div class="end_link" style="min-width:1200px;">
+    <div class="w1200">
+        <div class="end_link_left">
+            <script language="javascript" src="/system/resource/js/openlink.js"></script><select name="select" onchange="javascript:window.open(this.options[this.selectedIndex].value)">
+<option selected hidden style="text-align:center;">
+<span style="font-weight:bold;">--- 免费学术资源 ---</span>
+</option>
+<option value="https://pubscholar.cn/" title="公益性学术资源平台（PubScholar）" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 82639)">公益性学术资源平...</option>
+<option value="http://www.paper.edu.cn/" title="中国科技论文在线" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 82640)">中国科技论文在线</option>
+<option value="https://www.nstl.gov.cn/" title="中国科技图书文献中心（NSTL）" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 82641)">中国科技图书文献...</option>
+<option value="https://journal.hep.com.cn/hep/EN/hep/home.shtml" title="Frontiers中国学术前沿期刊网" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 90082)">Frontiers中国学术...</option>
+<option value="http://gooa.las.ac.cn/paperc/#/home" title="GoOA开放获取论文发现平台" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 90083)">GoOA开放获取论文...</option>
+</select>
+            <select name="select" onchange="javascript:window.open(this.options[this.selectedIndex].value)">  
+<option selected hidden style="text-align:center;">
+<span style="font-weight:bold;">--- 免费学习工具 ---</span>
+</option>
+<option value="https://www.zhiyunwenxian.cn" title="知云文献阅读器" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 82642)">知云文献阅读器</option>
+<option value="https://www.zotero.org" title="Zotero文献管理器" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 82643)">Zotero文献管理器</option>
+<option value="https://dict.cnki.net/" title="CNKI翻译助手" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 82644)">CNKI翻译助手</option>
+<option value="https://web.shanbay.com/web/main/index" title="扇贝单词" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 90042)">扇贝单词</option>
+<option value="https://www.xuetangx.com" title="学堂在线" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 90043)">学堂在线</option>
+<option value="https://www.runoob.com/" title="菜鸟教程" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 90044)">菜鸟教程</option>
+  </select>
+        </div>
+        <div class="end_link_right">
+            友情链接：
+               <a href="https://library.ncepu.edu.cn/" target="_blank" title="" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 82649)">华北电力大学图书馆</a>
+    <a href="https://lib.ccut.edu.cn/" target="_blank" title="" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 82645)">长春工业大学图书馆</a>
+    <a href="https://tsg.jlmu.cn/" target="_blank" title="" onclick="_addDynClicks(&#34;wburl&#34;, 1970167698, 82646)">吉林医药学院图书馆</a>
+
+        </div>
+    </div>
+</div>
+<div class="footer" style="min-width:1200px;">
+    <div class="w1200">
+        <!-- 版权内容请在本组件"内容配置-版权"处填写 -->
+<div class="copright" style="width:600px;">
+<table border="0" width="600px" align="left">
+    <tbody>
+        <tr class="firstRow" style="height:32px;">
+            <td width="250px">
+                <p>
+                    2023©东北电力大学图书馆
+                </p>
+            </td>
+            <td width="350px">
+                <p>
+                    学术成果引证交流QQ群：54308581
+                </p>
+            </td>
+        </tr>
+        <tr style="height:32px;">
+            <td>
+                <p>
+                    地址：吉林市长春路169号
+                </p>
+            </td>
+            <td>
+                <p>
+                    图书馆本专科读者交流QQ群：694125925
+                </p>
+            </td>
+        </tr>
+        <tr style="height:32px;">
+            <td>
+                <p>
+                    电话：0432-64806254
+                </p>
+            </td>
+            <td>
+                <p>
+                    图书馆研究生读者交流QQ群：1060420323
+                </p>
+            </td>
+        </tr>
+        <tr style="height:32px;">
+            <td>
+                <p>
+                    邮政编码：132012
+                </p>
+            </td>
+            <td>
+                <p>
+                    开具论文检索证明：redacted@example.invalid
+                </p>
+            </td>
+        </tr>
+    </tbody>
+</table>
+ </div>
+        <div class="endrwm" style="height:100px; width:500px; padding-top:10px;">
+            <ul>
+         
+               <li>
+                        <img src="images/24196DCD31A59BDCA1A1A63DDFF_CCABE1BB_29E84.png" border="0" width="100" height="100"></br>
+                        <span style="font-size: 10px; width:100px;">高校鸿芒</span>
+                </li> 
+               <li>
+                        <img src="images/shuxiangdongdiandushuhui.png" border="0" width="100" height="100"></br>
+                        <span style="font-size: 10px; width:100px;">书香东电读书会</span>
+                </li> 
+               <li>
+                        <img src="images/ecode-seleTube.png" border="0" width="100" height="100"></br>
+                        <span style="font-size: 10px; width:100px;">东电小馆家</span>
+                </li> 
+               <li>
+                        <img src="images/ecode-library.png" border="0" width="100" height="100"></br>
+                        <span style="font-size: 10px; width:100px;">图书馆官微</span>
+                </li> 
+</ul>
+
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

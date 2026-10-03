@@ -1,0 +1,29 @@
+{
+  "schema_version": "0.1-draft",
+  "school": {
+    "key": "cn-jlu", "name": "吉林大学", "aliases": ["吉大", "JLU"],
+    "country": "CN", "province": "吉林省", "city": "长春市",
+    "timezone": "Asia/Shanghai", "official_homepage": "https://www.jlu.edu.cn/"
+  },
+  "status": "draft", "reviewed_at": "2026-10-02",
+  "categories": ["exam", "competition", "scholarship", "campus_activity", "academic_affairs", "career"],
+  "resource_discovery": {
+    "department_urls": [
+      "https://lib.jlu.edu.cn/",
+      "https://jwc.jlu.edu.cn/"
+    ],
+    "max_pages": 32
+  },
+  "fetch_defaults": {
+    "interval_minutes": 60, "jitter_seconds": 300, "per_host_concurrency": 1,
+    "min_request_interval_seconds": 3, "respect_source_policy": true, "conditional_requests": true
+  },
+  "sources": [],
+  "auto_discovery": {
+    "department_urls": [
+      "https://jwc.jlu.edu.cn/", "https://xsc.jlu.edu.cn/",
+      "https://youth.jlu.edu.cn/", "https://jdjywpt.jlu.edu.cn/mportal"
+    ],
+    "max_pages": 24
+  }
+}

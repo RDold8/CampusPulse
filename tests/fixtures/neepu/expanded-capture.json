@@ -1,0 +1,49 @@
+{
+  "captured_at": "2026-10-02",
+  "records": [
+    {
+      "file": "main.html",
+      "url": "https://www.neepu.edu.cn/cs1.htm",
+      "sha256": "23fe9a557ffc77e1459567b7c6b3e6674d2e71ae6a3393b96ccd22d51698d2a3"
+    },
+    {
+      "file": "student.html",
+      "url": "https://xsc.neepu.edu.cn/list.jsp?urltype=tree.TreeTempUrl&wbtreeid=1002",
+      "sha256": "0387034019d23b9dcb69ddc7ec1c6bd6b8050ea8a813054537193deb54692dab"
+    },
+    {
+      "file": "youth.html",
+      "url": "https://54shine.neepu.edu.cn/list.jsp?urltype=tree.TreeTempUrl&wbtreeid=1085",
+      "sha256": "797c54dea229251881a24e29d70b83e9f96da2401d4d489ca1867a8627b543ff"
+    },
+    {
+      "file": "youth-activities.html",
+      "url": "https://54shine.neepu.edu.cn/list.jsp?urltype=tree.TreeTempUrl&wbtreeid=1090",
+      "sha256": "e00e4973ca8ff534b2d637919aa8272b222253cc4492d1a8b7f3c02287963ea7"
+    },
+    {
+      "file": "main-detail.html",
+      "url": "https://www.neepu.edu.cn/info/1117/79125.htm",
+      "sha256": "6aa7f26a63ae83a738060ee23a231d4573a6803221b6b85aaf3ff76959665ba0"
+    },
+    {
+      "file": "student-detail.html",
+      "url": "https://xsc.neepu.edu.cn/info/1002/18069.htm",
+      "sha256": "b42ed82fdca8ca9cb45f9e3100d2d7e5ecf27782d871c36f33e67c0b15114e6e"
+    },
+    {
+      "file": "youth-detail.html",
+      "url": "https://54shine.neepu.edu.cn/content.jsp?urltype=news.NewsContentUrl&wbtreeid=1085&wbnewsid=127260",
+      "sha256": "8f0943fec7f5d4894cb477133c586eeff49049c07d3fe96b58139fe094b39d03",
+      "original_capture_sha256": "eef365a8b985eae635f5588d43cbe32180f37875152fe59f51c169468c13b63f",
+      "redacted_fields": [
+        "email"
+      ]
+    },
+    {
+      "file": "student-page2.html",
+      "url": "https://xsc.neepu.edu.cn/list.jsp?a6t=7&a6p=2&a6c=10&urltype=tree.TreeTempUrl&wbtreeid=1002",
+      "sha256": "0eb6aa2be5d3cefb10735b8d841913ea645da34b510a028013ab3d4faf68d960"
+    }
+  ]
+}

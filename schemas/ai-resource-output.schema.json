@@ -1,0 +1,207 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "school_id",
+    "resource_id",
+    "resource_url",
+    "claims",
+    "trial",
+    "unknowns",
+    "candidate_links"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "campuspulse.ai-resource.output.v1"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+    },
+    "school_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+    },
+    "resource_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+    },
+    "resource_url": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 2048,
+      "format": "uri"
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "value",
+          "evidence"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "enum": [
+              "purpose",
+              "school_status",
+              "scope",
+              "campus_access",
+              "off_campus_access",
+              "login_condition"
+            ]
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/evidence"
+            },
+            "minItems": 0,
+            "maxItems": 4
+          }
+        }
+      },
+      "minItems": 6,
+      "maxItems": 6
+    },
+    "trial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "starts_on",
+        "ends_on",
+        "evidence"
+      ],
+      "properties": {
+        "starts_on": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "ends_on": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 0,
+          "maxItems": 4
+        }
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      },
+      "minItems": 0,
+      "maxItems": 12,
+      "uniqueItems": true
+    },
+    "candidate_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "url",
+          "evidence"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "url": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/evidence"
+            },
+            "minItems": 1,
+            "maxItems": 4
+          }
+        }
+      },
+      "minItems": 0,
+      "maxItems": 8
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://campuspulse.example/schemas/ai-resource-output.schema.json",
+  "title": "CampusPulse AI resource draft output v1",
+  "description": "local validation only, not a DeepSeek response_format json_schema declaration; cross-field and exact evidence checks are implemented in tools/validate-ai-resource.py.",
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "source_url",
+        "quote"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+        },
+        "source_url": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 2048,
+          "format": "uri"
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 800
+        }
+      }
+    }
+  }
+}

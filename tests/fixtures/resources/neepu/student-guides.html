@@ -1,0 +1,717 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>学生服务-东北电力大学教务处</title><meta name="pageType" content="2">
+<meta name="pageTitle" content="学生服务">
+<META Name="keywords" Content="东北电力大学教务处,学生服务" />
+
+    <link rel="stylesheet" href="../css/gb20190121/style.css">
+    <link rel="stylesheet" href="../css/gb20190121/subcon.css">
+
+<!--[if lt IE 9]>
+    <script src="../js/gb20190121/html5.js" type="text/javascript"></script>
+    <script src="../js/gb20190121/response.min.js"></script>
+    <![endif]-->
+<!--Announced by Visual SiteBuilder 9-->
+<link rel="stylesheet" type="text/css" href="../_sitegray/_sitegray_d.css" />
+<script language="javascript" src="../_sitegray/_sitegray.js"></script>
+<!-- CustomerNO:77656262657232307668475253555742000300004e57 -->
+<link rel="stylesheet" type="text/css" href="../newslist.vsb.css" />
+<script type="text/javascript" src="/system/resource/js/counter.js"></script>
+<script type="text/javascript">_jsq_(1054,'/newslist.jsp',-1,1644559999)</script>
+</head>
+<style>
+.aca_article_con strong{font-weight:bold;}
+aca_article_con table{margin:0 auto;}
+</style>
+
+<body>
+
+
+
+<div class="wrap_con">
+
+        <!--header开始-->
+         <div class="wraq_header" style="background-image: url(../images/gb20190121/neepu.png); background-position: center center; background-repeat: no-repeat;">
+    <div class="header pr">
+      <!-- <div class="logo"><a href="#"><img src="images/gb20190121/logo.png"></a></div> -->
+     <!-- <div class="topNav"> <a href="#" class="old_link">旧网链接（仅限校内访问）</a> -->
+        <div class="topNav"> <a href="#" class="old_link"> </a> 
+        <div class="ser">
+
+
+
+<script language="javascript" src="/system/resource/js/base64.js"></script><script language="javascript" src="/system/resource/vue/vue.js"></script><script language="javascript" src="/system/resource/vue/bluebird.min.js"></script><script language="javascript" src="/system/resource/vue/axios.js"></script><script language="javascript" src="/system/resource/vue/polyfill.js"></script><script language="javascript" src="/system/resource/vue/token.js"></script><LINK href="/system/resource/vue/static/element/index.css" type="text/css" rel="stylesheet"><script language="javascript" src="/system/resource/vue/static/element/index.js"></script><script language="javascript" src="/system/resource/vue/static/public.js"></script><div id="divu0"></div>
+<script type="text/html" id="htmlu0">
+    <div id="appu0">
+        <div v-if="!isError" class="search">
+            <input type="text" class="notxt" placeholder="站内搜索" autocomplete=off v-model=query.keyWord @keyup.enter="onSubmit">
+            <input  name="submit_button" class="notxt1" type="submit" value="" v-on:click="onSubmit()"/>
+        </div>
+        <div v-if="isError" style="color: #b30216; font-size:18px;text-align: center;padding:20px;">
+            应用维护中！
+        </div>
+    </div>
+</script>
+<script>
+    $("#divu0").html($("#htmlu0").text());
+</script>
+<script>
+    var appOwner = "1644559999";
+    var token = 'tourist';
+    var urlPrefix = "/aop_component/";
+
+    jQuery.support.cors = true;
+    $.ajaxSetup({
+        beforeSend: function (request, settings) {
+            request.setRequestHeader("Authorization", token);
+            request.setRequestHeader("owner", appOwner);
+        }
+    });
+
+    new Vue({
+        el: "#appu0",
+        data: function () {
+            return {
+                query: {
+                    keyWord: "",//搜索关键词
+                    owner: appOwner,
+                    token: token,
+                    urlPrefix: urlPrefix,
+                    lang:"i18n_zh_CN"
+                },
+                isError: false
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            // _this.init();
+        },
+        methods: {
+            init: function(){
+                $.ajax({
+                    url: "/aop_component//webber/search/test",
+                    type: "get",
+                    success: function (response) {
+                        if (response.code == "0000") {
+                        } else if (response.code == "220") {
+                            _this.isError = true;
+                            console.log(response);
+                        } else if (!response.code) {
+                            _this.isError = true;
+                            console.log(response);
+                        }
+                    },
+                    error: function (response) {
+                        _this.isError = true;
+                    }
+                });
+            },
+            onSubmit: function (e) {
+                var url = "/views/search/modules/resultpc/soso.html";
+                if ("10" == "1" || "10" == "2") {
+                    url = "http://202.198.8.53:8083/" + url;
+                }
+                var _this = this;
+                var query = _this.query;
+                if (url.indexOf("?") > -1) {
+                    url = url.split("?")[0];
+                }
+                if (query.keyWord) {
+                    var query = new Base64().encode(JSON.stringify(query));
+                    window.open(url + "?query=" + query);
+                } else {
+                    alert("请填写搜索内容")
+                }
+            },
+        }
+    })
+</script>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap_nav">
+    <div class="nav"><ul id="nav">
+
+        <li><a href="../index.htm">首页</a>
+        </li>
+
+
+        <li><a href="../bmjk.htm">部门简况</a>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../bmjk/bmjs.htm">部门介绍</a></dd>
+              <dd><a href="../bmjk/ldfg.htm">领导分工</a></dd>
+              <dd><a href="../bmjk/kszz.htm">科室职责</a></dd>
+              <dd><a href="../bmjk/gzrc.htm">工作日程</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../rcpy.htm">人才培养</a>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../rcpy/pyfa.htm">培养方案</a></dd>
+              <dd><a href="../rcpy/zyjs.htm">专业建设</a></dd>
+              <dd><a href="../rcpy/kcjs.htm">课程建设</a></dd>
+              <dd><a href="../rcpy/jcjs.htm">教材建设</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../jxyj.htm">教学研究</a>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../jxyj/jxcg.htm">教学成果</a></dd>
+              <dd><a href="../jxyj/jglx.htm">教改立项</a></dd>
+              <dd><a href="../jxyj/jxal.htm">教学案例</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../sjjx.htm">实践教学</a>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../sjjx/sys.htm">实验室</a></dd>
+              <dd><a href="../sjjx/sjjd.htm">实践基地</a></dd>
+              <dd><a href="../sjjx/cxcy.htm">创新创业</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../jsfz.htm">教师发展</a>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../jsfz/jxtd.htm">教学团队</a></dd>
+              <dd><a href="../jsfz/jxms.htm">教学名师</a></dd>
+              <dd><a href="../jsfz/jxjs.htm">教学竞赛</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../zlbz.htm">质量保障</a>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../zlbz/jxdd.htm">教学督导</a></dd>
+              <dd><a href="../zlbz/xspj.htm">学生评教</a></dd>
+              <dd><a href="../zlbz/zlbg.htm">质量报告</a></dd>
+              <dd><a href="../zlbz/rzpg.htm">认证评估</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../xzzx.htm">下载中心</a>
+        </li>
+
+
+        <li><a href="../liuyanban.jsp?urltype=tree.TreeTempUrl&wbtreeid=1063">留言板</a>
+        </li>
+
+</ul></div>
+    <!-- 移动端主导航 -->
+    <div class="wrap_phone_nav">
+      <section class="snav pa">
+        <div class="phone_logo"> <a href="#"><img src="../images/gb20190121/neepu.png" alt=""></a> </div>
+      </section>
+      <div class="wrap_mbtn">
+        <div class="mbtn_font"> 导航 </div>
+        <section id="mbtn" class="mbtn pa"> </section>
+      </div>
+      <div class="navm pa">
+        <ul><ul id="nav">
+
+        <li><a href="../index.htm">首页</a><strong class="arrow">></strong>
+        </li>
+
+
+        <li><a href="../bmjk.htm">部门简况</a><strong class="arrow">></strong>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../bmjk/bmjs.htm">部门介绍</a></dd>
+              <dd><a href="../bmjk/ldfg.htm">领导分工</a></dd>
+              <dd><a href="../bmjk/kszz.htm">科室职责</a></dd>
+              <dd><a href="../bmjk/gzrc.htm">工作日程</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../rcpy.htm">人才培养</a><strong class="arrow">></strong>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../rcpy/pyfa.htm">培养方案</a></dd>
+              <dd><a href="../rcpy/zyjs.htm">专业建设</a></dd>
+              <dd><a href="../rcpy/kcjs.htm">课程建设</a></dd>
+              <dd><a href="../rcpy/jcjs.htm">教材建设</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../jxyj.htm">教学研究</a><strong class="arrow">></strong>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../jxyj/jxcg.htm">教学成果</a></dd>
+              <dd><a href="../jxyj/jglx.htm">教改立项</a></dd>
+              <dd><a href="../jxyj/jxal.htm">教学案例</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../sjjx.htm">实践教学</a><strong class="arrow">></strong>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../sjjx/sys.htm">实验室</a></dd>
+              <dd><a href="../sjjx/sjjd.htm">实践基地</a></dd>
+              <dd><a href="../sjjx/cxcy.htm">创新创业</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../jsfz.htm">教师发展</a><strong class="arrow">></strong>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../jsfz/jxtd.htm">教学团队</a></dd>
+              <dd><a href="../jsfz/jxms.htm">教学名师</a></dd>
+              <dd><a href="../jsfz/jxjs.htm">教学竞赛</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../zlbz.htm">质量保障</a><strong class="arrow">></strong>
+        
+       
+          <div class="subNav">
+            <dl>
+              <dd><a href="../zlbz/jxdd.htm">教学督导</a></dd>
+              <dd><a href="../zlbz/xspj.htm">学生评教</a></dd>
+              <dd><a href="../zlbz/zlbg.htm">质量报告</a></dd>
+              <dd><a href="../zlbz/rzpg.htm">认证评估</a></dd>
+            </dl>
+          </div>
+          
+        </li>
+
+
+        <li><a href="../xzzx.htm">下载中心</a><strong class="arrow">></strong>
+        </li>
+
+
+        <li><a href="../liuyanban.jsp?urltype=tree.TreeTempUrl&wbtreeid=1063">留言板</a><strong class="arrow">></strong>
+        </li>
+
+
+        <li>
+                        <div class="ser01 pa" id="ser">
+
+
+<div id="divu3"></div>
+<script type="text/html" id="htmlu3">
+    <div id="appu3">
+        <div v-if="!isError" class="search01">
+            <input type="text"class="notxt" placeholder="站内搜索" autocomplete=off v-model=query.keyWord @keyup.enter="onSubmit">
+            <input name="submit_button"  class="notxt1" type="submit" value="" v-on:click="onSubmit()"/>
+        </div>
+        <div v-if="isError" style="color: #b30216; font-size:18px;text-align: center;padding:20px;">
+            应用维护中！
+        </div>
+    </div>
+</script>
+<script>
+    $("#divu3").html($("#htmlu3").text());
+</script>
+<script>
+    var appOwner = "1644559999";
+    var token = 'tourist';
+    var urlPrefix = "/aop_component/";
+
+    jQuery.support.cors = true;
+    $.ajaxSetup({
+        beforeSend: function (request, settings) {
+            request.setRequestHeader("Authorization", token);
+            request.setRequestHeader("owner", appOwner);
+        }
+    });
+
+    new Vue({
+        el: "#appu3",
+        data: function () {
+            return {
+                query: {
+                    keyWord: "",//搜索关键词
+                    owner: appOwner,
+                    token: token,
+                    urlPrefix: urlPrefix,
+                    lang:"i18n_zh_CN"
+                },
+                isError: false
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            // _this.init();
+        },
+        methods: {
+            init: function(){
+                $.ajax({
+                    url: "/aop_component//webber/search/test",
+                    type: "get",
+                    success: function (response) {
+                        if (response.code == "0000") {
+                        } else if (response.code == "220") {
+                            _this.isError = true;
+                            console.log(response);
+                        } else if (!response.code) {
+                            _this.isError = true;
+                            console.log(response);
+                        }
+                    },
+                    error: function (response) {
+                        _this.isError = true;
+                    }
+                });
+            },
+            onSubmit: function (e) {
+                var url = "/views/search/modules/resultpc/soso.html";
+                if ("10" == "1" || "10" == "2") {
+                    url = "http://202.198.8.53:8083/" + url;
+                }
+                var _this = this;
+                var query = _this.query;
+                if (url.indexOf("?") > -1) {
+                    url = url.split("?")[0];
+                }
+                if (query.keyWord) {
+                    var query = new Base64().encode(JSON.stringify(query));
+                    window.open(url + "?query=" + query);
+                } else {
+                    alert("请填写搜索内容")
+                }
+            },
+        }
+    })
+</script></div>
+                    </li>
+        
+        </ul>
+      </div>
+    </div>
+  </div>
+    <!--header结束 -->
+</div>
+<!--content开始-->
+    <!--header结束 -->
+</div><!--content开始-->
+
+<article class="subPage">
+    <div class="wrap_submbtn_font"><div class="wrap_font">
+    服务指南
+
+      </div>
+       <div class="sub_mbtn"></div></div>
+    
+    <aside class="sub_navm"><ul>
+<li><a href="jsfw.htm">教师服务</a>
+            </li>
+                                               
+<li><a href="xsfw.htm">学生服务</a>
+            </li>
+                                               
+</ul></aside>
+<div class="subPage_con">
+   <div class="sbu_leftWrap"><div class="sub_title">
+           <div class="sub_t01"><h2> 服务指南
+</h2></div>
+       </div>             
+       <aside class="sub_left">
+           <ul><li><a href="jsfw.htm">教师服务</a>
+</li>
+                                               
+<li><a href="xsfw.htm">学生服务</a>
+</li>
+                                               
+</ul>
+    </aside>
+    </div>
+<section class="sub_right marginBot"><div class="pageArticle">
+       <div class="articleTitle borderBot"><div>
+    <span style="font-size: 14px;color: #333333;">当前位置:<span> 
+                        <a href="../index.htm">首页</a>
+                >>
+                <a href="xsfw.htm">学生服务</a>
+</div></div>
+       <script language="javascript" src="/system/resource/js/centerCutImg.js"></script><script language="javascript" src="/system/resource/js/dynclicks.js"></script><script language="javascript" src="/system/resource/js/ajax.js"></script>
+       <div class="crules">
+           <ul>
+<li id="line_u9_0">
+                   <div class="crules_con">
+                       <a href="../info/1054/2898.htm">关于网站查看培养方案的说明
+    </a>
+                       <span>2023年09月25日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_0" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_1">
+                   <div class="crules_con">
+                       <a href="../info/1054/1888.htm">教务系统密码修改
+    </a>
+                       <span>2020年08月17日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_1" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_2">
+                   <div class="crules_con">
+                       <a href="../info/1054/1662.htm">结业证书换发毕业证书指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_2" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_3">
+                   <div class="crules_con">
+                       <a href="../info/1054/1661.htm">毕业证书相关事宜指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_3" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_4">
+                   <div class="crules_con">
+                       <a href="../info/1054/1660.htm">毕业证书相关事宜查询指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_4" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_5">
+                   <div class="crules_con">
+                       <a href="../info/1054/1659.htm">学生成绩查询指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_5" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_6">
+                   <div class="crules_con">
+                       <a href="../info/1054/1658.htm">学生选课补选办理指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_6" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_7">
+                   <div class="crules_con">
+                       <a href="../info/1054/1657.htm">学籍变动办理指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_7" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_8">
+                   <div class="crules_con">
+                       <a href="../info/1054/1656.htm">大学外语等级考试查询指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_8" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_9">
+                   <div class="crules_con">
+                       <a href="../info/1054/1655.htm">重修安排查询指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_9" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_10">
+                   <div class="crules_con">
+                       <a href="../info/1054/1654.htm">重考安排查询指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_10" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_11">
+                   <div class="crules_con">
+                       <a href="../info/1054/1653.htm">正考安排查询指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_11" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_12">
+                   <div class="crules_con">
+                       <a href="../info/1054/1652.htm">异议成绩核对指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_12" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_13">
+                   <div class="crules_con">
+                       <a href="../info/1054/1651.htm">学生个人成绩单打印指南
+    </a>
+                       <span>2020年08月13日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_13" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_14">
+                   <div class="crules_con">
+                       <a href="../info/1054/1343.htm">学生实习相关事宜办理指南
+    </a>
+                       <span>2020年06月05日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_14" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_15">
+                   <div class="crules_con">
+                       <a href="../info/1054/1342.htm">非教学活动使用教室申请指南
+    </a>
+                       <span>2020年06月05日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_15" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_16">
+                   <div class="crules_con">
+                       <a href="../info/1054/1341.htm">学生竞赛获奖证书相关事宜指南
+    </a>
+                       <span>2020年06月05日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_16" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+<li id="line_u9_17">
+                   <div class="crules_con">
+                       <a href="../info/1054/1312.htm">毕业班成绩打印指南
+    </a>
+                       <span>2020年06月05日</span>
+                   </div>
+               </li>
+                              
+    <span id="section_u9_17" style="display:none;"><hr style="height:1px;border:none;border-top:1px dashed #CCCCCC;"></span>
+</ul>
+       </div> 
+    <div class="page">
+         <link rel="stylesheet" Content-type="text/css" href="/system/resource/css/pagedown/sys.css"><div class="pb_sys_common pb_sys_normal pb_sys_style2"><span class="p_pages"><span class="p_first_d p_fun_d">首页</span><span class="p_prev_d p_fun_d">上页</span><span class="p_no_d">1</span><span class="p_next_d p_fun_d">下页</span><span class="p_last_d p_fun_d">尾页</span></span> <span class="p_t">共1页</span></div>
+       </div> 
+       <div class="minpage">
+           <link rel="stylesheet" Content-type="text/css" href="/system/resource/css/pagedown/sys.css"><div class="pb_sys_common pb_sys_short pb_sys_style2"><span class="p_pages"><span class="p_first_d p_fun_d">首页</span><span class="p_prev_d p_fun_d">上页</span><span class="p_no_d">1</span><span class="p_next_d p_fun_d">下页</span><span class="p_last_d p_fun_d">尾页</span></span> <span class="p_t">共1页</span></div>
+       </div>  <script>_showDynClickBatch(['dynclicks_u9_2898','dynclicks_u9_1888','dynclicks_u9_1662','dynclicks_u9_1661','dynclicks_u9_1660','dynclicks_u9_1659','dynclicks_u9_1658','dynclicks_u9_1657','dynclicks_u9_1656','dynclicks_u9_1655','dynclicks_u9_1654','dynclicks_u9_1653','dynclicks_u9_1652','dynclicks_u9_1651','dynclicks_u9_1343','dynclicks_u9_1342','dynclicks_u9_1341','dynclicks_u9_1312'],[2898,1888,1662,1661,1660,1659,1658,1657,1656,1655,1654,1653,1652,1651,1343,1342,1341,1312],"wbnews", 1644559999)</script>
+       </section>
+
+</div>
+</div>
+</article>
+<!--content结束-->
+<div class="clear"></div>
+<div class="wrap_footer">
+<div class="footer">
+<!-- 版权内容请在本组件"内容配置-版权"处填写 -->
+<p style="text-align: center;"><span style="font-family: 宋体, SimSun; font-size: 18px; color: rgb(255, 255, 255);">Copyright 东北电力大学教务处 All Rights Reserved!<br />技术支持：东北电力大学因特雷工作室</span></p>
+ <div class="footer_left"><script language="javascript" src="../_dwr/engine.js"></script><script language="javascript" src="../_dwr/util.js"></script><script language="javascript" src="../_dwr/interface/PageCounterDWR.js"></script>当日访问量：<span id="a221421" name="a221421" style="color:#ffffff;"></span>   
+
+<script>
+function getvisittimea221421()
+{       
+    PageCounterDWR.getVisittime('1644559999','1054','DATE_COUNTER','0','10',callbackdataa221421)
+}
+function callbackdataa221421(data)
+{
+    document.getElementById("a221421").innerHTML = data; 
+}
+getvisittimea221421();
+</script>&nbsp;&nbsp;&nbsp;&nbsp;
+ 总访问量：<span id="a221422" name="a221422" style="color:#ffffff;"></span>   
+
+<script>
+function getvisittimea221422()
+{       
+    PageCounterDWR.getVisittime('1644559999','1054','TOTAL_COUNTER','27322542','10',callbackdataa221422)
+}
+function callbackdataa221422(data)
+{
+    document.getElementById("a221422").innerHTML = data; 
+}
+getvisittimea221422();
+</script>
+ </div>
+ </div>
+</div><script type="text/javascript" src="../js/gb20190121/jquery-1.9.1.min.js"></script>
+<script type="text/javascript" src="../js/gb20190121/script.js"></script>
+<script type="text/javascript">
+    $(function () {
+    Nav('#nav');;//导航
+    Menu('.mbtn','.navm');//手机版导航
+    Menu('.sub_mbtn','.sub_navm');//手机版导航
+    SubImgHeight();
+});
+
+</script>
+
+</body>
+
+</html>

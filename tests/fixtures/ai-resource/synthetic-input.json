@@ -1,0 +1,26 @@
+{
+  "schema_version": "campuspulse.ai-resource.input.v1",
+  "request_id": "synthetic-library-001",
+  "school": {
+    "school_id": "synthetic-school",
+    "root_host": "example.edu.cn",
+    "trusted_source_hosts": [
+      "library.example.edu.cn"
+    ]
+  },
+  "resource": {
+    "resource_id": "synthetic-platform",
+    "url": "https://publisher.example.org/"
+  },
+  "as_of": "2026-10-03",
+  "sources": [
+    {
+      "source_id": "source-1",
+      "url": "https://library.example.edu.cn/notices/trial",
+      "retrieved_at": "2026-10-03T09:00:00+08:00",
+      "published_on": "2026-09-19",
+      "sha256": "33bdee00578b2d1012e36ed62d14425d66eacbdbddf030d82e783a3ab5c06f48",
+      "text": "【合成测试，非真实高校授权】本校提供 Sample Journal A 的试用，试用日期 2026-09-20 至 2026-12-31。仅供校内 IP 使用，校外方式未说明。需要先用个人手机号注册。该平台用于检索工程学论文。产品介绍：厂商平台包含一千种期刊，不表示本校购买了一千种期刊。资源指南 https://library.example.edu.cn/guides/research。"
+    }
+  ]
+}

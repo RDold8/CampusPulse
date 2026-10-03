@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="keywords" content="吉林大学图书馆"/>
+    <meta name="description" content=""/>
+    <meta name="renderer" content="webkit">
+    <meta name="force-rendering" content="webkit"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"/>
+    <meta name="viewport"
+          content="viewport-fit=cover,width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=0">
+    <title>吉林大学图书馆</title>
+
+
+</head>
+<body class="grid-bottom-spacer">
+
+<div id="htContainer" style="height:100%" >
+</div>
+
+<script src="/assets/lib/jquery.min.js"></script>
+<script src="/assets/lib/layui/layui.js?v=020911"></script>
+<script src="/assets/lib/vue.js"></script>
+
+            <script src="/entry/assets/lib/jquery.md5.js?v=5"></script>
+            <script src="/entry/assets/lib/subscribe/externalSub.js?v=5"></script>
+
+<script type="text/javascript">
+    var pageId = 1460570;
+    var rqIp = '111.25.88.103';
+    var websiteId = 721116;
+    var jsonId = 1466742;
+    var leftNavId = 'null';
+    var fromViewIndex = true;
+    var p_wfwfid = 30569;
+    var p_tipsData = '';
+    var isLogin = false;
+    var isBeginnerGuide = 0;
+    var sfid = '';
+    var sversion = 'e6bda1da4e07e2f2a23ca26b608f8d351313';
+    var isCDN = 0;
+    var pagePubId = '986d91fd1eeba311ef1a4f1365cefff9bd6d';
+    var globalType = 'zh_CN';
+    var wxMiniUrl = '';
+    $(function(){
+        if (isLogin === false && isBeginnerGuide == 1){
+            updateLocalStorage();
+        }
+        $("#htContainer").load('/page/ck/library_first_banner');
+    });
+    function updateLocalStorage() {
+        var count = window.localStorage.getItem("visitCount");
+        if (count === null) {
+            window.localStorage.setItem("visitCount", "1");
+        }else{
+            var number = Number(count) + 1;
+            window.localStorage.setItem("visitCount", number.toString());
+        }
+    }
+</script>
+<script>
+    var mhlg = null
+</script>
+
+
+    <div><script type="text/javascript" src="/3bb2eae1-84bf-401c-9b29-fd34da80220e_jlulib_jx.js?v=20250514"></script></div>
+    <div><script type="text/javascript" src="/upload/portal/W8FC5X20250815160930.js"></script></div>
+    <div><script type="text/javascript" src="/upload/portal/rdPsbx20250825140147.js"></script></div>
+</body>
+</html>

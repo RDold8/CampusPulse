@@ -1,0 +1,248 @@
+{
+  "schema_version": "0.1-draft",
+  "school": {
+    "key": "cn-neepu",
+    "name": "东北电力大学",
+    "aliases": [
+      "东电",
+      "NEEPU"
+    ],
+    "country": "CN",
+    "province": "吉林省",
+    "city": "吉林市",
+    "timezone": "Asia/Shanghai",
+    "official_homepage": "https://www.neepu.edu.cn/"
+  },
+  "status": "draft",
+  "reviewed_at": "2026-10-02",
+  "categories": [
+    "exam",
+    "competition",
+    "scholarship",
+    "campus_activity",
+    "academic_affairs",
+    "career"
+  ],
+  "resource_discovery": {
+    "department_urls": [
+      "https://lib.neepu.edu.cn/",
+      "https://lib.neepu.edu.cn/dzzy.htm",
+      "https://jwc.neepu.edu.cn/rcpy/pyfa.htm",
+      "https://jwc.neepu.edu.cn/fwzn/xsfw.htm",
+      "https://ee.neepu.edu.cn/yjsjy/pyfa.htm"
+    ],
+    "max_pages": 32
+  },
+  "fetch_defaults": {
+    "interval_minutes": 60,
+    "jitter_seconds": 300,
+    "per_host_concurrency": 1,
+    "min_request_interval_seconds": 3,
+    "respect_source_policy": true,
+    "conditional_requests": true
+  },
+  "sources": [
+    {
+      "key": "main-announcements",
+      "name": "学校官网通知公告",
+      "discovery_url": "https://www.neepu.edu.cn/",
+      "entry_url": "https://www.neepu.edu.cn/cs1.htm",
+      "allowed_hosts": [
+        "www.neepu.edu.cn"
+      ],
+      "adapter": "html_list_detail",
+      "enabled": true,
+      "validation_state": "adapter_verified",
+      "category_hints": [
+        "campus_activity",
+        "academic_affairs"
+      ],
+      "extraction": {
+        "query_language": "css",
+        "item_selector": "li[id^=\"lineu8_\"]",
+        "title_selector": "a.c205920",
+        "date_selector": ".c205920_date",
+        "body_selector": ".v_news_content",
+        "attachment_selector": ".fujian a[href], ul li a[href*=\"download.jsp\"]"
+      },
+      "pending": [
+        "历史分页采集",
+        "来源健康监测",
+        "办理阶段识别"
+      ]
+    },
+    {
+      "key": "academic-affairs-notices",
+      "name": "教务处通知公告",
+      "discovery_url": "https://jwc.neepu.edu.cn/",
+      "entry_url": "https://jwc.neepu.edu.cn/tzgg.htm",
+      "allowed_hosts": [
+        "jwc.neepu.edu.cn"
+      ],
+      "adapter": "html_list_detail",
+      "enabled": true,
+      "validation_state": "adapter_verified",
+      "category_hints": [
+        "exam",
+        "competition",
+        "academic_affairs"
+      ],
+      "extraction": {
+        "query_language": "css",
+        "item_selector": ".crules_con",
+        "title_selector": "a[href]",
+        "date_selector": "span",
+        "body_selector": "#vsb_content",
+        "attachment_selector": ".fujian a[href]"
+      },
+      "pending": [
+        "历史分页采集",
+        "教师与学生通知区分",
+        "时间节点与提醒"
+      ]
+    },
+    {
+      "key": "academic-retake-arrangements",
+      "name": "教务处考试重修",
+      "discovery_url": "https://jwc.neepu.edu.cn/",
+      "entry_url": "https://jwc.neepu.edu.cn/kszx.htm",
+      "allowed_hosts": [
+        "jwc.neepu.edu.cn"
+      ],
+      "adapter": "html_list_detail",
+      "enabled": true,
+      "validation_state": "adapter_verified",
+      "category_hints": [
+        "exam",
+        "academic_affairs"
+      ],
+      "extraction": {
+        "query_language": "css",
+        "item_selector": ".crules_con",
+        "title_selector": "a[href]",
+        "date_selector": "span",
+        "body_selector": "#vsb_content",
+        "attachment_selector": ".fujian a[href]"
+      },
+      "pending": [
+        "历史分页采集",
+        "名单附件只提供原文链接",
+        "持续来源健康监测"
+      ]
+    },
+    {
+      "key": "student-affairs-notices",
+      "name": "学工在线通知",
+      "discovery_url": "https://xsc.neepu.edu.cn/",
+      "entry_url": "https://xsc.neepu.edu.cn/list.jsp?urltype=tree.TreeTempUrl&wbtreeid=1002",
+      "allowed_hosts": [
+        "xsc.neepu.edu.cn"
+      ],
+      "adapter": "html_list_detail",
+      "enabled": true,
+      "validation_state": "adapter_verified",
+      "category_hints": [
+        "scholarship",
+        "campus_activity"
+      ],
+      "extraction": {
+        "query_language": "css",
+        "item_selector": "tr[height=\"20\"]:has(a.c109816)",
+        "title_selector": "a.c109816",
+        "date_selector": ".timestyle109816",
+        "body_selector": "#vsb_content",
+        "attachment_selector": ".fujian a[href], ul li a[href*=\"download.jsp\"]",
+        "pagination": {
+          "next_selector": "a.Next",
+          "max_pages": 2
+        }
+      },
+      "pending": [
+        "剩余历史分页采集",
+        "来源健康监测",
+        "办理阶段识别"
+      ]
+    },
+    {
+      "key": "youth-league-notices",
+      "name": "团委54阳光网",
+      "discovery_url": "https://54shine.neepu.edu.cn/index.jsp",
+      "entry_url": "https://54shine.neepu.edu.cn/list.jsp?urltype=tree.TreeTempUrl&wbtreeid=1085",
+      "allowed_hosts": [
+        "54shine.neepu.edu.cn"
+      ],
+      "adapter": "html_list_detail",
+      "enabled": true,
+      "validation_state": "adapter_verified",
+      "category_hints": [
+        "campus_activity",
+        "competition"
+      ],
+      "extraction": {
+        "query_language": "css",
+        "item_selector": "ul.list li",
+        "title_selector": "a[href]",
+        "date_selector": "span",
+        "body_selector": "#vsb_content",
+        "attachment_selector": ".fujian a[href], ul li a[href*=\"download.jsp\"]"
+      },
+      "pending": [
+        "历史分页采集",
+        "来源健康监测",
+        "办理阶段识别"
+      ]
+    },
+    {
+      "key": "youth-league-activities",
+      "name": "团委团学动态",
+      "discovery_url": "https://54shine.neepu.edu.cn/index.jsp",
+      "entry_url": "https://54shine.neepu.edu.cn/list.jsp?urltype=tree.TreeTempUrl&wbtreeid=1090",
+      "allowed_hosts": [
+        "54shine.neepu.edu.cn"
+      ],
+      "adapter": "html_list_detail",
+      "enabled": true,
+      "validation_state": "adapter_verified",
+      "category_hints": [
+        "campus_activity"
+      ],
+      "extraction": {
+        "query_language": "css",
+        "item_selector": "ul.list li",
+        "title_selector": "a[href]",
+        "date_selector": "span",
+        "body_selector": "#vsb_content",
+        "attachment_selector": ".fujian a[href], ul li a[href*=\"download.jsp\"]"
+      },
+      "pending": [
+        "历史分页采集",
+        "来源健康监测",
+        "办理阶段识别"
+      ]
+    },
+    {
+      "key": "career-public-listings",
+      "name": "就业信息网公开信息",
+      "discovery_url": "https://jy.neepu.edu.cn/",
+      "entry_url": null,
+      "allowed_hosts": [
+        "jy.neepu.edu.cn"
+      ],
+      "adapter": "pending",
+      "enabled": false,
+      "validation_state": "detail_discovered",
+      "category_hints": [
+        "career"
+      ],
+      "extraction": null,
+      "pending": [
+        "确认公开列表或公开API",
+        "拆分招聘与宣讲及双选来源",
+        "抓取策略",
+        "分页",
+        "固定样本",
+        "外校转载与举办地点区分"
+      ]
+    }
+  ]
+}

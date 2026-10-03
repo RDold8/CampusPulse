@@ -1,0 +1,53 @@
+{
+  "schema_version": "0.1-draft",
+  "name": "东电校园关注",
+  "timezone": "Asia/Shanghai",
+  "filter_groups": [
+    {
+      "school_keys": ["cn-neepu"],
+      "school_scope": "source",
+      "source_keys": [],
+      "categories": ["exam", "competition", "scholarship", "campus_activity", "academic_affairs", "career"],
+      "case_types": [],
+      "notice_stages": [],
+      "audience": {
+        "roles": ["student"],
+        "education_levels": [],
+        "unit_keys": [],
+        "admission_years": [],
+        "graduation_years": []
+      },
+      "keywords": {"any": [], "all": [], "exclude": []}
+    }
+  ],
+  "notice_policy": {
+    "unknown_audience": "show_with_label",
+    "initial_backfill_notifications": false
+  },
+  "calendar_policy": {
+    "review_states": ["approved"],
+    "unknown_audience": "exclude",
+    "event_kinds": ["registration_open", "registration_deadline", "payment_open", "payment_deadline", "submission_deadline", "exam_session", "competition_session", "activity_session", "interview_session", "public_notice_window"],
+    "include_date_only": true,
+    "past_days": 30,
+    "future_days": 365,
+    "cancelled_tombstone_days": 90
+  },
+  "task_tracking_policy": {
+    "default": "manual_join",
+    "priority_case_types": ["retake", "makeup_exam", "scholarship_application", "general_application"],
+    "read_does_not_complete_task": true,
+    "completion_source": "user_reported"
+  },
+  "reminder_policy": {
+    "enabled": false,
+    "channels": [],
+    "deadline_offsets_minutes": [4320, 1440, 120],
+    "session_offsets_minutes": [1440, 60],
+    "date_only_reminder_anchor": "09:00",
+    "quiet_hours": {"start": "22:00", "end": "08:00"},
+    "if_delay_crosses_deadline": "advance_before_quiet_hours",
+    "past_trigger_policy": "skip",
+    "notify_material_changes": true
+  }
+}

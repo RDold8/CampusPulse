@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>CampusPulse: official notices and calendar</title>
+  <rect x="0" y="0" width="256" height="256" rx="56" fill="#174875"/>
+  <rect x="45" y="51" width="166" height="164" rx="23" fill="#ffffff"/>
+  <path d="M68 51h120a23 23 0 0 1 23 23v29H45V74a23 23 0 0 1 23-23Z" fill="#387bcc"/>
+  <path d="M78 43v29m100-29v29" stroke="#ffffff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M65 153h25l14-26 22 51 21-37 20 12h24" fill="none" stroke="#137e69" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

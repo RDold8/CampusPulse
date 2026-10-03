@@ -1,0 +1,39 @@
+{
+  "schema_version": "0.1-draft",
+  "school": {
+    "key": "cn-example",
+    "name": "示例大学（请替换）",
+    "aliases": [],
+    "country": "CN",
+    "province": "请填写",
+    "city": "请填写",
+    "timezone": "Asia/Shanghai",
+    "official_homepage": "https://university.example.invalid/"
+  },
+  "status": "draft",
+  "reviewed_at": "2026-10-01",
+  "categories": ["exam", "competition", "scholarship", "campus_activity", "academic_affairs", "career"],
+  "fetch_defaults": {
+    "interval_minutes": 60,
+    "jitter_seconds": 300,
+    "per_host_concurrency": 1,
+    "min_request_interval_seconds": 3,
+    "respect_source_policy": true,
+    "conditional_requests": true
+  },
+  "sources": [
+    {
+      "key": "academic-affairs-notices",
+      "name": "教务处通知（请替换）",
+      "discovery_url": "https://university.example.invalid/",
+      "entry_url": null,
+      "allowed_hosts": ["university.example.invalid"],
+      "adapter": "html_list_detail",
+      "enabled": false,
+      "validation_state": "discovered",
+      "category_hints": ["exam", "academic_affairs"],
+      "extraction": null,
+      "pending": ["填写真实学校身份", "确认官网与栏目", "来源策略", "选择器与分页", "离线样本及适配器验证"]
+    }
+  ]
+}

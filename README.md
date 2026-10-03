@@ -1,86 +1,195 @@
 # CampusPulse
 
-把散落在高校官网的通知和实用资源，整理成直观的校园信息、学习入口、待办、日历和提醒；先做 C++ 桌面软件，移动 App 后续接入。
+[中文](#中文) · [English](#english)
 
-面向全国高校的通用开源平台，由社区添加和维护大学包。统一支持考试、竞赛、奖助学金、校园活动、教务通知、就业招聘。东北电力大学是参考学校包；当前优先可安装的桌面软件，预留移动端数据和业务接口。
+## 中文
 
-## 当前交付
+**基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
-源码仓库：[RDold8/CampusPulse](https://github.com/RDold8/CampusPulse)。Git保存范围、脱敏样本与克隆检查见[GitHub源码保存](docs/github-source.md)。本机运行数据和软件包不进入源码仓库，本次未发布二进制Release。
+学校官网里有很多有用的内容：教务通知、考试安排、竞赛报名、奖助学金申请、校园活动、招聘信息，还有图书馆和学习资源入口。它们往往散落在不同部门的网站上，查找费时，也容易漏看。
 
-2026-10-03：C++桌面原型0.1已实现第1—4步的软件功能，包括来源管理、本地订阅、个人待办、内置月历、ICS导出和应用运行期间的本地提醒。新增独立“学校资源”页，支持学习与办事入口发现、官网出处、访问状态、类别/阶段筛选和持久收藏，以东北电力大学作为实网示例。目录收录东北电力大学、吉林大学、北华大学、长春理工大学；后三校采用经核验的学校身份与部门入口，后台发现公开栏目、保存HTML样本、验证列表与正文并生成配置，规则采集与资源发现不调用模型。数据库版本7；原创图标与明暗主题已接入。各校公开来源覆盖不等同于全校全量，登录受限/403/动态栏目保留明确状态。手机日历导入和Windows系统通知送达仍需目标环境实测；完整社区SDK/CI、大学包发布、移动同步未实现。
+我想把这些公开信息集中整理起来，让学生可以按自己的需要查找，并把需要办理的事情加入待办，通过日历和提醒继续跟进。目前先做 C++ 桌面软件，移动 App 和双端同步后续再推进。
 
-- [C++桌面代码实施路线](docs/cpp-implementation-roadmap.md)：当前编码入口；每步模块、产出、验收和学习内容。
-- [桌面原型使用与构建说明](docs/desktop-prototype.md)：当前运行范围、编译脚本、实网验证与源码阅读顺序。
-- [官网后台自动接入](docs/automatic-onboarding.md)：输入流程、零模型调用、社区最小种子与接入边界。
-- [需要学校账号的来源入口](docs/source-access.md)：登录状态、官方浏览器入口、通用配置及当前会话边界。
-- [学校资源使用与架构](docs/school-resources.md)：资源分类、全部学习阶段、官网发现、收藏和社区通用配置。
-- [东北电力资源验收](docs/school-resources-validation.md)：实网采集、原生界面、数据保留与当前覆盖边界。
-- [DeepSeek补充官网栏目](docs/ai-supplement.md)：可选原生检索入口、用量、候选过滤和真实官网校验。
-- [DS资源说明契约](docs/ai-resource-contract.md)：按公开JSON接口设计的输入、输出、引文校验、未知项与审核边界；资源说明API尚未接入界面。
-- [图书馆与阅读工具核实](docs/library-access-validation.md)：公开入口、学校使用说明、历史采购与试用范围分别记录。
-- [吉林大学与AI入口验收](docs/jlu-ai-validation.md)：教务遗漏修复、默认目录写入、实网数据及桌面2检查。
-- [开源通用平台总框架](docs/platform-framework.md)：通用核心、适配器、大学包、社区生命周期、部署和验收。
-- [大学包配置契约](docs/university-package-contract.md)：当前字段、稳定身份、兼容升级与能力边界。
-- [当前分步实施计划](docs/implementation-plan.md)：已确认的来源、订阅、待办、内置日历与ICS范围，阶段状态和验收条件。
-- [第1步验收记录](docs/stage1-validation.md)：数据库升级、来源运行、官网输入保护、界面检查与程序包证据。
-- [第2步验收记录](docs/stage2-validation.md)：订阅操作、共用匹配、年份变化、多来源关系、数据库迁移与实网检查。
-- [本地订阅规则与数据](docs/subscriptions.md)：当前可运行的规则语义、表结构和源码阅读入口。
-- [个人待办与确认时间](docs/tasks.md)：事项操作、时间精度、状态、原文复核及版本4数据契约。
-- [日历与ICS使用规则](docs/calendar.md)：时间确认、全天/准确时间、稳定UID与版本及手机导入范围。
-- [第4步验收记录](docs/stage4-validation.md)：日历、提醒、旧库升级、两校实网与界面证据。
-- [北华与长春理工接入](docs/new-schools-validation.md)：公开栏目和登录/动态限制。
-- [第3步验收记录](docs/stage3-validation.md)：待办、Qt界面、正文刷新、旧库升级与程序包证据。
-- [参考项目与完善顺序](docs/open-source-references.md)：官方开源项目的可复用机制、当前差距与下一阶段验收。
-- [多站点与轻量采集设计](docs/multi-source-crawling.md)：来源发现、公开接口、静态解析和增量优化边界。
-- [社区贡献指南](CONTRIBUTING.md)：新增学校、修复来源和适配器扩展流程。
-- [系统架构](docs/architecture.md)：处理链路、订阅语义、日历更新、API 与可靠性。
-- [双端与校园办事框架](docs/dual-client-framework.md)：通用办事链、双端职责和未来同步；桌面/移动形态按v0.4路线落实。
-- [数据模型](docs/data-model.md)：实体、关系、唯一性、时间证据、版本和消息幂等。
-- [东北电力大学来源核查](docs/neepu-sources.md)：实际官网来源、发现的边界与待核实事项。
-- [东北电力大学配置](configs/schools/neepu.example.json)：六份来源已启用，就业网动态列表保持关闭；多站样本、学工前两页及缴费详情用于验证。
-- [订阅配置草案](configs/subscriptions/neepu-student.example.json)：六类主题、学生人群、日历与提醒偏好的示例。
-- [通用重修流程模板](configs/workflows/retake.example.json)：报名、缴费、核对结果等候选步骤，各校实例依据原文配置。
-- [新大学配置模板](templates/university.example.json)与[学校配置 Schema](schemas/school.schema.json)：社区接入的当前入口。
+### 我为什么做这个项目
 
-## 项目定位
+一位同学因为没有看到教务处官网的重修缴费通知，错过了缴费时间，最终错过重修。这件事让我意识到，学校发布了信息，学生却未必能及时找到；即使看到了，也可能忘记办理。
 
-可选“AI补充”入口使用DeepSeek原生网页搜索，寻找规则采集遗漏的官网栏目；候选链接仍须通过本校域、列表和正文校验。默认关闭，开启后消耗API token，显示实际用量；API Key只保留在内存。当前环境未提供Key，尚未验证真实API连接。
+我希望 CampusPulse 能把“找到信息、看懂要求、记下时间、完成办理”衔接起来。重修、补考、奖学金申请这些事情，通常有报名、缴费、提交材料或核对结果等环节，每一步都值得单独记录。
 
-一名学生选择学校、主题和适用范围，即可获得通知信息流；将相关重修、补考、奖学金申请加入个人计划后，按报名、缴费、提交和核对结果等步骤跟踪。首版计划提供本地保存、桌面提醒和ICS导出；持续手机订阅与双端同步在移动/服务端阶段实现。
+东北电力大学是我选择的第一个例子。我希望最终做成通用的开源项目，让其他学校的同学也能参与，逐步补充自己学校的公开来源。
 
-项目起点是同学漏看教务处重修缴费通知而错过重修。核心成功条件是用户能看到与自己相关的操作、期限和未完成状态，并获得可验证的提醒路径，而不仅是汇总通知。
+### 它能帮你做什么
 
-通用核心提供采集调度、解析、统一模型、订阅、待办、日历、提醒与双端；大学包描述学校身份、公开来源、适配器参数、校内流程、样本及维护信息。新增学校尽量只添加包；特殊站点贡献共享适配器。公开实例不执行学校包内任意代码。
+- **集中查看学校通知。** 整理已接入官网栏目的标题、发布日期、正文和原文链接，关注考试、竞赛、奖助学金、校园活动、教务通知和就业招聘。
+- **更方便地查找信息。** 默认优先显示当前年份，支持按年份、来源、主题和关键词筛选。标题里有“重修”“补考”“缴费”时，会分别显示提示；同时出现时用 ` / ` 连接。
+- **保存自己的关注方向。** 把来源、主题和关键词保存为本地订阅，更新官网后查看符合规则的通知。
+- **跟进需要办理的事情。** 从通知建立个人待办，分别记录报名、缴费、申请等操作，确认时间，标记办理状态。原文变化后，相关待办会提示复核。
+- **使用日历和提醒。** 已确认日期的待办进入内置日历，可以导出 ICS 文件供手机日历手动导入。桌面程序运行期间可以触发已启用的本地提醒。
+- **查找学校资源。** 在独立的“学校资源”页查看图书馆、课程与培养信息、竞赛、升学、就业等学习和办事入口，按类别与学习阶段筛选，并收藏常用链接。
 
-“支持全国高校”指核心模型和接入契约通用，学校配置可以由社区贡献，不代表现阶段已经覆盖全国高校，也不代表任意官网无需适配就能采集。每校可以逐步覆盖栏目，公开显示主题覆盖与来源健康。
+例如，你在软件里找到重修缴费通知，打开官方原文核对要求，建立“重修缴费”待办，确认时间并开启提醒，办理后再标记完成。报名、缴费和核对结果可以分别记录，避免完成其中一步后漏掉后续操作。
 
-## 初期技术决策
+办理时间需要依据原文核对，或明确设为个人计划。软件不会把通知发布日期当作截止时间，也不会代替你办理学校业务。
 
-当前采用 C++ + Qt 桌面方向；建议 C++20、CMake、Qt Widgets 功能原型、Qt Network 异步请求、Qt SQL/SQLite 本地存储。界面采用原生Qt控件、系统字体、明暗主题及可访问焦点，当前固定Qt 6.8.3、Lexbor 2.5.0和libical 3.0.20。Python仅保留为开发期配置检查工具，应用运行时不依赖Python。后续移动/服务端通过应用层接口与统一数据模型接入。
+### 我是怎么做的
 
-原创代码和配置采用MIT，见LICENSE；第三方依赖和官网内容权利独立，见THIRD_PARTY_NOTICES.md。已建立本地HTML/CSS适配器、样本回归、构建与打包脚本；正式公开发布前仍需完善社区CI、发布机制及依赖分发材料。
+我把处理过程分成四步：
 
-## 桌面原型
+1. **找到公开来源。** 在“大学”页输入已收录学校的官网，加载学校配置；需要自动接入时，后台从官网与已配置的部门入口发现栏目，检查网页列表和正文，再生成配置。输入入口只接受学校目录中已核验的官方首页。
+2. **读取并整理信息。** 爬虫通过 HTTP 请求读取公开网页，解析通知与资源链接，把结果保存到本地 SQLite 数据库。普通静态页面无需启动浏览器渲染；以后打开软件优先读取缓存，点击更新后再读取官网。
+3. **按关注规则筛选。** 根据年份、来源、主题和关键词整理通知，本地订阅使用同一套匹配规则。你决定哪些信息与自己有关，哪些需要加入待办。
+4. **安排后续行动。** 待办保存你确认的日期和办理状态，日历、ICS 导出和运行期间的提醒围绕这些待办工作。公开通知和个人完成状态分别保存。
 
-本机可打开 `dist/CampusPulse/CampusPulse.exe`；源码构建和功能范围见桌面原型说明。程序包带Qt运行库，运行不需要Python或Qt SDK。软件按用户点击更新读取学校包内启用的栏目；应用运行时每15秒检查本机已启用的待办提醒，支持ICS文件导出；移动App与持续同步尚未实现。
+常规采集和资源发现不调用 AI，不消耗模型 API token。首次发现和更新仍需要联网及处理时间，缓存让已保存的信息可以更快打开。
 
-```powershell
-.\tools\build-desktop.ps1 -QtRoot 'D:\CampusPulseSDK\6.8.3\msvc2022_64'
-.\tools\package-desktop.ps1 -QtRoot 'D:\CampusPulseSDK\6.8.3\msvc2022_64'
-```
+技术上，我使用 **C++20 + Qt** 开发桌面界面与网络请求，用 **SQLite** 保存本地数据，用 **Lexbor** 解析网页，用 **libical** 生成 ICS。源码按领域模型、应用服务、适配器、存储和界面分层，希望后续添加学校与功能时仍然清晰、容易维护。Python 只用于开发期工具，桌面应用运行时不依赖 Python。
 
-## 当前可运行检查
+### 不同学校怎么加入
 
-在项目根目录执行：
+学校的官网结构各不相同，信息也分散在教务处、学工部门、团委、就业中心等站点。我把学校身份、官网、允许访问的域名、栏目和解析参数放在独立的学校配置里，采集、订阅、待办与日历共用同一套核心。
 
-```powershell
-py -m pip install -r requirements-design.txt
-py tools/validate_school_configs.py
-```
+社区可以先提供经过核验的学校官网和部门入口，再逐步完善栏目配置与测试样本。遇到现有解析方式无法处理的网站，再扩展共享适配器。学校配置只描述数据，不执行任意脚本。
 
-检查配置结构、身份唯一性、时区和允许域引用；不联网、不执行采集、不证明来源覆盖或提醒送达。
+目前目录包含以下四所学校，均只覆盖部分公开来源：
 
-## 下一开发入口
+| 学校 | 当前情况 |
+| --- | --- |
+| [东北电力大学](configs/schools/neepu.example.json) | 首个参考学校，已接入部分通知栏目，并作为学校资源的实网示例；就业网动态来源仍待适配。 |
+| [吉林大学](configs/schools/jlu.auto.json) | 已建立学校与部门入口配置，支持后台发现、验证并接入部分公开栏目。 |
+| [北华大学](configs/schools/beihua.auto.json) | 已建立学校配置，并对部分公开来源完成接入测试。 |
+| [长春理工大学](configs/schools/cust.auto.json) | 已建立学校配置，并对部分公开来源完成接入测试；需要学校账号的本科教务入口保留“需要登录”状态。 |
 
-第1、2、3步已建立来源管理、官方首页输入、本地订阅、个人待办与确认日期。日历、ICS导出和最小本地提醒已实现；接下来根据真实学校来源继续完善公开内容覆盖，并在目标手机验收ICS。新增学校由社区学校包扩展。当前exe为本地原型，尚未公开发布，手机未连接。
+面向全国高校是项目的设计目标，后续由社区逐步扩展。目前不能保证找全某所学校的信息，也不能直接接入任意大学网址。尚未收录的学校，需要先补充经过核验的学校配置。
+
+### AI 在这里做什么
+
+AI 负责补充寻找规则爬虫可能遗漏的官网栏目。现有 DeepSeek 入口默认关闭，需要用户主动启用；候选链接仍要经过学校域名检查和真实官网采样，验证通过后才接入。调用会消耗 API token，界面记录实际返回的用量，API Key 不写入配置或数据库。
+
+这条检索与校验链路已有代码，尚未完成真实 DeepSeek API 调用验收。另一个“资源说明 AI”方向目前完成了输入输出规范、引文校验、提示词和离线测试，尚未接入桌面业务。
+
+### 目前的阶段和后续方向
+
+截至 **2026-10-04**，项目是 **0.1 桌面原型**，源码已公开，尚未发布可下载的二进制 Release。
+
+目前需要注意：
+
+- 各校公开来源只有部分覆盖，登录限制、动态页面和网页改版仍可能影响采集。
+- 需要账号的来源可以打开官方登录入口，但软件不复用浏览器登录状态，登录后不会自动开始采集。资源链接能打开，也不代表账号一定具备使用权限。
+- 本地提醒需要桌面程序保持运行。手机 ICS 导入和 Windows 系统通知送达仍需在目标环境实测；导出的 ICS 不会持续同步软件里的修改。
+- 移动 App、账号系统和跨设备同步尚未实现。
+
+接下来，我会继续完善学校来源与资源覆盖、采集可靠性和社区配置流程，完成 AI、手机导入与提醒的实际验证，再推进移动端和双端同步。
+
+欢迎反馈漏掉的通知、提供学校官方栏目、帮助核实资源入口，或参与代码与学校配置维护。参与方式见 [贡献指南](CONTRIBUTING.md)。
+
+### 更多资料
+
+| 内容 | 文档 |
+| --- | --- |
+| 运行与源码构建 | [桌面原型说明](docs/desktop-prototype.md) · [源码保存说明](docs/github-source.md) |
+| 整体设计与学校扩展 | [平台总框架](docs/platform-framework.md) · [大学包配置契约](docs/university-package-contract.md) |
+| 官网发现与登录入口 | [自动接入](docs/automatic-onboarding.md) · [来源访问](docs/source-access.md) |
+| 待办、日历与资源 | [个人待办](docs/tasks.md) · [日历与 ICS](docs/calendar.md) · [学校资源](docs/school-resources.md) |
+| AI 补充与规范 | [DeepSeek 补充栏目](docs/ai-supplement.md) · [资源说明契约](docs/ai-resource-contract.md) |
+
+其他设计和阶段记录保留在 [docs](docs/) 中。原创代码、配置和图标采用 [MIT 许可证](LICENSE)，第三方依赖与学校网页内容保留各自权利，详见 [第三方说明](THIRD_PARTY_NOTICES.md)。
+
+**初版，有许多不足之处，请见谅。**
+
+---
+
+## English
+
+**Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
+
+University websites contain useful information: academic notices, exam schedules, competition registration, scholarships and financial aid, campus events, recruitment, and library or learning resources. These are often scattered across departmental websites, making them time-consuming to find and easy to miss.
+
+I want to bring this public information together so students can find what they need, add relevant actions to their tasks, and follow up through a calendar and reminders. I am starting with a C++ desktop application; a mobile app and synchronization will come later.
+
+### Why I started this project
+
+A fellow student did not see a course-retake payment notice on the academic affairs website, missed the deadline, and consequently missed the retake opportunity. It made me realize that publishing information does not necessarily mean students will find it in time. Even after reading a notice, they may forget to act.
+
+I want CampusPulse to connect finding information, checking requirements, recording dates, and completing actions. Retakes, resit exams, and scholarship applications can involve registration, payment, document submission, or result checks. Each step deserves its own record.
+
+I chose Northeast Electric Power University as the first example. My goal is a general, open-source project that students at other universities can help extend with their own university's public sources.
+
+### What it can help you do
+
+- **Browse university notices in one place.** Organize titles, publication dates, article text, and original links from connected sources, covering exams, competitions, scholarships and financial aid, campus events, academic affairs, and recruitment.
+- **Find information more easily.** Show the current year by default and filter by year, source, topic, or keyword. Chinese titles mentioning retakes, resit exams, or payments receive individual labels, combined with ` / ` when several apply.
+- **Save your interests.** Store sources, topics, and keywords as local subscriptions, then review matching notices after updating from the websites.
+- **Track actions.** Create personal tasks from notices, record registration, payment, or application steps separately, confirm dates, and track their status. Changes to the original article flag related tasks for review.
+- **Use a calendar and reminders.** Put tasks with confirmed dates in the built-in calendar and export ICS files for manual import into a phone calendar. Enabled local reminders can trigger while the desktop application is running.
+- **Discover university resources.** Find library services, curriculum information, competitions, further study, career resources, and other learning or practical links in a dedicated page. Filter by category or study stage and save favorites.
+
+For example, you can find a retake payment notice, open the official article to check its requirements, create a payment task, confirm its date, enable a reminder, and mark it complete after paying. Registration, payment, and result verification can be recorded separately, so finishing one step does not hide the remaining actions.
+
+Action dates must be checked against the original notice or explicitly set as personal plans. The application does not treat publication dates as deadlines or complete university procedures on your behalf.
+
+### How I am building it
+
+I have divided the process into four steps:
+
+1. **Find public sources.** Enter the official homepage of a university already in the registry to load its configuration. When automatic onboarding is needed, the application discovers sections from the homepage and configured department links, checks sample lists and articles, and generates a configuration. The input accepts only verified homepages in the registry.
+2. **Read and organize information.** The crawler reads public pages over HTTP, parses notices and resource links, and stores the results in a local SQLite database. Ordinary static pages do not require browser rendering. Saved information loads from the cache; updating reads the websites again.
+3. **Filter by your interests.** Notices are organized by year, source, topic, and keyword. Local subscriptions use the same matching rules. You decide which information applies to you and which actions belong in your tasks.
+4. **Plan what comes next.** Tasks store the dates you confirm and your progress. The calendar, ICS export, and reminders during application runtime work from these tasks. Public notices and personal completion states are stored separately.
+
+Regular crawling and resource discovery do not call AI or consume model API tokens. Initial discovery and updates still require network access and processing time; the cache makes saved information quicker to reopen.
+
+I use **C++20 and Qt** for the desktop interface and networking, **SQLite** for local data, **Lexbor** for HTML parsing, and **libical** for ICS generation. The code separates domain models, application services, adapters, storage, and the interface to keep future additions understandable and maintainable. Python supports development tools; the desktop application does not require Python at runtime.
+
+### How other universities can join
+
+University websites differ, and information is spread across academic affairs offices, student services, youth organizations, career centers, and other departments. I keep university identity, official domains, allowed hosts, sections, and parsing parameters in separate configurations. Crawling, subscriptions, tasks, and the calendar share the same core.
+
+The community can start by providing verified homepage and department links, then improve source configurations and test fixtures. Websites that existing parsers cannot handle require an extension to a shared adapter. University configurations describe data and do not execute arbitrary scripts.
+
+The current registry includes four universities, each with partial public-source coverage:
+
+| University | Current status |
+| --- | --- |
+| [Northeast Electric Power University](configs/schools/neepu.example.json) | The first reference university, with some notice sources connected and live resource-discovery checks; its dynamic employment source still needs adaptation. |
+| [Jilin University](configs/schools/jlu.auto.json) | University and departmental entry points are configured, with background discovery, validation, and onboarding of some public sections. |
+| [Beihua University](configs/schools/beihua.auto.json) | A university configuration is available, with onboarding checks for some public sources. |
+| [Changchun University of Science and Technology](configs/schools/cust.auto.json) | A university configuration is available, with onboarding checks for some public sources; undergraduate academic affairs requiring an account remain marked as requiring login. |
+
+Supporting universities across China is the design goal, with coverage extended gradually by the community. The application currently cannot guarantee complete coverage of a university or accept any university URL without prior configuration. Universities outside the registry first need a verified configuration contribution.
+
+### What AI does here
+
+AI supplements discovery by proposing official sections that the rule-based crawler may have missed. The existing DeepSeek entry point is disabled by default and requires user activation. Candidate links still undergo university-domain checks and actual website sampling before being added. Calls consume API tokens, the interface records returned usage, and the API key is not written to settings or the database.
+
+The search and validation pipeline is implemented, but a real DeepSeek API call has not yet been verified. A separate resource-description AI feature currently has input and output contracts, evidence validation, prompts, and offline tests; it is not connected to the desktop workflow.
+
+### Current stage and next steps
+
+As of **October 4, 2026**, this is a **0.1 desktop prototype**. Source code is public; no downloadable binary Release has been published.
+
+Current limitations:
+
+- University source coverage is partial. Login restrictions, dynamic pages, and website changes can affect collection.
+- The application can open official login pages, but it does not reuse browser sessions or begin crawling after login. A working resource link does not establish account eligibility.
+- Local reminders require the desktop application to remain running. Phone ICS import and Windows notification delivery still need verification in their target environments. Exported ICS files do not continuously synchronize later changes.
+- The mobile app, account system, and cross-device synchronization are not implemented.
+
+Next, I want to improve university source and resource coverage, collection reliability, and community configuration workflows. I will also verify AI calls, phone calendar imports, and reminder delivery before continuing with the mobile app and synchronization.
+
+Contributions can include reports of missing notices, official university sections, checks of resource entry points, code, or university configurations. See the [contribution guide](CONTRIBUTING.md).
+
+### Further reading
+
+Most detailed documentation is currently in Chinese.
+
+| Topic | Documentation |
+| --- | --- |
+| Running and building from source | [Desktop prototype](docs/desktop-prototype.md) · [Source publication](docs/github-source.md) |
+| Overall design and university extensions | [Platform framework](docs/platform-framework.md) · [University package contract](docs/university-package-contract.md) |
+| Website discovery and login entry points | [Automatic onboarding](docs/automatic-onboarding.md) · [Source access](docs/source-access.md) |
+| Tasks, calendar, and resources | [Personal tasks](docs/tasks.md) · [Calendar and ICS](docs/calendar.md) · [University resources](docs/school-resources.md) |
+| AI supplementation and contracts | [DeepSeek supplementation](docs/ai-supplement.md) · [Resource-description contract](docs/ai-resource-contract.md) |
+
+Additional design documents and stage records are available in [docs](docs/). Original code, configurations, and icons use the [MIT license](LICENSE). Third-party dependencies and university website materials retain their own rights; see [third-party notices](THIRD_PARTY_NOTICES.md).
+
+**This is an initial version with many shortcomings. Thank you for your understanding.**

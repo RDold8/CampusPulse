@@ -35,6 +35,41 @@ Copy-Item -LiteralPath "$projectRoot\docs\automatic-onboarding.md" -Destination 
 Copy-Item -LiteralPath "$projectRoot\docs\ai-supplement.md" -Destination "$destination\ai-supplement.md"
 Copy-Item -LiteralPath "$projectRoot\docs\ai-provider-management.md" -Destination "$destination\ai-provider-management.md"
 Copy-Item -LiteralPath "$projectRoot\docs\universal-onboarding-validation.md" -Destination "$destination\universal-onboarding-validation.md"
+$buptValidation=Join-Path $projectRoot 'docs\bupt-onboarding-validation.md'
+if (Test-Path -LiteralPath $buptValidation) {
+    Copy-Item -LiteralPath $buptValidation -Destination "$destination\bupt-onboarding-validation.md"
+}
+# The static WebView2 loader is part of CampusPulse.exe. Its SDK notices must
+# travel with the package; the separately installed Evergreen runtime does not.
+$webview2Roots=@(
+    (Join-Path $BuildDir '_deps\webview2-src'),
+    (Join-Path $projectRoot 'build\_deps\webview2-src'),
+    (Join-Path $projectRoot '.deps\webview2')
+)
+$webview2Root=$webview2Roots | Where-Object { Test-Path -LiteralPath (Join-Path $_ 'LICENSE.txt') } | Select-Object -First 1
+if (-not $webview2Root) { throw 'Pinned WebView2 SDK notices not found; build the Windows app first' }
+$webview2Notices=@{
+    'LICENSE.txt'='0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55'
+    'NOTICE.txt'='106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90'
+}
+$webview2LicenseDir=Join-Path $destination 'licenses\WebView2-SDK'
+New-Item -ItemType Directory -Path $webview2LicenseDir -Force | Out-Null
+foreach ($noticeName in $webview2Notices.Keys) {
+    $noticePath=Join-Path $webview2Root $noticeName
+    if ((Get-FileHash -LiteralPath $noticePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $webview2Notices[$noticeName]) {
+        throw "WebView2 SDK notice SHA-256 mismatch: $noticeName"
+    }
+    Copy-Item -LiteralPath $noticePath -Destination $webview2LicenseDir
+}
+@(
+    'CampusPulse public webpage verification uses the Microsoft Edge WebView2 Evergreen Runtime when needed.',
+    'The SDK loader is statically linked; no WebView2Loader.dll or browser runtime is bundled.',
+    'Ordinary public HTML requests continue to use Qt Network.',
+    'If webpage verification reports that the runtime is missing, install the Evergreen Runtime from Microsoft:',
+    'https://developer.microsoft.com/en-us/microsoft-edge/webview2/',
+    'CampusPulse does not automatically install the runtime or share your personal browser profile.',
+    'Runtime deployment documentation: https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution'
+) | Set-Content -LiteralPath "$destination\WebView2-README.txt" -Encoding utf8
 $lexborLicense=Join-Path $BuildDir '_deps\lexbor-src\LICENSE'
 if (-not (Test-Path -LiteralPath $lexborLicense)) { $lexborLicense=Join-Path $projectRoot 'build\_deps\lexbor-src\LICENSE' }
 Copy-Item -LiteralPath $lexborLicense -Destination "$destination\Lexbor-LICENSE.txt"

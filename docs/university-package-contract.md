@@ -57,3 +57,5 @@ HTML适配器可在extraction.pagination指定next_selector（下一页CSS选择
 SchoolPackage将完整目录与可执行配置分开；禁用或尚未就绪的来源保留展示。用户暂停属于source_preferences，不回写sources[].enabled。source_state与fetch_run按school_id/source_id隔离，last_success_at表示最近一次配置采集范围内完整成功；部分成功、失败或中断均保留这个时间及旧通知。来源类别提示不是通知实际覆盖的保证。
 
 需要登录的来源通过 `access.mode=login_required` 显式声明；登录入口必须通过官方域与来源允许主机校验。加载器、SourceService和界面都保持这类来源不可采集。现有包中明确“需要登录”的待接入说明可兼容识别；一般HTTP错误不作登录推断。浏览器入口与登录会话采集是不同能力，当前仅实现前者，说明见 [来源登录入口](source-access.md)。
+
+0.1.2 的 `auto_discovery.max_pages` 支持1—48，陌生大学草案默认48；已有社区包的设置保留。扫描预算包括导航、列表与正文验证，不等于下载48个完整栏目；分页历史不作为新栏目。

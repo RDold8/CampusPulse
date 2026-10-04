@@ -14,6 +14,16 @@ using namespace campus;
 class UnknownUniversityTests final : public QObject {
     Q_OBJECT
   private slots:
+    void browserVerificationIsRecognizedWithoutTreatingErrorsAsContent() {
+        const QByteArray challenge("<html><script>$_ts={};$_ts.nsd=123;</script></html>");
+        QVERIFY(PublicUniversityNetwork::isBrowserVerification(412, challenge));
+        QVERIFY(!PublicUniversityNetwork::isBrowserVerification(200, challenge));
+        QVERIFY(!PublicUniversityNetwork::isBrowserVerification(412,
+            "<h1>Precondition Failed</h1>"));
+        QVERIFY(!PublicUniversityNetwork::isBrowserVerification(403,
+            "<title>某大学登录</title><script>showLogin()</script>"));
+        QVERIFY(!PublicUniversityNetwork::isBrowserVerification(500, challenge));
+    }
     void unknownSchoolHomepagesAreNormalizedWithoutLocalRegistry() {
         QCOMPARE(UnknownUniversityDiscovery::normalizedHomepage("www.hit.edu.cn"),
                  QUrl("https://www.hit.edu.cn/"));
@@ -98,6 +108,7 @@ class UnknownUniversityTests final : public QObject {
         QCOMPARE(seed.value("school").toObject().value("identity_provenance").toString(),
                  QString("automatic_homepage"));
         QVERIFY(seed.value("sources").toArray().isEmpty());
+        QCOMPARE(seed.value("auto_discovery").toObject().value("max_pages").toInt(), 48);
         QCOMPARE(seed.value("school").toObject().value("province").toString(), QString());
         QVERIFY(seed.value("school").toObject().value("key").toString().startsWith("cn-auto-hit-"));
         QTemporaryDir directory;

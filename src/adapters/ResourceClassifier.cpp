@@ -96,14 +96,15 @@ bool ResourceClassifier::isPractical(const QString &label, const QUrl &) {
                  "实习|竞赛.*证书|考试.*查询|考务|成绩.*核对|教室.*申请|正考|证书|教务系统密码"))
         return true;
     return contains(
-        text, "培养方案|教学大纲|课程建设|课程资料|学习资料|课程平台|在线课程|精品课程|教材资源|"
+        text, "(?:教务处|本科生院|学生处|研究生院|财务处|团委)(?:概况|简介|职责)|部门(?:介绍|概况|职责)|"
+              "培养方案|教学大纲|课程建设|课程资料|学习资料|课程平台|在线课程|精品课程|教材资源|"
               "图书馆|数据库|电子资源|电子图书|电子期刊|文献检索|馆藏检索|知网|CNKI|读秀|"
               "Science\\s*Direct|IEEE|Engineering\\s*Village|Web\\s*of\\s*Science|"
               "学术支持|学科服务|科研工具|论文检索|检索证明|学术写作|研究支持|读者服务|"
               "竞赛平台|竞赛指南|竞赛网站|竞赛官方|竞赛官网|数学建模平台|学科竞赛|创新创业平台|"
               "挑战杯平台|"
               "办事|服务指南|办理指南|办理流程|学生服务|服务大厅|教务系统|教务管理系统|"
-              "学生证|成绩查询|成绩单|学籍|选课|重修安排|重考安排|毕业证|"
+              "学生证|成绩查询|成绩单|学籍|选课|重修安排|重考安排|^重修$|^补考$|毕业证|"
               "资助|奖助|助学贷款|学费|缴费流程|缴费指南|就业服务|就业指导|求职指南|"
               "招聘平台|就业信息网|心理咨询|心理服务|校园卡|校车|校历|住宿指南|入馆|借阅|"
               "座位预约|VPN校外访问|常用阅读器|读者手册|离校流程");
@@ -143,7 +144,7 @@ SchoolResource ResourceClassifier::describe(const QString &schoolId, const QStri
         resource.category = "campus_life";
     else if (contains(
                  label,
-                 "办事|服务|学籍|学生证|成绩|选课|重修|重考|毕业证|资助|奖助|贷款|学费|缴费|教务"))
+                 "办事|服务|部门|概况|职责|学籍|学生证|成绩|选课|重修|重考|毕业证|资助|奖助|贷款|学费|缴费|教务"))
         resource.category = "student_services";
     if (contains(label, "本科|学士"))
         resource.audiences.push_back("undergraduate");

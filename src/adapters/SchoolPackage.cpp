@@ -147,8 +147,8 @@ SchoolPackage SchoolPackage::load(const QString &filename) {
         for (const auto entry : discovery.value("department_urls").toArray())
             result.discoveryEntries << entry.toString();
         result.discoveryLimit = discovery.value("max_pages").toInt(16);
-        if (result.discoveryLimit < 1 || result.discoveryLimit > 24)
-            throw std::runtime_error("自动接入扫描上限必须在1至24之间");
+        if (result.discoveryLimit < 1 || result.discoveryLimit > 48)
+            throw std::runtime_error("自动接入扫描上限必须在1至48之间");
     }
     QSet<QString> keys;
     for (const auto value : obj.value("sources").toArray()) {

@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QMap>
 #include <QSet>
 #include <deque>
 
@@ -13,7 +14,7 @@ namespace campus {
 class SchoolOnboarding final : public QObject {
     Q_OBJECT
   public:
-    static constexpr int AlgorithmVersion = 3;
+    static constexpr int AlgorithmVersion = 4;
     SchoolOnboarding(const QString &seedFile, const QString &outputDirectory,
                      QObject *parent = nullptr, int intervalMs = 3000,
                      QStringList supplementalEntries = {});
@@ -36,6 +37,8 @@ class SchoolOnboarding final : public QObject {
         std::optional<Notice> detail;
         QString sourceKey;
         QUrl origin;
+        int priority = 0;
+        QStringList redirectHosts;
     };
     QJsonObject seed_;
     SchoolPackage school_;
@@ -46,9 +49,16 @@ class SchoolOnboarding final : public QObject {
     QSet<QString> queued_;
     QJsonArray sources_, samples_, failures_;
     QHash<QString, int> counts_;
+    QMap<QString, QJsonObject> deferredFrontier_;
+    bool frontierTruncated_ = false;
     int interval_, fetched_ = 0, ready_ = 0, rows_ = 0;
     bool started_ = false;
     void enqueue(QUrl url, QString label, int depth, bool candidate);
+    void pushPage(Page page);
+    void defer(const Page &page, const QString &reason);
+    static QString frontierId(const Page &page);
+    static QJsonObject frontierEntry(const Page &page, const QString &reason);
+    QStringList pageHosts(const Page &page) const;
     void next();
     void consume(const Page &page, const QByteArray &bytes, const QString &error);
     void finish();

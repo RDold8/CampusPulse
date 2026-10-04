@@ -14,6 +14,7 @@
 #include <QTemporaryDir>
 #include <QDir>
 #include <QCryptographicHash>
+#include <QJsonDocument>
 #include <algorithm>
 using namespace campus;
 namespace {
@@ -33,15 +34,313 @@ SourceConfig automatic(const QString &name, const QString &url) {
     s.autoDetect = true;
     return s;
 }
+QString unknownSeed(const QString &folder) {
+    const QJsonObject seed{
+        {"schema_version", "0.1-draft"},
+        {"school", QJsonObject{{"key", "cn-auto-test"}, {"name", "测试大学"},
+            {"timezone", "Asia/Shanghai"}, {"official_homepage", "https://www.example.edu.cn/"},
+            {"identity_provenance", "automatic_homepage"}}},
+        {"sources", QJsonArray{}},
+        {"auto_discovery", QJsonObject{{"department_urls", QJsonArray{}}, {"max_pages", 24}}}};
+    const auto path = QDir(folder).filePath("unknown-seed.json");
+    QFile file(path);
+    const auto bytes = QJsonDocument(seed).toJson();
+    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size())
+        throw std::runtime_error("Cannot write synthetic school seed");
+    return path;
+}
+QByteArray departmentList(int count = 3, const QString &absoluteHost = {}) {
+    QByteArray html = "<html><title>测试大学教务处</title><h2>通知公告</h2><ul>";
+    for (int i = 1; i <= count; ++i) {
+        const auto url = (absoluteHost.isEmpty() ? QString{} : "https://" + absoluteHost) +
+                         QString("/info/1001/%1.htm").arg(i);
+        html += QString("<li><a href='%1'>正式教务通知第%2条</a></li>").arg(url).arg(i).toUtf8();
+    }
+    return html + "</ul><a href='gztz.htm'>更多</a></html>";
+}
+QByteArray validBody() {
+    return "<html><title>正式教务通知</title><div class='v_news_content'><p>"
+           "请同学们依据学校教务处公布的正式要求办理有关事项，并分别核对报名、缴费和结果。"
+           "</p></div></html>";
+}
+QJsonObject objectFile(const QString &path) {
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        throw std::runtime_error("Missing synthetic onboarding result");
+    return QJsonDocument::fromJson(file.readAll()).object();
+}
 } // namespace
 class OnboardingTests final : public QObject {
     Q_OBJECT
   private slots:
+    void splitPublicationDateDoesNotBorrowTitleOrSummaryDates() {
+        auto source = automatic("cards", "https://jwc.jlu.edu.cn/");
+        source.allowUnknownDates = true;
+        const QByteArray html(
+            "<li><a href='/info/1/1.htm'><h5>08</h5><span>2026.07</span>"
+            "<h2>正式通知第一条</h2><p>活动时间2027-01-01</p></a></li>"
+            "<li><a href='/info/1/2.htm'><h5>09</h5><h5>10</h5><span>2026.07</span>"
+            "<h2>正式通知第二条</h2></a></li>"
+            "<li><a href='/info/1/3.htm'><h2>2026学年正式通知第三条</h2>"
+            "<p>活动时间2026-07-11</p></a></li>");
+        const auto notices = HtmlAdapter{}.parseList(html, source);
+        QCOMPARE(notices.size(), size_t(3));
+        QCOMPARE(notices[0].title, std::string("正式通知第一条"));
+        QCOMPARE(notices[0].publishedDate, std::string("2026-07-08"));
+        QVERIFY(notices[1].publishedDate.empty());
+        QVERIFY(notices[2].publishedDate.empty());
+    }
+    void historyPageNumbersDoNotBecomeNewSections() {
+        QTemporaryDir folder;
+        SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);
+        QVERIFY(QDir().mkpath(scan.directory_ + "/samples"));
+        SchoolOnboarding::Page page{QUrl("https://grs.example.edu.cn/"), "研究生教育", 1, false};
+        page.origin = page.url;
+        scan.consume(page, departmentList() +
+            "<a href='/tzgg/118.htm'>2</a><a href='/tzgg/117.htm'>下一页</a>"
+            "<a href='/tzgg.htm'>通知公告</a><a href='https://job.example.edu.cn/'>就业</a>", {});
+        bool notices = false, careers = false;
+        for (const auto &entry : scan.queue_) {
+            QVERIFY(entry.url.path() != "/tzgg/118.htm");
+            QVERIFY(entry.url.path() != "/tzgg/117.htm");
+            notices |= entry.url.path() == "/tzgg.htm";
+            careers |= entry.url.host() == "job.example.edu.cn";
+        }
+        QVERIFY(notices);
+        QVERIFY(careers);
+    }
+    void unknownDepartmentHomepageStillRequiresThreeRowsAndFirstBody() {
+        QTemporaryDir folder;
+        SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);
+        QVERIFY(QDir().mkpath(scan.directory_ + "/samples"));
+        SchoolOnboarding::Page home{QUrl("https://jwc.example.edu.cn/"), "教务处", 1, false};
+        home.origin = home.url;
+        scan.consume(home, departmentList(), {});
+        QCOMPARE(scan.sources_.size(), 1);
+        QCOMPARE(scan.counts_.value(scan.sources_.first().toObject().value("key").toString()), 3);
+        QVERIFY(!scan.sources_.first().toObject().value("enabled").toBool());
+        QCOMPARE(scan.ready_, 0);
+        QCOMPARE(scan.queue_.size(), size_t(1));
+        QVERIFY(scan.queue_.front().detail.has_value());
+        const auto body = scan.queue_.front();
+        scan.queue_.pop_front();
+        scan.consume(body, validBody(), {});
+        QCOMPARE(scan.ready_, 1);
+        QVERIFY(scan.sources_.first().toObject().value("enabled").toBool());
+        QSignalSpy completed(&scan, &SchoolOnboarding::finished);
+        scan.finish();
+        QCOMPARE(completed.size(), 1);
+        const auto config = objectFile(scan.directory_ + "/school.json");
+        QCOMPARE(config.value("onboarding_version").toInt(), SchoolOnboarding::AlgorithmVersion);
+        QVERIFY(SchoolOnboarding::AlgorithmVersion > 3);
+        const auto loaded = SchoolPackage::load(scan.directory_ + "/school.json");
+        QCOMPARE(loaded.sources.size(), size_t(1));
+        QVERIFY(loaded.automaticallyIdentified);
+    }
+    void tooFewRowsMissingOrShortBodyCannotEnableUnknownSource() {
+        QTemporaryDir folder;
+        const auto seed = unknownSeed(folder.path());
+        const SchoolOnboarding::Page home{QUrl("https://jwc.example.edu.cn/"), "本科生院", 1, false};
+        SchoolOnboarding tooFew(seed, folder.path(), nullptr, 0);
+        QVERIFY(QDir().mkpath(tooFew.directory_ + "/samples"));
+        tooFew.consume(home, departmentList(2), {});
+        QCOMPARE(tooFew.ready_, 0);
+        QVERIFY(tooFew.queue_.empty());
+        QVERIFY(!tooFew.sources_.first().toObject().value("enabled").toBool());
+        for (const auto &html : {QByteArray("<html><main>正文选择器不存在</main></html>"),
+                                QByteArray("<div class='v_news_content'>short</div>")}) {
+            SchoolOnboarding rejected(seed, folder.path(), nullptr, 0);
+            rejected.consume(home, departmentList(), {});
+            const auto body = rejected.queue_.front();
+            rejected.queue_.pop_front();
+            rejected.consume(body, html, {});
+            QCOMPARE(rejected.ready_, 0);
+            QVERIFY(!rejected.sources_.first().toObject().value("enabled").toBool());
+        }
+        SchoolOnboarding noListGate(seed, folder.path(), nullptr, 0);
+        noListGate.consume(home, departmentList(), {});
+        const auto body = noListGate.queue_.front();
+        noListGate.queue_.pop_front();
+        noListGate.counts_[body.sourceKey] = 2;
+        noListGate.consume(body, validBody(), {});
+        QCOMPARE(noListGate.ready_, 0);
+        QVERIFY(!noListGate.sources_.first().toObject().value("enabled").toBool());
+    }
+    void iconNavigationUsesReadableAttributesWithoutOverridingVisibleText() {
+        const auto links = HtmlAdapter{}.links(
+            "<a href='/visible' title='不覆盖文本'>教务处</a>"
+            "<a href='/title' title=' 本科生院 '><img src='x.png'></a>"
+            "<a href='/aria' aria-label='学生工作处'><img alt='不覆盖ARIA'></a>"
+            "<a href='/image'><img alt=''><img alt=' 图书馆 '></a>"
+            "<a href='/blank'><img alt=''></a>", QUrl("https://www.example.edu.cn/"));
+        QCOMPARE(links.size(), size_t(4));
+        QCOMPARE(links[0].title, QString("教务处"));
+        QCOMPARE(links[1].title, QString("本科生院"));
+        QCOMPARE(links[2].title, QString("学生工作处"));
+        QCOMPARE(links[3].title, QString("图书馆"));
+        QCOMPARE(links[3].url, QUrl("https://www.example.edu.cn/image"));
+        const auto tooLong = QByteArray("<a href='/long' title='") + QByteArray(301, 'a') +
+                             "'><img></a>";
+        QVERIFY(HtmlAdapter{}.links(tooLong, QUrl("https://www.example.edu.cn/")).empty());
+    }
+    void fullQueueRetainsTeachingInstitutionsAndFirstBodyBeforeGenericNavigation() {
+        QTemporaryDir folder;
+        SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);
+        for (int i = 0; i < 48; ++i)
+            scan.enqueue(QUrl(QString("https://www.example.edu.cn/bridge/%1").arg(i)), "一般入口", 1, false);
+        scan.enqueue(QUrl("https://jwc.example.edu.cn/"), "教务处", 1, false);
+        QCOMPARE(scan.queue_.size(), size_t(48));
+        QCOMPARE(scan.queue_.front().url, QUrl("https://jwc.example.edu.cn/"));
+        QVERIFY(scan.queue_.front().candidate);
+        scan.enqueue(QUrl("https://www.example.edu.cn/zzjg.htm"), "组织机构", 1, false);
+        QCOMPARE(scan.queue_.size(), size_t(48));
+        QCOMPARE(scan.queue_[1].url, QUrl("https://www.example.edu.cn/zzjg.htm"));
+        SchoolOnboarding::Page detail{QUrl("https://jwc.example.edu.cn/info/1001/1.htm"), "正文校验", 1, false};
+        detail.detail = Notice{};
+        detail.sourceKey = "synthetic-source";
+        detail.priority = 4;
+        scan.pushPage(detail);
+        QCOMPARE(scan.queue_.size(), size_t(48));
+        QVERIFY(scan.queue_.front().detail.has_value());
+        QCOMPARE(scan.deferredFrontier_.size(), 3);
+        scan.enqueue(QUrl("https://evil.org/"), "教务处", 1, false);
+        QCOMPARE(scan.queue_.size(), size_t(48));
+        QCOMPARE(scan.deferredFrontier_.size(), 3);
+    }
+    void strongerDepartmentAliasPromotesAnExistingQueuedNavigation() {
+        QTemporaryDir folder;
+        SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);
+        const QUrl url("https://jwc.example.edu.cn/");
+        scan.enqueue(url, "一般入口", 1, false);
+        scan.enqueue(QUrl("https://www.example.edu.cn/other"), "通知公告", 1, true);
+        scan.enqueue(url, "教务在线", 2, false);
+        QCOMPARE(scan.queue_.size(), size_t(2));
+        QCOMPARE(scan.queue_.front().url, url);
+        QCOMPARE(scan.queue_.front().depth, 1);
+        QVERIFY(scan.queue_.front().candidate);
+    }
+    void requestBudgetAndBoundedFrontierReportExplainIncompleteDiscovery() {
+        QTemporaryDir folder;
+        SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);
+        QVERIFY(QDir().mkpath(scan.directory_ + "/samples"));
+        scan.enqueue(QUrl("https://jwc.example.edu.cn/"), "教务处", 1, false);
+        scan.enqueue(QUrl("https://www.example.edu.cn/deep"), "通知公告", 4, true);
+        scan.fetched_ = scan.school_.discoveryLimit;
+        QSignalSpy rejected(&scan, &SchoolOnboarding::failed);
+        scan.finish();
+        QCOMPARE(rejected.size(), 1);
+        QVERIFY(!QFile::exists(scan.directory_ + "/school.json"));
+        const auto report = objectFile(scan.directory_ + "/report.json");
+        QVERIFY(report.value("budget_exhausted").toBool());
+        QVERIFY(!report.value("discovery_complete").toBool());
+        QVERIFY(!report.value("passed").toBool());
+        const auto pending = report.value("pending_frontier").toArray();
+        QCOMPARE(pending.size(), 2);
+        QCOMPARE(pending[0].toObject().value("reason").toString(), QString("request_budget"));
+        QCOMPARE(pending[1].toObject().value("reason").toString(), QString("depth_limit"));
+        QCOMPARE(report.value("model_calls").toInt(), 0);
+        for (int i = 0; i < 300; ++i)
+            scan.enqueue(QUrl(QString("https://www.example.edu.cn/deep/%1").arg(i)), "通知公告", 4, true);
+        QCOMPARE(scan.deferredFrontier_.size(), 256);
+        QVERIFY(scan.frontierTruncated_);
+    }
+    void verifiedDetailRedirectChainIsPreservedWithoutTrustingUnvisitedHosts() {
+        QTemporaryDir folder;
+        SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);
+        QVERIFY(QDir().mkpath(scan.directory_ + "/samples"));
+        const SchoolOnboarding::Page home{QUrl("https://jwc.example.edu.cn/"), "教务处", 1, false};
+        scan.consume(home, departmentList(), {});
+        auto body = scan.queue_.front();
+        scan.queue_.pop_front();
+        body.redirectHosts = {"jwc.example.edu.cn", "relay.example.edu.cn"};
+        body.url = QUrl("https://content.example.edu.cn/info/1001/1.htm");
+        scan.consume(body, validBody(), {});
+        QCOMPARE(scan.ready_, 1);
+        const auto hosts = scan.sources_.first().toObject().value("allowed_hosts").toArray();
+        QCOMPARE(hosts.size(), 3);
+        QVERIFY(hosts.contains("jwc.example.edu.cn"));
+        QVERIFY(hosts.contains("relay.example.edu.cn"));
+        QVERIFY(hosts.contains("content.example.edu.cn"));
+        QVERIFY(!hosts.contains("unvisited.example.edu.cn"));
+        scan.finish();
+        const auto loaded = SchoolPackage::load(scan.directory_ + "/school.json");
+        QVERIFY(isAllowedUrl(QUrl("https://relay.example.edu.cn/redirect"), loaded.sources.front()));
+        QVERIFY(isAllowedUrl(body.url, loaded.sources.front()));
+        QVERIFY(!isAllowedUrl(QUrl("https://unvisited.example.edu.cn/"), loaded.sources.front()));
+    }
+    void failedLoginOrForeignDetailNeverWidensConfiguredHosts() {
+        QTemporaryDir folder;
+        const auto seed = unknownSeed(folder.path());
+        for (const auto &kind : {QString("login"), QString("foreign"), QString("failed")}) {
+            SchoolOnboarding scan(seed, folder.path(), nullptr, 0);
+            QVERIFY(QDir().mkpath(scan.directory_ + "/samples"));
+            const SchoolOnboarding::Page home{QUrl("https://jwc.example.edu.cn/"), "教务处", 1, false};
+            scan.consume(home, departmentList(), {});
+            auto body = scan.queue_.front();
+            scan.queue_.pop_front();
+            body.redirectHosts = {"jwc.example.edu.cn", "relay.example.edu.cn"};
+            body.url = QUrl(kind == "foreign" ? "https://evil.org/info/1/1.htm"
+                                               : "https://sso.example.edu.cn/login");
+            scan.consume(body, kind == "login" ? QByteArray("<title>统一身份认证</title><input type='password'>")
+                                               : validBody(), kind == "failed" ? "HTTP 403" : QString{});
+            QCOMPARE(scan.ready_, 0);
+            const auto source = scan.sources_.first().toObject();
+            QVERIFY(!source.value("enabled").toBool());
+            QCOMPARE(source.value("allowed_hosts").toArray(), QJsonArray{"jwc.example.edu.cn"});
+        }
+    }
     void sharedDepartmentNavigationLabelsReachTeachingEntries() {
         for (const auto *label : {"教务在线", "组织机构", "人才培养", "本科生院"})
             QVERIFY(SchoolOnboarding::isDiscoveryLabel(QString::fromUtf8(label)));
         QVERIFY(!SchoolOnboarding::isDiscoveryLabel("关于2027年重修缴费的通知"));
         QVERIFY(!SchoolOnboarding::isDiscoveryLabel("校友捐赠"));
+    }
+    void subjectSectionsAreListCandidatesAndInnovationLinksAreFollowed() {
+        QTemporaryDir folder;
+        SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);
+        QVERIFY(QDir().mkpath(scan.directory_ + "/samples"));
+        const SchoolOnboarding::Page home{QUrl("https://jwc.example.edu.cn/"), "教务处", 1, false};
+        scan.consume(home, departmentList() +
+            "<a href='https://innovation.example.edu.cn/'>双创教育</a>"
+            "<a href='/competition.htm'>学科竞赛</a>"
+            "<a href='/retake.htm'>重修补考</a><a href='/fees.htm'>缴费</a>"
+            "<a href='/services.htm'>教学服务</a>", {});
+        for (const auto &path : {QString("/competition.htm"), QString("/retake.htm"), QString("/fees.htm")}) {
+            const auto candidate = std::find_if(scan.queue_.begin(), scan.queue_.end(),
+                [&](const auto &page) { return !page.detail && page.url.path() == path; });
+            QVERIFY(candidate != scan.queue_.end());
+            QVERIFY(candidate->candidate);
+        }
+        QVERIFY(std::any_of(scan.queue_.begin(), scan.queue_.end(), [](const auto &page) {
+            return page.url.host() == "innovation.example.edu.cn" && page.candidate;
+        }));
+        QVERIFY(std::any_of(scan.queue_.begin(), scan.queue_.end(), [](const auto &page) {
+            return page.url.path() == "/services.htm";
+        }));
+    }
+    void verifiedListGetsBoundedPaginationButForeignNextNeverWidensTrust() {
+        for (const auto &target : {QString("/list/2.htm"), QString("https://foreign.example.org/list/2.htm")}) {
+            QTemporaryDir folder;
+            SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);
+            QVERIFY(QDir().mkpath(scan.directory_ + "/samples"));
+            const SchoolOnboarding::Page home{QUrl("https://jwc.example.edu.cn/list.htm"), "通知公告", 1, true};
+            scan.consume(home, departmentList() + QString("<span class='p_next'><a href='%1'>下页</a></span>")
+                .arg(target).toUtf8(), {});
+            const auto body = scan.queue_.front();
+            scan.queue_.pop_front();
+            scan.consume(body, validBody(), {});
+            QCOMPARE(scan.ready_, 1);
+            scan.finish();
+            const auto loaded = SchoolPackage::load(scan.directory_ + "/school.json");
+            QCOMPARE(loaded.sources.front().maxPages, target.startsWith('/') ? 3 : 1);
+            QCOMPARE(loaded.sources.front().allowedHosts, QStringList{"jwc.example.edu.cn"});
+            if (target.startsWith('/'))
+                QCOMPARE(HtmlAdapter{}.nextPage(departmentList() +
+                    "<span class='p_next'><a href='/list/2.htm'>下页</a></span>",
+                    loaded.sources.front(), home.url), QUrl("https://jwc.example.edu.cn/list/2.htm"));
+            else
+                QVERIFY(!scan.failures_.empty());
+        }
     }
     void sharedJspCmsLinksReadPublishedDatesWithoutTitleInference() {
         auto source = automatic("jsp", "https://www.bkjx.example.edu.cn/index/tzgg.htm");

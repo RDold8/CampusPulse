@@ -1,9 +1,15 @@
 #include "adapters/PublicUniversityNetwork.h"
+#ifdef Q_OS_WIN
+#include "adapters/PublicBrowserSession.h"
+#endif
+#include <QDateTime>
+#include <QHash>
 #include <QHostInfo>
 #include <QNetworkAccessManager>
 #include <QNetworkProxy>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QNetworkCookie>
 #include <QPointer>
 #include <QRegularExpression>
 #include <QTimer>
@@ -12,11 +18,45 @@
 
 namespace campus {
 namespace {
+struct PublicSession {
+    QList<QNetworkCookie> cookies;
+    QByteArray userAgent;
+    QDateTime expires;
+};
+// Host-scoped, in-memory public verification only. Never persisted or logged.
+QHash<QString, PublicSession> sessions;
+QByteArray sessionCookies(const PublicSession &session, const QUrl &url) {
+    QByteArray header;
+    for (const auto &cookie : session.cookies) {
+        QString domain = cookie.domain().toLower();
+        if (domain.startsWith('.')) domain.remove(0, 1);
+        const auto path = cookie.path().isEmpty() ? QString("/") : cookie.path();
+        const auto requestedPath = url.path().isEmpty() ? QString("/") : url.path();
+        if ((!domain.isEmpty() && domain != url.host().toLower()) ||
+            (!cookie.isSessionCookie() && cookie.expirationDate() <= QDateTime::currentDateTimeUtc()) ||
+            !(requestedPath == path || (requestedPath.startsWith(path) &&
+               (path.endsWith('/') || requestedPath.mid(path.size()).startsWith('/')))))
+            continue;
+        if (!header.isEmpty()) header += "; ";
+        header += cookie.toRawForm(QNetworkCookie::NameAndValueOnly);
+    }
+    return header;
+}
 bool subnet(const QHostAddress &address, const char *network, int bits) {
     return address.isInSubnet(QHostAddress(QString::fromLatin1(network)), bits);
 }
 } // namespace
 
+bool PublicUniversityNetwork::isBrowserVerification(int status, const QByteArray &html) {
+    if (status != 403 && status != 412 && status != 503)
+        return false;
+    const auto lower = html.left(65536).toLower();
+    if (!lower.contains("<script"))
+        return false;
+    return (lower.contains("$_ts") && lower.contains(".nsd=")) ||
+           lower.contains("/cdn-cgi/challenge-platform/") ||
+           (lower.contains("document.cookie") && lower.contains("location.reload"));
+}
 bool PublicUniversityNetwork::isPublicAddress(const QHostAddress &address) {
     if (address.isNull() || !address.scopeId().isEmpty())
         return false;
@@ -53,7 +93,8 @@ bool PublicUniversityNetwork::withinUniversity(const QUrl &url, const QString &o
 }
 
 QObject *PublicUniversityNetwork::get(const QUrl &url, const QString &officialRoot, QObject *owner,
-                                     Callback callback, int maxBytes, int timeoutMs) {
+                                     Callback callback, int maxBytes, int timeoutMs,
+                                     std::function<void(const QString &)> progress) {
     auto *operation = new QObject(owner);
     auto *timer = new QTimer(operation);
     timer->setSingleShot(true);
@@ -110,7 +151,14 @@ QObject *PublicUniversityNetwork::get(const QUrl &url, const QString &officialRo
         QNetworkRequest request(pinned);
         request.setPeerVerifyName(url.host());
         request.setRawHeader("Host", url.host().toLatin1());
-        request.setRawHeader("User-Agent", "CampusPulse/0.1 (public university discovery)");
+        const auto session = sessions.value(url.host().toLower());
+        const bool currentSession = session.expires > QDateTime::currentDateTimeUtc();
+        request.setRawHeader("User-Agent", currentSession ? session.userAgent :
+                             QByteArray("CampusPulse/0.1.2 (public university discovery)"));
+        if (currentSession) {
+            const auto cookies = sessionCookies(session, url);
+            if (!cookies.isEmpty()) request.setRawHeader("Cookie", cookies);
+        }
         request.setRawHeader("Accept", "text/html, application/xhtml+xml");
         request.setRawHeader("Connection", "close");
         request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
@@ -153,8 +201,36 @@ QObject *PublicUniversityNetwork::get(const QUrl &url, const QString &officialRo
                         status});
             else if (!redirect.isEmpty())
                 finish({{}, url.resolved(redirect), {}, status});
+            else if (isBrowserVerification(status, *bytes)) {
+#ifdef Q_OS_WIN
+                // The server supplied a public browser verification page, not
+                // a university homepage. Execute it in an isolated browser;
+                // subsequent pages return to the bounded HTTP path.
+                timer->stop();
+                if (progress) progress("官网返回浏览器验证页，正在使用独立公开会话验证；不读取个人浏览器或教务账号。");
+                PublicBrowserSession::verify(url, address, operation,
+                    [finish, url, maxBytes](PublicBrowserSession::Result result) {
+                        if (!result.error.isEmpty() || result.status != 200 ||
+                            result.html.isEmpty() || result.html.size() > maxBytes) {
+                            finish({{}, {}, result.error.isEmpty() ?
+                                QString("官网浏览器验证未完成，保留当前学校。") : result.error,
+                                result.status});
+                            return;
+                        }
+                        sessions.insert(url.host().toLower(),
+                            {result.cookies, result.userAgent, QDateTime::currentDateTimeUtc().addSecs(1200)});
+                        if (!result.finalUrl.isEmpty() && result.finalUrl != url)
+                            finish({{}, result.finalUrl, {}, 302});
+                        else
+                            finish({result.html, {}, {}, result.status});
+                    }, maxBytes, 25000);
+#else
+                finish({{}, {}, "官网需要公开浏览器验证；当前平台尚未提供独立验证组件。", status});
+#endif
+            }
             else if (reply->error() != QNetworkReply::NoError)
-                finish({{}, {}, reply->errorString(), status});
+                finish({{}, {}, status ? QString("官网 %1 返回 HTTP %2。").arg(url.host()).arg(status) :
+                        QString("官网 %1 的 HTTPS 请求失败（网络错误 %2）。").arg(url.host()).arg(int(reply->error())), status});
             else if (status != 200)
                 finish({{}, {}, QString("官网HTTP状态：%1").arg(status), status});
             else

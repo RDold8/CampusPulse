@@ -9,10 +9,32 @@
 #include <QRegularExpression>
 #include <QTimer>
 #include <QDebug>
+#include <algorithm>
 #include <stdexcept>
 
 namespace campus {
 namespace {
+bool departmentLabel(const QString &label) {
+    static const QRegularExpression departments(
+        "教务处|教务在线|本科生院|本科教学|本科生教育|教学管理|学生工作|学生处|学工|"
+        "学生资助|资助中心|研究生院|研究生部|研究生教育|团委|就业指导|就业中心|^就业$|财务处|财务部|"
+        "双创教育|创新创业学院");
+    return label.size() <= 35 && !label.contains("关于") && departments.match(label).hasMatch();
+}
+int navigationPriority(const QString &label, bool candidate) {
+    if (candidate && (label.contains("通知公告") || label.contains("教务通知") ||
+                      label.contains("奖助") || label.contains("学生资助") ||
+                      label.contains("竞赛") || label.contains("双创") || label.contains("创新创业")))
+        return 2;
+    if (label.contains("教务") || label.contains("本科生院") || label.contains("本科教学") ||
+        label.contains("本科生教育") || label.contains("教学管理") ||
+        (candidate && (label.contains("考试") || label.contains("补考") || label.contains("重修"))))
+        return 3;
+    if (departmentLabel(label) || label == "在校生" || label.contains("机构") || label.contains("部门导航") ||
+        label.contains("职能部门") || label.contains("管理与服务"))
+        return 2;
+    return candidate ? 1 : 0;
+}
 QString key(const QUrl &url) {
     return "auto-" + QCryptographicHash::hash(url.toString(QUrl::FullyEncoded).toUtf8(),
                                               QCryptographicHash::Sha256)
@@ -59,9 +81,10 @@ bool SchoolOnboarding::isDiscoveryLabel(const QString &label) {
     static const QRegularExpression interest(
         "通知公告|教务通知|教学通知|考试通知|考试安排|补考安排|重修通知|选课通知|学生工作|共青团|"
         "本科教育|本科生教育|本科生院|本科教学|教学管理|教务处|教务在线|人才培养|学生处|团委|研究生教育|"
-        "招生就业|就业服务|学生就业|招聘快讯|招聘简章|校园招聘|奖贷学金|"
-        "奖助|学生资助|财务|缴费|收费|竞赛|校园活动|学生活动|研究生培养|研究生工作|机构设置|"
-        "组织机构|部门导航|管理、服务与业务机构|管理与服务机构");
+        "招生就业|^就业$|就业服务|学生就业|在校生|院系机构|招聘快讯|招聘简章|校园招聘|奖贷学金|"
+        "奖助|奖学金|学生资助|财务|缴费|收费|竞赛|大赛|双创教育|创新创业|教学服务|办事指南|"
+        "课表考表|课程考试|重修|补考|校园活动|学生活动|研究生培养|研究生工作|机构设置|"
+        "组织机构|部门导航|职能部门|管理机构|教育教学|管理、服务与业务机构|管理与服务机构");
     return label.size() <= 35 && !label.contains("关于") && interest.match(label).hasMatch();
 }
 void SchoolOnboarding::enqueue(QUrl url, QString label, int depth, bool candidate) {
@@ -75,20 +98,96 @@ void SchoolOnboarding::enqueue(QUrl url, QString label, int depth, bool candidat
         QRegularExpression("/[0-9a-fA-F]{24,64}\\.htm[l]?$").match(url.path()).hasMatch() ||
         QRegularExpression("/\\d+\\.jhtml$").match(url.path()).hasMatch())
         return;
-    if (!withinUniversity(url, root_) || depth > 3 || queue_.size() >= 48)
+    if (!withinUniversity(url, root_))
         return;
     const auto canonical = url.toString(QUrl::FullyEncoded);
-    if (queued_.contains(canonical))
-        return;
-    queued_.insert(canonical);
-    Page page{url, label, depth, candidate};
+    Page page{url, label, depth, candidate || departmentLabel(label)};
     page.origin = url;
-    if (label.contains("教务") || label.contains("本科生院") || label.contains("本科教学") ||
-        label.contains("本科生教育") || label.contains("教学管理") ||
-        (candidate && (label.contains("考试") || label.contains("补考") || label.contains("重修"))))
-        queue_.push_front(page);
-    else
-        queue_.push_back(page);
+    page.priority = navigationPriority(label, page.candidate);
+    if (queued_.contains(canonical)) {
+        // A second navigation label can reveal a teaching entry previously seen as generic.
+        for (auto existing = queue_.begin(); existing != queue_.end(); ++existing)
+            if (!existing->detail && existing->url == url &&
+                (existing->priority < page.priority || (!existing->candidate && page.candidate))) {
+                page.candidate = page.candidate || existing->candidate;
+                page.depth = std::min(page.depth, existing->depth);
+                queue_.erase(existing);
+                pushPage(std::move(page));
+                break;
+            }
+        return;
+    }
+    if (depth > 3) {
+        defer(page, "depth_limit");
+        return;
+    }
+    queued_.insert(canonical);
+    pushPage(std::move(page));
+}
+QString SchoolOnboarding::frontierId(const Page &page) {
+    return page.url.toString(QUrl::FullyEncoded) + (page.detail ? "|" + page.sourceKey : QString{});
+}
+QJsonObject SchoolOnboarding::frontierEntry(const Page &page, const QString &reason) {
+    return {{"url", page.url.toString(QUrl::FullyEncoded)}, {"label", page.label.left(160)},
+            {"depth", page.depth}, {"candidate", page.candidate}, {"priority", page.priority},
+            {"kind", page.detail ? "detail_validation" : "navigation"},
+            {"source_key", page.sourceKey}, {"reason", reason}};
+}
+void SchoolOnboarding::defer(const Page &page, const QString &reason) {
+    const auto id = frontierId(page);
+    if (deferredFrontier_.size() >= 256 && !deferredFrontier_.contains(id)) {
+        frontierTruncated_ = true;
+        return;
+    }
+    deferredFrontier_[id] = frontierEntry(page, reason);
+}
+void SchoolOnboarding::pushPage(Page page) {
+    if (!page.detail)
+        for (auto existing = queue_.begin(); existing != queue_.end(); ++existing)
+            if (!existing->detail && existing->url == page.url) {
+                page.candidate = page.candidate || existing->candidate;
+                if (navigationPriority(existing->label, existing->candidate) >
+                    navigationPriority(page.label, page.candidate))
+                    page.label = existing->label;
+                page.priority = std::max(page.priority, existing->priority);
+                page.depth = std::min(page.depth, existing->depth);
+                queue_.erase(existing);
+                break;
+            }
+    if (queue_.size() >= 48) {
+        auto weakest = queue_.begin();
+        for (auto entry = queue_.begin(); entry != queue_.end(); ++entry)
+            if (entry->priority <= weakest->priority)
+                weakest = entry;
+        if (weakest->priority >= page.priority) {
+            defer(page, "queue_limit");
+            if (!page.detail)
+                queued_.remove(page.url.toString(QUrl::FullyEncoded));
+            return;
+        }
+        defer(*weakest, "queue_priority");
+        if (!weakest->detail)
+            queued_.remove(weakest->url.toString(QUrl::FullyEncoded));
+        queue_.erase(weakest);
+    }
+    deferredFrontier_.remove(frontierId(page));
+    if (!page.detail)
+        queued_.insert(page.url.toString(QUrl::FullyEncoded));
+    const auto position = std::find_if(queue_.begin(), queue_.end(), [&](const Page &existing) {
+        return existing.priority < page.priority;
+    });
+    queue_.insert(position, std::move(page));
+}
+QStringList SchoolOnboarding::pageHosts(const Page &page) const {
+    if (!withinUniversity(page.url, root_))
+        throw std::runtime_error("页面不在高校官方HTTPS域内");
+    auto hosts = page.redirectHosts;
+    hosts << page.url.host().toLower();
+    hosts.removeDuplicates();
+    for (const auto &host : hosts)
+        if (!withinUniversity(QUrl("https://" + host + "/"), root_))
+            throw std::runtime_error("已验证跳转主机超出高校官方域");
+    return hosts;
 }
 void SchoolOnboarding::start() {
     if (started_)
@@ -132,9 +231,12 @@ void SchoolOnboarding::next() {
         if (!redirected.isEmpty()) {
             if (withinUniversity(redirected, root_) && page.redirects < 3) {
                 auto nextPage = page;
+                if (!nextPage.redirectHosts.contains(page.url.host()))
+                    nextPage.redirectHosts << page.url.host();
                 nextPage.url = redirected;
+                nextPage.priority = 4; // Complete the verified redirect chain before new navigation.
                 ++nextPage.redirects;
-                queue_.push_front(nextPage);
+                pushPage(std::move(nextPage));
             } else
                 consume(page, {}, "重定向超出高校官方域或次数上限");
         } else if (!result.error.isEmpty())
@@ -145,6 +247,7 @@ void SchoolOnboarding::next() {
     }, 5 * 1024 * 1024, 12000);
 }
 void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const QString &error) {
+    const bool listCandidate = page.candidate || departmentLabel(page.label);
     QJsonObject failure{{"url", page.url.toString()},
                         {"error", error},
                         {"discovered_from", page.origin.toString()}};
@@ -161,7 +264,7 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
     const auto markFailure = [&](const QString &reason, bool requiresLogin = false) {
         failure["error"] = reason;
         failures_.append(failure);
-        if (page.candidate && page.sourceKey.isEmpty()) {
+        if (listCandidate && page.sourceKey.isEmpty()) {
             const auto original = page.origin.isEmpty() ? page.url : page.origin;
             const auto id = key(original);
             bool exists = false;
@@ -222,17 +325,19 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
             {"captured_at", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)},
             {"bytes", bytes.size()}});
         const auto pageTitle = parser_.pageTitle(bytes);
-        if ((page.candidate || page.detail) && isLoginPage(bytes, pageTitle, page.url)) {
+        if ((listCandidate || page.detail) && isLoginPage(bytes, pageTitle, page.url)) {
             markFailure("此入口需要登录，未采集受限内容；可补充公开通知栏目。", true);
             return;
         }
         if (page.detail) {
+            if (counts_.value(page.sourceKey) < 3)
+                throw std::runtime_error("列表尚未验证至少3条有效通知，未启用来源");
             SourceConfig source;
             source.schoolId = school_.id;
             source.id = page.sourceKey;
             source.entry = page.url;
             source.autoDetect = true;
-            source.allowedHosts = {page.url.host()};
+            source.allowedHosts = pageHosts(page);
             const auto detail = parser_.parseDetail(bytes, source, *page.detail);
             if (detail.body.size() < 30)
                 throw std::runtime_error("正文过短，未通过自动校验");
@@ -240,10 +345,17 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
                 auto value = sources_[i].toObject();
                 if (value.value("key").toString() != page.sourceKey)
                     continue;
+                auto hosts = value.value("allowed_hosts").toArray();
+                for (const auto &host : source.allowedHosts)
+                    if (!hosts.contains(host))
+                        hosts.append(host);
+                value["allowed_hosts"] = hosts;
                 value["enabled"] = true;
                 value["validation_state"] = "adapter_verified";
-                value["pending"] =
-                    QJsonArray{"已自动验证列表和一条正文；范围为当前列表页，尚不含历史全量"};
+                value["pending"] = QJsonArray{
+                    value.value("extraction").toObject().contains("pagination")
+                        ? "已验证列表和一条正文；更新最多读取3页，尚不含历史全量"
+                        : "已自动验证列表和一条正文；范围为当前列表页，尚不含历史全量"};
                 sources_[i] = value;
                 ++ready_;
                 rows_ += counts_.value(page.sourceKey);
@@ -251,13 +363,16 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
             }
             return;
         }
-        if (page.candidate) {
+        if (listCandidate) {
             SourceConfig source;
             source.schoolId = school_.id;
             source.id = id;
             source.entry = page.url;
             source.name = parser_.pageTitle(bytes);
-            source.allowedHosts = {page.url.host()};
+            source.allowedHosts = pageHosts(page);
+            QJsonArray allowedHosts;
+            for (const auto &host : source.allowedHosts)
+                allowedHosts.append(host);
             source.autoDetect = true;
             source.allowUnknownDates = true;
             QJsonObject value{
@@ -265,7 +380,7 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
                 {"name", source.name.isEmpty() ? page.label : source.name},
                 {"discovery_url", page.url.toString()},
                 {"entry_url", page.url.toString()},
-                {"allowed_hosts", QJsonArray{page.url.host()}},
+                {"allowed_hosts", allowedHosts},
                 {"adapter", "html_list_detail"},
                 {"category_hints", QJsonArray{}},
                 {"pending",
@@ -277,12 +392,30 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
                 value["validation_state"] = "detail_discovered";
                 value["extraction"] =
                     QJsonObject{{"query_language", "auto"}, {"allow_unknown_dates", true}};
+                // Shared CMS and standard pagination selectors. Enable bounded history
+                // only after checking a real same-host next link on the verified list.
+                source.nextPageSelector = ".p_next a, a[rel='next'], .pagination a.next, "
+                                          ".pagination .next a, a.next-page";
+                try {
+                    const auto next = parser_.nextPage(bytes, source, page.url);
+                    if (!next.isEmpty() && next != page.url && !next.path().contains("/info/")) {
+                        auto extraction = value.value("extraction").toObject();
+                        extraction["pagination"] = QJsonObject{
+                            {"next_selector", source.nextPageSelector}, {"max_pages", 3}};
+                        value["extraction"] = extraction;
+                    }
+                } catch (const std::exception &paginationError) {
+                    failures_.append(QJsonObject{{"url", page.url.toString()},
+                        {"error", "分页未启用：" + QString::fromUtf8(paginationError.what())}});
+                }
                 value["pending"] = QJsonArray{"等待首条正文校验"};
                 Page detailPage{QUrl(QString::fromStdString(notices.front().url)), "正文校验",
                                 page.depth, false};
                 detailPage.detail = notices.front();
                 detailPage.sourceKey = id;
-                queue_.push_front(detailPage);
+                detailPage.origin = detailPage.url;
+                detailPage.priority = 4;
+                pushPage(std::move(detailPage));
                 emit progress(QString("已识别 %1：%2条通知；日期不明保留待核实")
                                   .arg(source.name)
                                   .arg(notices.size()));
@@ -291,13 +424,24 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
                 value["validation_state"] = "list_readable";
                 value["adapter"] = "pending";
                 value["extraction"] = QJsonValue::Null;
-                value["pending"] = QJsonArray{QString::fromUtf8(e.what())};
-                failure["error"] = QString::fromUtf8(e.what());
+                const QRegularExpression overview(
+                    "(?:教务处|本科生院|学生处|研究生院|财务处|团委)(?:概况|简介|职责)|部门(?:介绍|概况|职责)");
+                const auto reason = overview.match(source.name + page.label).hasMatch() ?
+                    QString("部门介绍页面，属于学校资源，不作为通知列表。可在“学校资源”页发现并查看。") :
+                    QString::fromUtf8(e.what());
+                value["pending"] = QJsonArray{reason};
+                failure["error"] = reason;
                 failures_.append(failure);
             }
             sources_.append(value);
         }
         for (const auto &link : parser_.links(bytes, page.url)) {
+            // Discovery locates sections. Their page-number links are history,
+            // not additional sections, and must not crowd out other departments.
+            static const QRegularExpression pagination(
+                "^(?:[0-9]{1,5}|第[0-9]{1,5}页|上一页|下一页|上页|下页|尾页|末页|[<>‹›«»]+)$");
+            if (pagination.match(link.title.trimmed()).hasMatch())
+                continue;
             if (school_.discoveryEntries.size() > 1 &&
                 (link.title.contains("机构设置") || link.title.contains("部门导航") ||
                  link.title.contains("管理、服务与业务机构")))
@@ -310,6 +454,11 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
             const bool list = link.title.contains("通知") || link.title.contains("考试安排") ||
                               link.title.contains("补考安排") || link.title.contains("招聘") ||
                               link.title.contains("奖助") || link.title.contains("资助") ||
+                              link.title.contains("奖学金") || link.title.contains("竞赛") ||
+                              link.title.contains("大赛") || link.title.contains("校园活动") ||
+                              link.title.contains("学生活动") || link.title.contains("重修") ||
+                              link.title.contains("补考") || link.title.contains("考试") ||
+                              link.title.contains("缴费") || link.title.contains("收费") ||
                               knownListPath;
             enqueue(link.url, link.title, page.depth + 1, list);
         }
@@ -319,11 +468,24 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
 }
 void SchoolOnboarding::finish() {
     try {
+        const bool budgetExhausted = fetched_ >= school_.discoveryLimit && !queue_.empty();
+        QJsonArray pendingFrontier;
+        for (const auto &page : queue_)
+            pendingFrontier.append(frontierEntry(page, budgetExhausted ? "request_budget" : "pending"));
+        for (const auto &entry : deferredFrontier_)
+            pendingFrontier.append(entry);
         const QJsonObject report{{"school_id", school_.id}, {"ready_sources", ready_},
                                  {"list_rows", rows_},      {"fetched_pages", fetched_},
                                  {"model_calls", 0},        {"samples", samples_},
-                                 {"failures", failures_},   {"passed", ready_ > 0}};
+                                 {"failures", failures_},   {"passed", ready_ > 0},
+                                 {"budget_exhausted", budgetExhausted},
+                                 {"discovery_complete", pendingFrontier.empty() && !frontierTruncated_},
+                                 {"pending_frontier", pendingFrontier},
+                                 {"pending_frontier_truncated", frontierTruncated_}};
         writeArtifact(directory_ + "/report.json", QJsonDocument(report).toJson());
+        if (!pendingFrontier.empty() || frontierTruncated_)
+            emit progress(QString("本轮发现有未扫描入口（%1条已记录），详见扫描报告；未放宽列表或正文校验。")
+                              .arg(pendingFrontier.size()));
         if (ready_ == 0) {
             emit failed("已保存扫描报告，但没有通过校验的列表；保留当前学校，需其他适配器。" +
                         directory_ + "/report.json");

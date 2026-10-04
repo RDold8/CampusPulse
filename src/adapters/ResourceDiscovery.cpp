@@ -70,7 +70,8 @@ QSet<QString> unsafeTargets(const QByteArray &html, const QUrl &page) {
 }
 bool navigation(const QString &label) {
     static const QRegularExpression pattern(
-        "教务处|图书馆|研究生院|研究生部|学生工作|学工|财务|团委|就业|机构设置|部门导航|人才培养|"
+        "教务处|本科生教育|本科生院|研究生教育|在校生|院系机构|图书馆|研究生院|研究生部|学生工作|学工|财务|团委|就业|机构设置|部门导航|人才培养|"
+        "教学服务|办事指南|课表考表|双创教育|创新创业|"
         "服务指南|电子资源");
     return label.size() <= 40 && !label.contains("通知") && !label.contains("关于") &&
            pattern.match(label).hasMatch();

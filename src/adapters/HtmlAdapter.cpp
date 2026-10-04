@@ -231,6 +231,27 @@ std::vector<Notice> HtmlAdapter::parseList(const QByteArray &html,
                         !(published = publicationDate(raw)).isEmpty())
                         break;
                 }
+            if (published.isEmpty()) {
+                // Some cards explicitly render the publication day and year-
+                // month in separate short nodes. Require one unambiguous pair;
+                // never search the title/summary for a year or an event date.
+                const QRegularExpression yearMonth("^(\\d{4})[-/.](\\d{1,2})$");
+                const QRegularExpression dayOnly("^\\d{1,2}$");
+                QSet<QString> months, days;
+                for (auto node : doc.select(row, "span, time, .date, .time")) {
+                    const auto raw = text(node);
+                    if (yearMonth.match(raw).hasMatch()) months.insert(raw);
+                }
+                for (auto node : doc.select(row, "h2, h3, h4, h5, .day")) {
+                    const auto raw = text(node);
+                    if (dayOnly.match(raw).hasMatch()) days.insert(raw);
+                }
+                if (months.size() == 1 && days.size() == 1) {
+                    const auto match = yearMonth.match(*months.begin());
+                    published = QDate(match.captured(1).toInt(), match.captured(2).toInt(),
+                                      days.begin()->toInt()).toString(Qt::ISODate);
+                }
+            }
             // Some CMS templates place a full publication date directly after
             // the anchor. Read direct text only; never infer it from the title.
             if (published.isEmpty()) {
@@ -242,9 +263,13 @@ std::vector<Notice> HtmlAdapter::parseList(const QByteArray &html,
                 continue;
             auto title = attribute(anchor, "title", 5).simplified();
             if (title.isEmpty()) {
-                const auto titles = doc.select(anchor, ".title, h3, h4, h5");
-                if (!titles.empty())
-                    title = text(titles.front());
+                for (auto node : doc.select(anchor, ".title, h2, h3, h4, h5")) {
+                    const auto raw = text(node);
+                    if (raw.size() >= 4 && !isDateField(raw)) {
+                        title = raw;
+                        break;
+                    }
+                }
             }
             if (title.isEmpty()) {
                 QSet<lxb_dom_node_t *> dateNodes;
@@ -427,9 +452,20 @@ std::vector<PageLink> HtmlAdapter::links(const QByteArray &html, const QUrl &pag
     HtmlDocument doc(html);
     std::vector<PageLink> result;
     for (auto node : doc.select(doc.root(), "a[href]")) {
-        const auto label = text(node);
+        auto label = text(node);
+        // Icon-based navigation often stores its readable label only in attributes.
+        if (label.isEmpty())
+            label = attribute(node, "title", 5).simplified();
+        if (label.isEmpty())
+            label = attribute(node, "aria-label", 10).simplified();
+        if (label.isEmpty())
+            for (auto image : doc.select(node, "img[alt]")) {
+                label = attribute(image, "alt", 3).simplified();
+                if (!label.isEmpty())
+                    break;
+            }
         const auto url = page.resolved(QUrl(attribute(node, "href", 4)));
-        if (!label.isEmpty())
+        if (!label.isEmpty() && label.size() <= 300)
             result.push_back({label, url});
     }
     return result;

@@ -22,9 +22,11 @@ class PublicUniversityNetwork final {
     using Callback = std::function<void(UniversityPageResponse)>;
     static bool isPublicAddress(const QHostAddress &address);
     static bool withinUniversity(const QUrl &url, const QString &officialRoot);
+    static bool isBrowserVerification(int status, const QByteArray &html);
     static QObject *get(const QUrl &url, const QString &officialRoot, QObject *owner,
                         Callback callback, int maxBytes = 2 * 1024 * 1024,
-                        int timeoutMs = 12000);
+                        int timeoutMs = 12000,
+                        std::function<void(const QString &)> progress = {});
 };
 
 } // namespace campus

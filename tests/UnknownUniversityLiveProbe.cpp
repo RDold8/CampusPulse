@@ -61,8 +61,10 @@ int main(int argc, char **argv) {
         app.exit(code);
     };
     QObject::connect(&timeout, &QTimer::timeout, &app,
-                     [&] { finish(2, "Live probe exceeded its 300 second bound"); });
+                     [&] { finish(2, "Live probe exceeded its 600 second bound"); });
     auto *discovery = new UnknownUniversityDiscovery(cli.value("url"), output + "/identities", &app);
+    QObject::connect(discovery, &UnknownUniversityDiscovery::progress, &app,
+                     [](const QString &message) { qInfo().noquote() << message; });
     QObject::connect(discovery, &UnknownUniversityDiscovery::failed, &app,
                      [&](const QString &error) { finish(1, error); });
     QObject::connect(discovery, &UnknownUniversityDiscovery::finished, &app,
@@ -75,6 +77,8 @@ int main(int argc, char **argv) {
             evidence["school_id"] = school.id;
             reportFile = output + "/" + school.id + "/report.json";
             auto *scan = new SchoolOnboarding(file, output, &app, 3000);
+            QObject::connect(scan, &SchoolOnboarding::progress, &app,
+                             [](const QString &message) { qInfo().noquote() << message; });
             QObject::connect(scan, &SchoolOnboarding::failed, &app,
                              [&](const QString &error) { finish(1, error); });
             QObject::connect(scan, &SchoolOnboarding::finished, &app,
@@ -90,7 +94,7 @@ int main(int argc, char **argv) {
             finish(1, QString::fromUtf8(failure.what()));
         }
     });
-    timeout.start(300000);
+    timeout.start(600000);
     QTimer::singleShot(0, discovery, &UnknownUniversityDiscovery::start);
     return app.exec();
 }

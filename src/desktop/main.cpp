@@ -84,20 +84,16 @@ int main(int argc, char **argv) {
     QApplication app(argc, argv);
     app.setOrganizationName("CampusPulse");
     app.setApplicationName("CampusPulse");
-    app.setApplicationVersion("0.1.1");
-    BrandTheme::installApplication(app);
-    QSettings preferences;
+    app.setApplicationVersion("0.1.2");
     const auto defaultConfig =
         QCoreApplication::applicationDirPath() + "/configs/schools/neepu.example.json";
-    auto selectedConfig = preferences.value("selectedSchoolConfig", defaultConfig).toString();
-    if (!QFileInfo::exists(selectedConfig))
-        selectedConfig = defaultConfig;
     QNetworkProxyFactory::setUseSystemConfiguration(true);
     QCommandLineParser cli;
     cli.setApplicationDescription("CampusPulse C++桌面原型");
     cli.addHelpOption();
     cli.addVersionOption();
-    cli.addOption({"config", "学校配置文件", "path", selectedConfig});
+    cli.addOption({"config", "学校配置文件", "path", defaultConfig});
+    cli.addOption({"settings-dir", "独立INI设置目录，不与默认用户设置共享", "path"});
     cli.addOption({"database", "本地数据库文件", "path"});
     cli.addOption({"desktop-id", "将应用窗口放到指定Windows虚拟桌面，不切换当前桌面", "guid"});
     cli.addOption({"no-system-notifications", "仅显示应用内提醒，用于隔离桌面测试"});
@@ -109,6 +105,19 @@ int main(int argc, char **argv) {
     cli.addOption({"onboard-output", "自动接入输出目录", "path"});
     cli.addOption({"evidence", "验证结果JSON文件", "path", "live-proof.json"});
     cli.process(app);
+    if (cli.isSet("settings-dir")) {
+        const auto settingsDirectory = QFileInfo(cli.value("settings-dir")).absoluteFilePath();
+        if (cli.value("settings-dir").isEmpty() || !QDir().mkpath(settingsDirectory)) {
+            qCritical("Cannot create independent settings directory");
+            return 2;
+        }
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settingsDirectory);
+    }
+    BrandTheme::installApplication(app);
+    QSettings preferences;
+    auto selectedConfig = preferences.value("selectedSchoolConfig", defaultConfig).toString();
+    if (!QFileInfo::exists(selectedConfig)) selectedConfig = defaultConfig;
     try {
         const auto dataFolder =
             QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
@@ -118,7 +127,7 @@ int main(int argc, char **argv) {
         const auto identitiesFolder = onboardingFolder + "/identities";
         UniversityRegistry registry(QCoreApplication::applicationDirPath() +
                                     "/configs/schools", identitiesFolder);
-        auto startupConfig = cli.value("config");
+        auto startupConfig = cli.isSet("config") ? cli.value("config") : selectedConfig;
         if (!cli.isSet("config")) {
             try {
                 registry.loadSessionPackage(startupConfig);

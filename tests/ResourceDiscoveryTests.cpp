@@ -60,6 +60,23 @@ const SchoolResource &find(const MemoryResources &repository, const QString &url
 class ResourceDiscoveryTests : public QObject {
     Q_OBJECT
   private slots:
+    void departmentOverviewIsAResourceWithoutNoticeListGate() {
+        QTemporaryDir directory;
+        MemoryResources repository;
+        ResourceService service(repository, "cn-neepu");
+        ResourceDiscovery discovery(school(), service, nullptr, options(directory));
+        const QUrl url("https://jwc.neepu.edu.cn/overview.htm");
+        const ResourceDiscovery::Page page{url, url, school().officialHomepage,
+                                            "教务处概况", 1, 0};
+        discovery.consume(page,
+            "<title>教务处概况</title><main>教务处负责本科教学管理与学生学籍工作。"
+            "本页介绍部门职责和办事分工，请通过官方联系方式咨询。</main>", {});
+        const auto &resource = find(repository, url.toString());
+        QCOMPARE(resource.title, std::string("教务处概况"));
+        QCOMPARE(resource.category, std::string("student_services"));
+        QCOMPARE(resource.status, std::string("verified"));
+        QVERIFY(!resource.lastCheckedAt.empty());
+    }
     void safeUrlsAndOfficialBoundariesNeverRelaxForFixtures() {
         const QString root = "neepu.edu.cn";
         QVERIFY(ResourceClassifier::isOfficial(QUrl("https://lib.neepu.edu.cn/"), root));

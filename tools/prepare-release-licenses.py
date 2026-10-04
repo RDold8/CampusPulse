@@ -18,6 +18,37 @@ SOURCES = {
     "libical-3.0.20.zip": "7b48f3f67e241e5efa620cabfe04392eb666917a93e8dfc825f046346f7fa6e7",
 }
 
+WEBVIEW2_SDK = {
+    "version": "1.0.3537.50",
+    "url": "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.3537.50/"
+           "microsoft.web.webview2.1.0.3537.50.nupkg",
+    "sha256": "5ea526bbd728adda0da4d31219267e96460494a427e4894c4e09d9f320f4b9aa",
+    "license": "BSD-3-Clause",
+    "linkage": "WebView2LoaderStatic.lib; browser runtime is installed separately",
+}
+# Notice bytes from the pinned NuGet archive, not from a machine's browser runtime.
+WEBVIEW2_NOTICES = {
+    "LICENSE.txt": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
+    "NOTICE.txt": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90",
+}
+
+
+def copy_webview2_notices(root: Path, licenses: Path, sdk_dir: Path | None) -> None:
+    candidates = [sdk_dir] if sdk_dir else [root / "build" / "_deps" / "webview2-src", root / ".deps" / "webview2"]
+    selected = next((path for path in candidates if path and (path / "LICENSE.txt").is_file()), None)
+    if selected is None:
+        raise FileNotFoundError("Pinned WebView2 SDK notices not found; build first or use --webview2-sdk-dir")
+    notices = {}
+    for name, expected in WEBVIEW2_NOTICES.items():
+        content = (selected / name).read_bytes()
+        if hashlib.sha256(content).hexdigest() != expected:
+            raise ValueError(f"WebView2 SDK notice SHA-256 mismatch: {name}")
+        notices[name] = content
+    target = licenses / "WebView2-SDK"
+    target.mkdir(parents=True, exist_ok=True)
+    for name, content in notices.items():
+        (target / name).write_bytes(content)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -25,8 +56,9 @@ def main() -> None:
     parser.add_argument("--qt-root", required=True, type=Path)
     parser.add_argument("--source-dir", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
-    parser.add_argument("--version", default="0.1.1")
+    parser.add_argument("--version", default="0.1.2")
     parser.add_argument("--source-release-version", help="Published release containing unchanged dependency sources")
+    parser.add_argument("--webview2-sdk-dir", type=Path, help="Extracted pinned SDK, for a custom build directory")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     licenses = args.package_dir / "licenses"
@@ -77,6 +109,8 @@ def main() -> None:
             if path.is_file() and path.name.upper().startswith(("LICENSE", "COPYING", "NOTICE")):
                 shutil.copy2(path, target / path.name)
 
+    copy_webview2_notices(root, licenses, args.webview2_sdk_dir)
+
     microsoft = licenses / "Microsoft"
     microsoft.mkdir(exist_ok=True)
     runtime_doc = args.source_dir / "Visual-C-Runtime-2015-2022-License-1.docx"
@@ -93,6 +127,8 @@ def main() -> None:
         "You may replace Qt DLLs with compatible modified builds and debug/reverse-engineer the application\n"
         "for that purpose. There is no signature or activation check preventing this.\n"
         "Lexbor: Apache-2.0. libical: MPL-2.0. SQLite: public domain.\n"
+        "WebView2 SDK 1.0.3537.50: BSD-3-Clause; loader and third-party notices are in licenses/WebView2-SDK.\n"
+        "The Microsoft Edge WebView2 Evergreen Runtime is installed separately and is not included in this package.\n"
         "Microsoft's terms below apply only to the Microsoft Visual C++ Runtime DLLs, not CampusPulse or Qt.\n\n"
         + (root / "LICENSE").read_text(encoding="utf-8") + "\n\n" + runtime_terms,
         encoding="utf-8",
@@ -106,6 +142,12 @@ def main() -> None:
         "qt_source_commit": "c07c2d5a527a644d36e7853d55132ae38921682f",
         "sqlite_version": "3.49.1",
         "sources": [{**asset, "url": url + asset["name"]} for asset in assets],
+        "webview2_sdk": WEBVIEW2_SDK,
+        "webview2_runtime": {
+            "deployment": "Microsoft Edge WebView2 Evergreen Runtime; installed separately, not bundled",
+            "distribution_documentation": "https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution",
+            "download_url": "https://developer.microsoft.com/en-us/microsoft-edge/webview2/",
+        },
         "source_changes": "No Qt, Lexbor or libical modifications",
     }
     (licenses / "dependency-sources.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -113,6 +155,9 @@ def main() -> None:
         "Corresponding dependency sources are available at no charge from the same CampusPulse release.\n"
         f"https://github.com/RDold8/CampusPulse/releases/tag/v{source_release}\n\n"
         + "\n".join(f"{asset['name']}\nSHA256: {asset['sha256']}\n{url}{asset['name']}\n" for asset in assets)
+        + f"\nWebView2 SDK {WEBVIEW2_SDK['version']} (unmodified static loader, BSD-3-Clause)\n"
+        f"NuGet SHA256: {WEBVIEW2_SDK['sha256']}\n{WEBVIEW2_SDK['url']}\n"
+        "The separately installed WebView2 Evergreen Runtime is not redistributed by this release.\n"
         + "\nQt builds with CMake and the x64 MSVC toolchain. Keep the Qt 6.8 ABI when replacing DLLs.\n"
         "Rebuild CampusPulse using the public CMake source when changing ABI/toolchains.\n"
         "Build instructions: https://github.com/RDold8/CampusPulse/blob/main/docs/windows-release.md\n",

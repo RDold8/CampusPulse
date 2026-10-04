@@ -127,7 +127,7 @@ QJsonObject UnknownUniversityDiscovery::seedDocument(const QUrl &homepage, const
                                         {"respect_source_policy", true},
                                         {"conditional_requests", true}}},
         {"sources", QJsonArray{}},
-        {"auto_discovery", QJsonObject{{"department_urls", QJsonArray{}}, {"max_pages", 24}}},
+        {"auto_discovery", QJsonObject{{"department_urls", QJsonArray{}}, {"max_pages", 48}}},
         {"resource_discovery", QJsonObject{{"department_urls", QJsonArray{normalized.toString()}},
                                             {"max_pages", 32}}}};
 }
@@ -178,6 +178,6 @@ void UnknownUniversityDiscovery::fetch(const QUrl &url, int redirects) {
         } catch (const std::exception &error) {
             emit failed(QString::fromUtf8(error.what()));
         }
-    });
+    }, 2 * 1024 * 1024, 12000, [this](const QString &message) { emit progress(message); });
 }
 } // namespace campus

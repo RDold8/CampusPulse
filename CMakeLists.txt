@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CampusPulse VERSION 0.1.1 LANGUAGES C CXX)
+project(CampusPulse VERSION 0.1.2 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -62,7 +62,17 @@ target_sources(campus_adapters PRIVATE src/adapters/PublicUniversityNetwork.cpp
     src/adapters/AiSearchTemplate.cpp)
 target_link_libraries(campus_adapters PUBLIC campus_application Qt6::Network PRIVATE lexbor_static ical)
 if(WIN32)
-    target_link_libraries(campus_adapters PRIVATE crypt32)
+    # The small SDK loader uses the separately installed Evergreen runtime.
+    # No browser profile or personal browser cookies are shared with CampusPulse.
+    FetchContent_Declare(webview2
+        URL https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.3537.50/microsoft.web.webview2.1.0.3537.50.nupkg
+        URL_HASH SHA256=5ea526bbd728adda0da4d31219267e96460494a427e4894c4e09d9f320f4b9aa
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    FetchContent_MakeAvailable(webview2)
+    target_sources(campus_adapters PRIVATE src/adapters/PublicBrowserSession.cpp)
+    target_include_directories(campus_adapters PRIVATE ${webview2_SOURCE_DIR}/build/native/include)
+    target_link_libraries(campus_adapters PRIVATE crypt32 ole32 user32 shlwapi version
+        ${webview2_SOURCE_DIR}/build/native/x64/WebView2LoaderStatic.lib)
 endif()
 target_include_directories(campus_adapters PRIVATE ${libical_BINARY_DIR}/src/libical ${libical_SOURCE_DIR}/src ${libical_SOURCE_DIR}/src/libical)
 target_compile_definitions(campus_adapters PRIVATE LIBICAL_ICAL_STATIC_DEFINE)
@@ -89,6 +99,10 @@ target_link_libraries(campus_unknown_university_tests PRIVATE campus_adapters Qt
 add_test(NAME unknown_university_contracts COMMAND campus_unknown_university_tests -o -,txt)
 add_executable(campus_unknown_university_live_probe tests/UnknownUniversityLiveProbe.cpp)
 target_link_libraries(campus_unknown_university_live_probe PRIVATE campus_adapters Qt6::Core)
+if(WIN32)
+    add_executable(campus_public_browser_live_probe EXCLUDE_FROM_ALL tests/PublicBrowserLiveProbe.cpp)
+    target_link_libraries(campus_public_browser_live_probe PRIVATE campus_adapters Qt6::Core)
+endif()
 add_executable(campus_ai_provider_tests tests/AiProviderTests.cpp)
 target_link_libraries(campus_ai_provider_tests PRIVATE campus_adapters Qt6::Test)
 add_test(NAME ai_provider_contracts COMMAND campus_ai_provider_tests -o -,txt)

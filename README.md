@@ -6,7 +6,7 @@
 
 **基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
-**Windows 0.1.1 预览版：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-setup.exe) · [下载便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-portable.zip) · [发布说明](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.1) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。本轮加入陌生高校发现、多套 AI 配置，以及主页面模型选择和八类搜索模板；陌生大学完整实网接入与修复后的 AI 补充链路仍待复验。
+**Windows 0.1.2 预览版：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2/CampusPulse-0.1.2-windows-x64-setup.exe) · [下载便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2/CampusPulse-0.1.2-windows-x64-portable.zip) · [发布说明](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。0.1.2 修复北邮等官网浏览器验证页阻断陌生大学接入的问题，改善教务入口发现；验证记录见[北邮接入验收](docs/bupt-onboarding-validation.md)。
 
 学校官网里有很多有用的内容：教务通知、考试安排、竞赛报名、奖助学金申请、校园活动、招聘信息，还有图书馆和学习资源入口。它们往往散落在不同部门的网站上，查找费时，也容易漏看。
 
@@ -39,8 +39,8 @@
 
 我把处理过程分成四步：
 
-1. **找到公开来源。** 在“大学”页输入官网，已有学校优先使用社区配置。尚未收录的学校从受保护的 `.edu.cn` 首页入口识别大学名称，生成本地草案；后台再沿官网导航发现部门和栏目，检查网页列表与正文，验证通过后接入。请求检查公网 DNS、本校域名和 HTTPS，识别失败不替换当前学校。
-2. **读取并整理信息。** 爬虫通过 HTTP 请求读取公开网页，解析通知与资源链接，把结果保存到本地 SQLite 数据库。普通静态页面无需启动浏览器渲染；以后打开软件优先读取缓存，点击更新后再读取官网。
+1. **找到公开来源。** 在“大学”页输入官网，已有学校优先使用社区配置。尚未收录的学校从受保护的 `.edu.cn` 首页入口识别大学名称，生成本地草案；后台再沿官网导航发现部门和栏目，检查网页列表与正文，验证通过后接入。请求检查公网 DNS、本校域名和 HTTPS，识别失败不替换当前学校。浏览器验证需要本机 Microsoft Edge WebView2 Runtime，缺失时显示原因与安装指引。
+2. **读取并整理信息。** 爬虫通过 HTTP 请求读取公开网页，解析通知与资源链接，把结果保存到本地 SQLite 数据库。普通静态页面直接读取；遇到已识别的公开浏览器验证页，Windows 使用独立 WebView2 临时会话完成验证，再继续采集。以后打开软件优先读取缓存，点击更新后再读取官网。
 3. **按关注规则筛选。** 根据年份、来源、主题和关键词整理通知，本地订阅使用同一套匹配规则。你决定哪些信息与自己有关，哪些需要加入待办。
 4. **安排后续行动。** 待办保存你确认的日期和办理状态，日历、ICS 导出和运行期间的提醒围绕这些待办工作。公开通知和个人完成状态分别保存。
 
@@ -73,11 +73,11 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 ### 目前的阶段和后续方向
 
-截至 **2026-10-04**，本轮版本定为 **0.1.1 桌面预览版**，提交源码并提供 Windows 安装包与便携包；此前的 **0.1.0** 保留为历史版本。陌生大学的完整实网接入与修复后的真实 AI 检索、来源补充链路仍待网络恢复后复验；版本发布不代表这些检查已经完成。具体证据见 [本轮验收记录](docs/universal-onboarding-validation.md)。
+截至 **2026-10-04**，当前版本为 **0.1.2 桌面预览版**，提供源码、Windows 安装包和便携包；0.1.1、0.1.0 保留为历史版本。这次以北京邮电大学验证目录外高校从输入官网、识别学校、发现栏目到读取通知的流程，全程不调用模型。来源覆盖仍有边界，AI 检索补充链路与手机日历等检查继续单独记录。详情见[北邮接入验收](docs/bupt-onboarding-validation.md)及[此前 AI 验收](docs/universal-onboarding-validation.md)。
 
 目前需要注意：
 
-- 各校公开来源只有部分覆盖，登录限制、动态页面和网页改版仍可能影响采集。
+- 各校公开来源只有部分覆盖，登录限制、动态页面和网页改版仍可能影响采集。公开浏览器验证需要已安装的 WebView2 Runtime；人工验证码仍可能阻断自动接入。
 - 需要账号的来源可以打开官方登录入口，但软件不复用浏览器登录状态，登录后不会自动开始采集。资源链接能打开，也不代表账号一定具备使用权限。
 - 本地提醒需要桌面程序保持运行。手机 ICS 导入和 Windows 系统通知送达仍需在目标环境实测；导出的 ICS 不会持续同步软件里的修改。
 - 移动 App、账号系统和跨设备同步尚未实现。
@@ -106,7 +106,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 **Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
 
-**Windows 0.1.1 preview:** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-portable.zip) · [Release notes](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.1) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. This version adds discovery for unconfigured universities, multiple AI profiles, main-page model selection, and eight category search templates. Full live onboarding and the repaired AI supplementation pipeline still require rechecks.
+**Windows 0.1.2 preview:** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2/CampusPulse-0.1.2-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2/CampusPulse-0.1.2-windows-x64-portable.zip) · [Release notes](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. Version 0.1.2 handles public browser verification that blocked unconfigured university onboarding and improves teaching-section discovery. See the [BUPT validation record](docs/bupt-onboarding-validation.md).
 
 University websites contain useful information: academic notices, exam schedules, competition registration, scholarships and financial aid, campus events, recruitment, and library or learning resources. These are often scattered across departmental websites, making them time-consuming to find and easy to miss.
 
@@ -140,7 +140,7 @@ Action dates must be checked against the original notice or explicitly set as pe
 I have divided the process into four steps:
 
 1. **Find public sources.** Enter a university homepage. Existing universities use community packages first. An unconfigured `.edu.cn` homepage can supply a university name and a local draft; the application follows official navigation, validates lists and articles, and adds verified sources. Requests check public DNS addresses, the university domain boundary, and HTTPS. Failed discovery preserves the current university.
-2. **Read and organize information.** The crawler reads public pages over HTTP, parses notices and resource links, and stores the results in a local SQLite database. Ordinary static pages do not require browser rendering. Saved information loads from the cache; updating reads the websites again.
+2. **Read and organize information.** The crawler reads public pages over HTTP, parses notices and resource links, and stores the results in a local SQLite database. Ordinary static pages use direct HTTP. Recognized public JavaScript verification pages can use an isolated Windows WebView2 session before collection resumes; this requires the separately installed WebView2 Runtime. Saved information loads from the cache; updating reads the websites again.
 3. **Filter by your interests.** Notices are organized by year, source, topic, and keyword. Local subscriptions use the same matching rules. You decide which information applies to you and which actions belong in your tasks.
 4. **Plan what comes next.** Tasks store the dates you confirm and your progress. The calendar, ICS export, and reminders during application runtime work from these tasks. Public notices and personal completion states are stored separately.
 
@@ -173,11 +173,11 @@ Real DeepSeek model-list and short connection requests succeeded using `deepseek
 
 ### Current stage and next steps
 
-As of **October 4, 2026**, this release is named **0.1.1 desktop preview**, with source changes, a Windows installer, and a portable package; **0.1.0** remains a historical release. Full live onboarding for an unconfigured university and the repaired AI search-to-source pipeline still need rechecks when networking is restored. Publishing this version does not establish that those checks have passed. See the [validation record](docs/universal-onboarding-validation.md).
+As of **October 4, 2026**, the current release is **0.1.2 desktop preview**, with source, a Windows installer, and a portable package; 0.1.1 and 0.1.0 remain historical releases. BUPT was used to verify onboarding outside the registry from homepage input through identity, section discovery, and notice collection, without model calls. Coverage remains partial; AI supplementation and mobile calendar checks retain their separate validation status. See [BUPT validation](docs/bupt-onboarding-validation.md) and [earlier AI validation](docs/universal-onboarding-validation.md).
 
 Current limitations:
 
-- University source coverage is partial. Login restrictions, dynamic pages, and website changes can affect collection.
+- University source coverage is partial. Login restrictions, dynamic pages, and website changes can affect collection. Public browser verification requires the separately installed WebView2 Runtime; manual CAPTCHAs can still prevent automatic onboarding.
 - The application can open official login pages, but it does not reuse browser sessions or begin crawling after login. A working resource link does not establish account eligibility.
 - Local reminders require the desktop application to remain running. Phone ICS import and Windows notification delivery still need verification in their target environments. Exported ICS files do not continuously synchronize later changes.
 - The mobile app, account system, and cross-device synchronization are not implemented.

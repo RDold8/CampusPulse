@@ -1,6 +1,6 @@
 # GitHub 源码保存
 
-2026-10-04，源码已保存到公开仓库 `RDold8/CampusPulse`，主分支为 `main`。项目采用MIT许可证，大学页面与第三方依赖的权利分别保留。Windows预览安装包单独发布到[Release](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0)，见[下载与安装](windows-release.md)。
+2026-10-04，0.1.0 源码与安装包已保存到公开仓库 `RDold8/CampusPulse`，主分支为 `main`。0.2.0 的陌生高校发现和 AI 提供方管理先在本机完成构建、测试和 Git 保存，用户选择网络恢复后再继续验收与上传；公开仓库和 Release 尚未更新到这一版。项目采用MIT许可证，大学页面与第三方依赖的权利分别保留。已发布安装包见[Release](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0)，见[下载与安装](windows-release.md)。
 
 ## 保存范围
 

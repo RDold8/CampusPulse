@@ -33,6 +33,8 @@ Copy-Item -LiteralPath "$projectRoot\docs\subscriptions.md" -Destination "$desti
 Copy-Item -LiteralPath "$projectRoot\docs\tasks.md" -Destination "$destination\tasks.md"
 Copy-Item -LiteralPath "$projectRoot\docs\automatic-onboarding.md" -Destination "$destination\automatic-onboarding.md"
 Copy-Item -LiteralPath "$projectRoot\docs\ai-supplement.md" -Destination "$destination\ai-supplement.md"
+Copy-Item -LiteralPath "$projectRoot\docs\ai-provider-management.md" -Destination "$destination\ai-provider-management.md"
+Copy-Item -LiteralPath "$projectRoot\docs\universal-onboarding-validation.md" -Destination "$destination\universal-onboarding-validation.md"
 $lexborLicense=Join-Path $BuildDir '_deps\lexbor-src\LICENSE'
 if (-not (Test-Path -LiteralPath $lexborLicense)) { $lexborLicense=Join-Path $projectRoot 'build\_deps\lexbor-src\LICENSE' }
 Copy-Item -LiteralPath $lexborLicense -Destination "$destination\Lexbor-LICENSE.txt"

@@ -1,12 +1,11 @@
 #include "adapters/SchoolOnboarding.h"
 #include "adapters/ArtifactWriter.h"
+#include "adapters/PublicUniversityNetwork.h"
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <QRegularExpression>
 #include <QTimer>
 #include <QDebug>
@@ -52,19 +51,17 @@ SchoolOnboarding::SchoolOnboarding(const QString &seedFile, const QString &outpu
         root_.remove(0, 4);
     if (school_.discoveryEntries.empty() || root_.isEmpty() || interval_ < 0)
         throw std::runtime_error("高校身份包未启用自动接入");
-    network_.setTransferTimeout(8000);
 }
 bool SchoolOnboarding::withinUniversity(const QUrl &url, const QString &root) {
-    return !root.isEmpty() && url.isValid() && url.scheme() == "https" &&
-           url.userInfo().isEmpty() && url.port() == -1 &&
-           (url.host().toLower() == root || url.host().toLower().endsWith("." + root));
+    return PublicUniversityNetwork::withinUniversity(url, root);
 }
 bool SchoolOnboarding::isDiscoveryLabel(const QString &label) {
     static const QRegularExpression interest(
         "通知公告|教务通知|教学通知|考试通知|考试安排|补考安排|重修通知|选课通知|学生工作|共青团|"
-        "本科教育|学生就业|招聘快讯|招聘简章|校园招聘|"
+        "本科教育|本科生教育|本科生院|本科教学|教学管理|教务处|教务在线|人才培养|学生处|团委|研究生教育|"
+        "招生就业|就业服务|学生就业|招聘快讯|招聘简章|校园招聘|奖贷学金|"
         "奖助|学生资助|财务|缴费|收费|竞赛|校园活动|学生活动|研究生培养|研究生工作|机构设置|"
-        "部门导航|管理、服务与业务机构");
+        "组织机构|部门导航|管理、服务与业务机构|管理与服务机构");
     return label.size() <= 35 && !label.contains("关于") && interest.match(label).hasMatch();
 }
 void SchoolOnboarding::enqueue(QUrl url, QString label, int depth, bool candidate) {
@@ -74,10 +71,11 @@ void SchoolOnboarding::enqueue(QUrl url, QString label, int depth, bool candidat
     url.setFragment({});
     // Article links are only fetched as explicit body checks, never as navigation pages.
     if (url.path().contains("/info/") || url.path().endsWith("/details") ||
+        url.path().endsWith("/content.jsp") ||
         QRegularExpression("/[0-9a-fA-F]{24,64}\\.htm[l]?$").match(url.path()).hasMatch() ||
         QRegularExpression("/\\d+\\.jhtml$").match(url.path()).hasMatch())
         return;
-    if (!withinUniversity(url, root_) || depth > 2 || queue_.size() >= 48)
+    if (!withinUniversity(url, root_) || depth > 3 || queue_.size() >= 48)
         return;
     const auto canonical = url.toString(QUrl::FullyEncoded);
     if (queued_.contains(canonical))
@@ -85,7 +83,9 @@ void SchoolOnboarding::enqueue(QUrl url, QString label, int depth, bool candidat
     queued_.insert(canonical);
     Page page{url, label, depth, candidate};
     page.origin = url;
-    if (candidate && (label.contains("考试") || label.contains("补考") || label.contains("重修")))
+    if (label.contains("教务") || label.contains("本科生院") || label.contains("本科教学") ||
+        label.contains("本科生教育") || label.contains("教学管理") ||
+        (candidate && (label.contains("考试") || label.contains("补考") || label.contains("重修"))))
         queue_.push_front(page);
     else
         queue_.push_back(page);
@@ -111,7 +111,7 @@ void SchoolOnboarding::start() {
         for (const auto &entry : supplementalEntries_)
             enqueue(QUrl(entry), "AI候选栏目", 0, true);
     }
-    emit progress("官网身份已匹配，后台发现公开栏目；无需模型调用。");
+    emit progress("学校官网入口已加载，后台发现公开栏目；无需模型调用。");
     next();
 }
 void SchoolOnboarding::next() {
@@ -127,19 +127,9 @@ void SchoolOnboarding::next() {
                       .arg(school_.discoveryLimit)
                       .arg(page.url.host())
                       .arg(ready_));
-    QNetworkRequest request(page.url);
-    request.setRawHeader("User-Agent", "CampusPulse/0.1 (public university onboarding)");
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                         QNetworkRequest::ManualRedirectPolicy);
-    auto *reply = network_.get(request);
-    connect(reply, &QIODevice::readyRead, this, [reply] {
-        if (reply->bytesAvailable() > 5 * 1024 * 1024)
-            reply->abort();
-    });
-    connect(reply, &QNetworkReply::finished, this, [this, reply, page] {
-        auto redirected = reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
+    PublicUniversityNetwork::get(page.url, root_, this, [this, page](UniversityPageResponse result) {
+        const auto redirected = result.redirect;
         if (!redirected.isEmpty()) {
-            redirected = page.url.resolved(redirected);
             if (withinUniversity(redirected, root_) && page.redirects < 3) {
                 auto nextPage = page;
                 nextPage.url = redirected;
@@ -147,15 +137,12 @@ void SchoolOnboarding::next() {
                 queue_.push_front(nextPage);
             } else
                 consume(page, {}, "重定向超出高校官方域或次数上限");
-        } else if (reply->error() != QNetworkReply::NoError)
-            consume(page, {}, reply->errorString());
-        else if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 200)
-            consume(page, {}, "HTTP状态不是200");
+        } else if (!result.error.isEmpty())
+            consume(page, {}, result.error);
         else
-            consume(page, reply->readAll(), {});
-        reply->deleteLater();
+            consume(page, result.bytes, {});
         QTimer::singleShot(interval_, this, &SchoolOnboarding::next);
-    });
+    }, 5 * 1024 * 1024, 12000);
 }
 void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const QString &error) {
     QJsonObject failure{{"url", page.url.toString()},
@@ -345,7 +332,9 @@ void SchoolOnboarding::finish() {
         seed_.remove("auto_discovery");
         seed_["onboarding_version"] = AlgorithmVersion;
         seed_["sources"] = sources_;
-        seed_["reviewed_at"] = QDateTime::currentDateTimeUtc().toString("yyyy-MM-dd");
+        if (seed_.value("school").toObject().value("identity_provenance").toString() !=
+            "automatic_homepage")
+            seed_["reviewed_at"] = QDateTime::currentDateTimeUtc().toString("yyyy-MM-dd");
         const auto config = directory_ + "/school.json";
         writeArtifact(config, QJsonDocument(seed_).toJson());
         SchoolPackage::load(config);

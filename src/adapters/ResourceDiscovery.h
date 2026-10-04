@@ -2,14 +2,13 @@
 #include "adapters/HtmlAdapter.h"
 #include "application/ResourceService.h"
 #include <QHash>
-#include <QNetworkAccessManager>
 #include <QObject>
+#include <QPointer>
 #include <QSet>
 #include <QTimer>
 #include <deque>
 
 class ResourceDiscoveryTests;
-class QNetworkReply;
 
 namespace campus {
 struct ResourceDiscoveryOptions {
@@ -51,8 +50,7 @@ class ResourceDiscovery final : public QObject {
     ResourceService &service_;
     ResourceDiscoveryOptions options_;
     QString officialRoot_, evidenceDirectory_;
-    QNetworkAccessManager network_;
-    QNetworkReply *reply_ = nullptr;
+    QPointer<QObject> reply_;
     QTimer timer_;
     HtmlAdapter parser_;
     std::deque<Page> queue_;

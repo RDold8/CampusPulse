@@ -52,7 +52,7 @@ HTML适配器可在extraction.pagination指定next_selector（下一页CSS选择
 
 ## 官网输入与本机来源状态补充 2026-10-02
 
-桌面“大学”页只匹配随发行包安装在configs/schools中的学校。UniversityRegistry验证首页格式及学校/官网主机唯一性；校验输入时不联网，匹配成功返回受信任的学校配置文件，不能由输入地址生成新信任项。源学校包须经维护者核验官方身份；本地包的格式校验不是官方身份证明。当前入口要求HTTP/HTTPS首页、精确ASCII主机名，拒绝IP、本地地址、账号、显式端口、路径、查询、片段、编码或Unicode伪装。
+桌面“大学”页先匹配安装的社区配置（官网根域 / www 等价），再允许陌生 `.edu.cn` 学校首页通过独立 UnknownUniversityDiscovery 识别。UniversityRegistry 本身只解析并匹配输入，不联网；独立发现器检查公开 DNS、固定 HTTPS 地址与首页学校名称后才生成本机草案。`school.identity_provenance: automatic_homepage`、`school.status: draft` 和空 `reviewed_at` 明确区分自动身份与社区核验；格式与首页识别均不是官方身份证明。拒绝IP、本地地址、账号、显式或空端口、路径、查询、片段、编码或Unicode伪装。本机草案单独保存在用户目录，不能自动覆盖社区配置。
 
 SchoolPackage将完整目录与可执行配置分开；禁用或尚未就绪的来源保留展示。用户暂停属于source_preferences，不回写sources[].enabled。source_state与fetch_run按school_id/source_id隔离，last_success_at表示最近一次配置采集范围内完整成功；部分成功、失败或中断均保留这个时间及旧通知。来源类别提示不是通知实际覆盖的保证。
 

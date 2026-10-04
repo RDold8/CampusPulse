@@ -3,6 +3,7 @@
 #include "adapters/RefreshCoordinator.h"
 #include "adapters/UniversityRegistry.h"
 #include "adapters/SchoolOnboarding.h"
+#include "adapters/UnknownUniversityDiscovery.h"
 #include "desktop/UniversityPage.h"
 #include "application/NoticeService.h"
 #include "application/SourceService.h"
@@ -47,23 +48,6 @@
 using namespace campus;
 
 namespace {
-SchoolPackage loadSchoolWithResourceEntries(const QString &configFile,
-                                           const UniversityRegistry &registry) {
-    auto school = SchoolPackage::load(configFile);
-    // Old verified notice packages remain valid. New reviewed resource seeds
-    // are obtained from the same registered school without rewriting its cache.
-    if (school.resourceDiscoveryEntries.empty()) {
-        for (const auto &university : registry.list()) {
-            if (university.id != school.id)
-                continue;
-            const auto seed = SchoolPackage::load(university.configFile);
-            school.resourceDiscoveryEntries = seed.resourceDiscoveryEntries;
-            school.resourceDiscoveryLimit = seed.resourceDiscoveryLimit;
-            break;
-        }
-    }
-    return school;
-}
 // One active school session; storage is shared while notices and source preferences are scoped.
 struct DesktopSession {
     SchoolPackage school;
@@ -79,8 +63,9 @@ struct DesktopSession {
                    SqliteSourceRepository &sourceRepository,
                    SqliteSubscriptionRepository &subscriptionRepository,
                    SqliteTaskRepository &taskRepository,
-                   SqliteResourceRepository &resourceRepository, const UniversityRegistry &registry)
-        : school(loadSchoolWithResourceEntries(configFile, registry)), service(repository, school.id.toStdString()),
+                   SqliteResourceRepository &resourceRepository, const UniversityRegistry &registry,
+                   bool allowUnregistered = false)
+        : school(registry.loadSessionPackage(configFile, allowUnregistered)), service(repository, school.id.toStdString()),
           sources(school.id.toStdString(), school.catalog, sourceRepository),
           subscriptions(school.id.toStdString(), subscriptionRepository, service),
           tasks(school.id.toStdString(), school.timeZone.toStdString(), taskRepository, service),
@@ -99,7 +84,7 @@ int main(int argc, char **argv) {
     QApplication app(argc, argv);
     app.setOrganizationName("CampusPulse");
     app.setApplicationName("CampusPulse");
-    app.setApplicationVersion("0.1.0");
+    app.setApplicationVersion("0.2.0");
     BrandTheme::installApplication(app);
     QSettings preferences;
     const auto defaultConfig =
@@ -120,32 +105,65 @@ int main(int argc, char **argv) {
     cli.addOption({"verify-school", "通用学校列表和首条正文验证，保存证据后退出"});
     cli.addOption({"verify-detail",
                    "在指定验证数据库中读取标题含关键词的唯一通知正文，保存验证结果", "keyword"});
-    cli.addOption({"onboard", "从可信大学目录匹配官网并全自动发现栏目、采样和生成配置", "url"});
+    cli.addOption({"onboard", "从社区配置或陌生大学官网识别学校并发现公开栏目", "url"});
     cli.addOption({"onboard-output", "自动接入输出目录", "path"});
     cli.addOption({"evidence", "验证结果JSON文件", "path", "live-proof.json"});
     cli.process(app);
     try {
-        const UniversityRegistry registry(QCoreApplication::applicationDirPath() +
-                                          "/configs/schools");
         const auto dataFolder =
             QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
         QDir().mkpath(dataFolder);
         const auto onboardingFolder = cli.isSet("onboard-output") ? cli.value("onboard-output")
                                                                   : dataFolder + "/auto-schools";
+        const auto identitiesFolder = onboardingFolder + "/identities";
+        UniversityRegistry registry(QCoreApplication::applicationDirPath() +
+                                    "/configs/schools", identitiesFolder);
+        auto startupConfig = cli.value("config");
+        if (!cli.isSet("config")) {
+            try {
+                registry.loadSessionPackage(startupConfig);
+            } catch (const std::exception &error) {
+                qWarning() << "已保存的学校配置无法匹配身份，回到默认学校:" << error.what();
+                startupConfig = defaultConfig;
+            }
+        }
         if (cli.isSet("onboard")) {
-            const auto entry = registry.resolve(cli.value("onboard"));
-            SchoolOnboarding onboarding(entry.configFile, onboardingFolder);
-            QObject::connect(&onboarding, &SchoolOnboarding::finished, &app,
-                             [&](const QString &, int, int) { app.exit(0); });
-            QObject::connect(
-                &onboarding, &SchoolOnboarding::failed, &app, [&](const QString &reason) {
+            auto fail = [&](const QString &reason) {
+                QFile out(cli.value("evidence"));
+                if (out.open(QIODevice::WriteOnly))
+                    out.write(QJsonDocument(QJsonObject{{"passed", false}, {"error", reason},
+                                                       {"model_calls", 0}}).toJson());
+                qWarning().noquote() << reason;
+                app.exit(2);
+            };
+            auto scanSeed = [&](const QString &seed) {
+                auto *scan = new SchoolOnboarding(seed, onboardingFolder, &app);
+                QObject::connect(scan, &SchoolOnboarding::progress, &app,
+                                 [](const QString &message) { qInfo().noquote() << message; });
+                QObject::connect(scan, &SchoolOnboarding::finished, &app,
+                                 [&](const QString &file, int sources, int pages) {
                     QFile out(cli.value("evidence"));
                     if (out.open(QIODevice::WriteOnly))
-                        out.write(QJsonDocument(QJsonObject{{"passed", false}, {"error", reason}})
-                                      .toJson());
-                    app.exit(2);
+                        out.write(QJsonDocument(QJsonObject{{"passed", true}, {"config_file", file},
+                            {"sources", sources}, {"pages", pages}, {"model_calls", 0}}).toJson());
+                    app.exit(0);
                 });
-            QTimer::singleShot(0, &onboarding, &SchoolOnboarding::start);
+                QObject::connect(scan, &SchoolOnboarding::failed, &app, fail);
+                scan->start();
+            };
+            QTimer::singleShot(0, &app, [&] {
+                try {
+                    scanSeed(registry.resolve(cli.value("onboard")).configFile);
+                } catch (const std::exception &) {
+                    auto *identity = new UnknownUniversityDiscovery(cli.value("onboard"), identitiesFolder, &app);
+                    QObject::connect(identity, &UnknownUniversityDiscovery::progress, &app,
+                                     [](const QString &message) { qInfo().noquote() << message; });
+                    QObject::connect(identity, &UnknownUniversityDiscovery::failed, &app, fail);
+                    QObject::connect(identity, &UnknownUniversityDiscovery::finished, &app,
+                                     [&](const QString &seed, const QString &) { scanSeed(seed); });
+                    identity->start();
+                }
+            });
             return app.exec();
         }
         const auto dbfile =
@@ -164,8 +182,9 @@ int main(int argc, char **argv) {
         SqliteTaskRepository taskRepository(database);
         SqliteResourceRepository resourceRepository(database);
         auto session =
-            std::make_unique<DesktopSession>(cli.value("config"), repository, sourceRepository,
-                                             subscriptionRepository, taskRepository, resourceRepository, registry);
+            std::make_unique<DesktopSession>(startupConfig, repository, sourceRepository,
+                                             subscriptionRepository, taskRepository, resourceRepository,
+                                             registry, cli.isSet("config"));
         auto &school = session->school;
         auto &service = session->service;
         auto &sources = session->sources;
@@ -367,6 +386,39 @@ int main(int argc, char **argv) {
             QTimer::singleShot(100, &session->network, &RefreshCoordinator::refresh);
         };
         attachSelection = [&](DesktopSession &current) {
+            QObject::connect(&current.window, &MainWindow::universityHomepageRequested, &app,
+                             [&](const QString &homepage) {
+                if (session->network.busy() || session->resourceDiscovery.busy() || onboardingBusy)
+                    return;
+                auto *page = session->window.findChild<UniversityPage *>("universityPage");
+                auto *identity = new UnknownUniversityDiscovery(homepage, identitiesFolder, &app);
+                onboardingBusy = true;
+                page->setBusy(true);
+                QObject::connect(identity, &UnknownUniversityDiscovery::progress, page,
+                                 &UniversityPage::setFeedback);
+                QObject::connect(identity, &UnknownUniversityDiscovery::failed, page,
+                                 [&, page, identity](const QString &reason) {
+                    onboardingBusy = false;
+                    page->setBusy(false);
+                    page->setFeedback(reason);
+                    identity->deleteLater();
+                });
+                QObject::connect(identity, &UnknownUniversityDiscovery::finished, &app,
+                                 [&, identity](const QString &seed, const QString &name) {
+                    onboardingBusy = false;
+                    auto *page = session->window.findChild<UniversityPage *>("universityPage");
+                    page->setBusy(false);
+                    try {
+                        registry.addLocalDiscoveredPackage(seed);
+                        page->setFeedback("已自动识别：" + name + "（待核验）。正在发现公开栏目……");
+                        emit session->window.universitySelected(seed);
+                    } catch (const std::exception &error) {
+                        page->setFeedback(QString::fromUtf8(error.what()));
+                    }
+                    identity->deleteLater();
+                });
+                identity->start();
+            });
             QObject::connect(
                 &current.window, &MainWindow::universitySelected, &app,
                 [&](const QString &configFile) {
@@ -400,6 +452,13 @@ int main(int argc, char **argv) {
                                 if (cached) {
                                     if (cached->id != school.id)
                                         throw std::runtime_error("自动接入缓存的学校身份不一致");
+                                    auto expectedHost = school.officialHomepage.host();
+                                    auto cachedHost = cached->officialHomepage.host();
+                                    if (expectedHost.startsWith("www.")) expectedHost.remove(0, 4);
+                                    if (cachedHost.startsWith("www.")) cachedHost.remove(0, 4);
+                                    if (expectedHost != cachedHost ||
+                                        cached->automaticallyIdentified != school.automaticallyIdentified)
+                                        throw std::runtime_error("自动接入缓存的官网域或自动身份标记不一致，请重新扫描");
                                     switchSchool(cachedConfig);
                                     return;
                                 }

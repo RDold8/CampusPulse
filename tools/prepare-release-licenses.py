@@ -26,6 +26,7 @@ def main() -> None:
     parser.add_argument("--source-dir", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--version", default="0.1.0")
+    parser.add_argument("--source-release-version", help="Published release containing unchanged dependency sources")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     licenses = args.package_dir / "licenses"
@@ -96,9 +97,11 @@ def main() -> None:
         + (root / "LICENSE").read_text(encoding="utf-8") + "\n\n" + runtime_terms,
         encoding="utf-8",
     )
-    url = f"https://github.com/RDold8/CampusPulse/releases/download/v{args.version}/"
+    source_release = args.source_release_version or args.version
+    url = f"https://github.com/RDold8/CampusPulse/releases/download/v{source_release}/"
     manifest = {
         "version": args.version,
+        "source_release_version": source_release,
         "qt_version": "6.8.3",
         "qt_source_commit": "c07c2d5a527a644d36e7853d55132ae38921682f",
         "sqlite_version": "3.49.1",
@@ -108,7 +111,7 @@ def main() -> None:
     (licenses / "dependency-sources.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     (licenses / "SOURCES.txt").write_text(
         "Corresponding dependency sources are available at no charge from the same CampusPulse release.\n"
-        f"https://github.com/RDold8/CampusPulse/releases/tag/v{args.version}\n\n"
+        f"https://github.com/RDold8/CampusPulse/releases/tag/v{source_release}\n\n"
         + "\n".join(f"{asset['name']}\nSHA256: {asset['sha256']}\n{url}{asset['name']}\n" for asset in assets)
         + "\nQt builds with CMake and the x64 MSVC toolchain. Keep the Qt 6.8 ABI when replacing DLLs.\n"
         "Rebuild CampusPulse using the public CMake source when changing ABI/toolchains.\n"

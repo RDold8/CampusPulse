@@ -18,6 +18,7 @@ class UniversityPage final : public QWidget {
 
   signals:
     void universitySelected(QString configFile);
+    void homepageDiscoveryRequested(QString homepage);
 
   private:
     const UniversityRegistry &registry_;

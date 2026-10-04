@@ -1,5 +1,6 @@
 #include "adapters/HtmlAdapter.h"
 #include <QRegularExpression>
+#include <QUrlQuery>
 #include <QDate>
 #include <QCryptographicHash>
 #include <QSet>
@@ -95,6 +96,11 @@ QString publicationDate(const QString &raw) {
                              .toDate(englishMatch.captured(1), "MMM d, yyyy");
     if (english.isValid())
         return english.toString(Qt::ISODate);
+    static const QRegularExpression splitYear("^(\\d{1,2})[-./](\\d{1,2})\\s*(\\d{4})$");
+    const auto split = splitYear.match(raw.simplified());
+    if (split.hasMatch())
+        return QDate(split.captured(3).toInt(), split.captured(1).toInt(),
+                     split.captured(2).toInt()).toString(Qt::ISODate);
     // Some university templates render the day before the nested year-month span.
     static const QRegularExpression reversed("^(\\d{1,2})\\s*(\\d{4})[-./](\\d{1,2})$");
     const auto reversedMatch = reversed.match(raw.trimmed());
@@ -186,7 +192,11 @@ std::vector<Notice> HtmlAdapter::parseList(const QByteArray &html,
                     continue;
                 if (resolved.scheme() == "https" && resolved.port() == -1 &&
                     isAllowedUrl(resolved, source) &&
-                    detailPath.match(resolved.path()).hasMatch()) {
+                    (detailPath.match(resolved.path()).hasMatch() ||
+                     (resolved.path().endsWith("/content.jsp") &&
+                      QUrlQuery(resolved).queryItemValue("urltype") == "news.NewsContentUrl" &&
+                      QRegularExpression("^[1-9][0-9]*$").match(
+                          QUrlQuery(resolved).queryItemValue("wbnewsid")).hasMatch()))) {
                     rowUrls.insert(resolved.toString(QUrl::FullyEncoded));
                     if (!anchor ||
                         (!attribute(candidate, "title", 5).isEmpty() &&
@@ -232,7 +242,7 @@ std::vector<Notice> HtmlAdapter::parseList(const QByteArray &html,
                 continue;
             auto title = attribute(anchor, "title", 5).simplified();
             if (title.isEmpty()) {
-                const auto titles = doc.select(anchor, ".title, h3, h4");
+                const auto titles = doc.select(anchor, ".title, h3, h4, h5");
                 if (!titles.empty())
                     title = text(titles.front());
             }

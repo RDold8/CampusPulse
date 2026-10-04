@@ -6,20 +6,25 @@
 
 namespace campus {
 
+struct SchoolPackage;
+
 struct RegisteredUniversity {
     QString id;
     QString name;
     QUrl homepage;
     QString configFile;
+    bool automaticallyIdentified = false;
 };
 
-// Only locally installed, community-reviewed school packages are addressable.
-// Resolving user input never fetches a page or constructs a new crawler configuration.
+// Community packages and separately identified local drafts remain distinct.
+// Resolving input itself never performs network requests.
 class UniversityRegistry {
   public:
-    explicit UniversityRegistry(const QString &directory);
+    explicit UniversityRegistry(const QString &directory, const QString &discoveredDirectory = {});
     const std::vector<RegisteredUniversity> &list() const;
     RegisteredUniversity resolve(const QString &input) const;
+    SchoolPackage loadSessionPackage(const QString &configFile, bool allowUnregistered = false) const;
+    void addLocalDiscoveredPackage(const QString &configFile);
 
   private:
     std::vector<RegisteredUniversity> universities_;

@@ -1,13 +1,12 @@
 #include "adapters/ResourceDiscovery.h"
 #include "adapters/ArtifactWriter.h"
 #include "adapters/ResourceClassifier.h"
+#include "adapters/PublicUniversityNetwork.h"
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QUuid>
@@ -95,17 +94,13 @@ ResourceDiscovery::ResourceDiscovery(const SchoolPackage &school, ResourceServic
     if (base.isEmpty())
         throw std::runtime_error("资源证据目录不可用");
     evidenceDirectory_ = QDir(base).filePath(school_.id);
-    network_.setTransferTimeout(options_.transferTimeoutMs);
     timer_.setSingleShot(true);
     connect(&timer_, &QTimer::timeout, this, &ResourceDiscovery::next);
 }
 ResourceDiscovery::~ResourceDiscovery() {
     busy_ = false;
     timer_.stop();
-    if (reply_) {
-        reply_->disconnect(this);
-        reply_->abort();
-    }
+    delete reply_.data();
 }
 bool ResourceDiscovery::busy() const {
     return busy_;
@@ -214,9 +209,7 @@ void ResourceDiscovery::cancel() {
     timer_.stop();
     queue_.clear();
     if (reply_) {
-        reply_->disconnect(this);
-        reply_->abort();
-        reply_->deleteLater();
+        delete reply_.data();
         reply_ = nullptr;
     }
     emit progress("资源发现已取消；已保存的资源与收藏保留。");
@@ -248,42 +241,15 @@ void ResourceDiscovery::next() {
                       .arg(fetched_)
                       .arg(std::min(options_.maxPages, school_.resourceDiscoveryLimit))
                       .arg(page.url.host()));
-    QNetworkRequest request(page.url);
-    request.setRawHeader("User-Agent", "CampusPulse/0.1 (public university resource discovery)");
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                         QNetworkRequest::ManualRedirectPolicy);
-    reply_ = network_.get(request);
-    auto *reply = reply_;
-    connect(reply, &QNetworkReply::metaDataChanged, this, [this, reply] {
-        const auto length = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
-        const auto type = reply->header(QNetworkRequest::ContentTypeHeader).toString().toLower();
-        const auto status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (status >= 300 && status < 400)
+    reply_ = PublicUniversityNetwork::get(
+        page.url, officialRoot_, this, [this, page](UniversityPageResponse result) {
+        if (!busy_)
             return;
-        if (length > options_.maxResponseBytes || (!type.isEmpty() && !type.contains("text/html") &&
-                                                   !type.contains("application/xhtml+xml"))) {
-            reply->setProperty("resourceError",
-                               "仅采集不超过2MB的静态HTML，不下载大文件或非HTML响应");
-            reply->abort();
-        }
-    });
-    connect(reply, &QIODevice::readyRead, this, [this, reply] {
-        if (reply->bytesAvailable() > options_.maxResponseBytes) {
-            reply->setProperty("resourceError", "响应超过本轮HTML大小上限");
-            reply->abort();
-        }
-    });
-    connect(reply, &QNetworkReply::finished, this, [this, reply, page] {
-        if (reply_ != reply || !busy_) {
-            reply->deleteLater();
-            return;
-        }
         reply_ = nullptr;
-        auto redirect = reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
-        QString error = reply->property("resourceError").toString();
-        QByteArray bytes;
+        auto redirect = result.redirect;
+        QString error = result.error;
+        const QByteArray bytes = result.bytes;
         if (error.isEmpty() && !redirect.isEmpty()) {
-            redirect = page.url.resolved(redirect);
             if (ResourceClassifier::isOfficial(redirect, officialRoot_) &&
                 !ResourceClassifier::isDownload(redirect) && page.redirects < 3) {
                 try {
@@ -305,15 +271,7 @@ void ResourceDiscovery::next() {
                 }
             } else
                 error = "重定向超出高校官方HTTPS域、指向文件或超过次数上限";
-        } else if (error.isEmpty()) {
-            if (reply->error() != QNetworkReply::NoError)
-                error = reply->errorString();
-            else if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 200)
-                error = "HTTP状态不是200";
-            else
-                bytes = reply->readAll();
         }
-        reply->deleteLater();
         if (!redirect.isEmpty() && error.isEmpty()) {
             // Redirects count toward the same request cap and never verify a resource.
             emit progress("官网重定向已记录，等待目标静态内容验证。");
@@ -329,7 +287,7 @@ void ResourceDiscovery::next() {
         }
         if (busy_)
             timer_.start(options_.requestIntervalMs);
-    });
+    }, options_.maxResponseBytes, options_.transferTimeoutMs);
 }
 void ResourceDiscovery::consume(const Page &page, const QByteArray &bytes, const QString &failure) {
     const auto checked = now();

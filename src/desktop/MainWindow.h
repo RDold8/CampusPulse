@@ -28,6 +28,7 @@ class MainWindow final : public QMainWindow {
     void showReminder(const QString &title);
   signals:
     void universitySelected(QString configFile);
+    void universityHomepageRequested(QString homepage);
 
   private:
     NoticePage *notices_;

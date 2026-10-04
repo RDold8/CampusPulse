@@ -3,18 +3,17 @@
 #include <QObject>
 #include <QJsonArray>
 #include <QJsonObject>
-#include <QNetworkAccessManager>
 #include <QSet>
 #include <deque>
 
 class OnboardingTests;
 
 namespace campus {
-// Only created from a package already resolved by UniversityRegistry, never from a raw URL.
+// Created from a community package or the constrained public-homepage discovery seed.
 class SchoolOnboarding final : public QObject {
     Q_OBJECT
   public:
-    static constexpr int AlgorithmVersion = 2;
+    static constexpr int AlgorithmVersion = 3;
     SchoolOnboarding(const QString &seedFile, const QString &outputDirectory,
                      QObject *parent = nullptr, int intervalMs = 3000,
                      QStringList supplementalEntries = {});
@@ -42,7 +41,6 @@ class SchoolOnboarding final : public QObject {
     SchoolPackage school_;
     QString directory_, root_;
     QStringList supplementalEntries_;
-    QNetworkAccessManager network_;
     HtmlAdapter parser_;
     std::deque<Page> queue_;
     QSet<QString> queued_;

@@ -1,5 +1,6 @@
 #include "adapters/UniversityRegistry.h"
 #include "adapters/SchoolPackage.h"
+#include "adapters/UnknownUniversityDiscovery.h"
 #include <QtTest>
 #include <QFile>
 #include <QFileInfo>
@@ -40,6 +41,8 @@ class UniversityRegistryTests final : public QObject {
     void onlyInstalledSchoolPackagesAreAccepted();
     void invalidCommunityPackagesFailClearly();
     void invalidSchoolTimeZonesAreRejected();
+    void localIdentitiesArePersistedWithoutChangingCommunityPackages();
+    void reopeningValidatesCachedIdentityEvenWithResourceEntries();
 };
 
 void UniversityRegistryTests::installedSchoolAcceptsExactHomepage() {
@@ -51,13 +54,14 @@ void UniversityRegistryTests::installedSchoolAcceptsExactHomepage() {
     QCOMPARE(registry.list().size(), std::size_t(1));
     for (const auto &input :
          {"www.neepu.edu.cn", "www.neepu.edu.cn/", "https://www.neepu.edu.cn/",
-          "http://www.neepu.edu.cn", "HTTPS://WWW.NEEPU.EDU.CN/", "  www.neepu.edu.cn  "}) {
+         "http://www.neepu.edu.cn", "HTTPS://WWW.NEEPU.EDU.CN/", "  www.neepu.edu.cn  "}) {
         const auto selected = registry.resolve(input);
         QCOMPARE(selected.id, QString("cn-neepu"));
         QCOMPARE(selected.name, QString("东北电力大学"));
         QCOMPARE(selected.homepage, QUrl("https://www.neepu.edu.cn/"));
         QCOMPARE(selected.configFile, QFileInfo(copied).canonicalFilePath());
     }
+    QCOMPARE(registry.resolve("https://neepu.edu.cn/").id, QString("cn-neepu"));
 }
 
 void UniversityRegistryTests::rejectsUnsafeOrUnregisteredInput_data() {
@@ -73,6 +77,7 @@ void UniversityRegistryTests::rejectsUnsafeOrUnregisteredInput_data() {
                               "https://user:password@www.neepu.edu.cn/",
                               "https://@www.neepu.edu.cn/",
                               "https://www.neepu.edu.cn:443/",
+                              "https://www.neepu.edu.cn:/",
                               "http://www.neepu.edu.cn:80/",
                               "https://www.neepu.edu.cn:8080/",
                               "http://127.0.0.1/",
@@ -95,7 +100,6 @@ void UniversityRegistryTests::rejectsUnsafeOrUnregisteredInput_data() {
         QTest::newRow(qPrintable(QString("invalid-%1").arg(i))) << invalid.at(i) << false;
     const QStringList unknown{"https://www.neepu.edu.cn.evil.org/",
                               "https://jwc.neepu.edu.cn/",
-                              "https://neepu.edu.cn/",
                               "https://www.other-university.edu.cn/",
                               "https://neepu-edu.cn/",
                               "https://www.xn--p1ai.edu.cn/",
@@ -169,6 +173,70 @@ void UniversityRegistryTests::invalidSchoolTimeZonesAreRejected() {
     const UniversityRegistry registry(directory.path());
     QCOMPARE(SchoolPackage::load(registry.resolve("www.alpha.edu.cn").configFile).timeZone,
              QString("Asia/Shanghai"));
+}
+void UniversityRegistryTests::localIdentitiesArePersistedWithoutChangingCommunityPackages() {
+    QTemporaryDir community, identities;
+    QVERIFY(QFile::copy(CONFIG_FILE, community.filePath("neepu.json")));
+    UniversityRegistry registry(community.path(), identities.path());
+    auto seed = UnknownUniversityDiscovery::seedDocument(QUrl("https://www.hit.edu.cn/"), "哈尔滨工业大学");
+    QFile output(identities.filePath("hit.json"));
+    QVERIFY(output.open(QIODevice::WriteOnly));
+    output.write(QJsonDocument(seed).toJson()); output.close();
+    registry.addLocalDiscoveredPackage(output.fileName());
+    auto entry = registry.resolve("www.hit.edu.cn");
+    QVERIFY(entry.automaticallyIdentified);
+    QVERIFY(entry.id.startsWith("cn-auto-hit-"));
+    QCOMPARE(QDir(community.path()).entryList({"*.json"}, QDir::Files).size(), 1);
+    UniversityRegistry reopened(community.path(), identities.path());
+    QCOMPARE(reopened.resolve("hit.edu.cn").id, entry.id);
+    QVERIFY(reopened.resolve("hit.edu.cn").automaticallyIdentified);
+    seed["school"] = QJsonObject{{"key", "cn-neepu"}, {"name", "冒名大学"},
+        {"official_homepage", "https://www.fake.edu.cn/"}, {"identity_provenance", "automatic_homepage"}};
+    QFile collision(identities.filePath("collision.json"));
+    QVERIFY(collision.open(QIODevice::WriteOnly));
+    collision.write(QJsonDocument(seed).toJson()); collision.close();
+    QVERIFY_THROWS_EXCEPTION(std::runtime_error, registry.addLocalDiscoveredPackage(collision.fileName()));
+    QCOMPARE(registry.resolve("www.neepu.edu.cn").name, QString("东北电力大学"));
+}
+
+void UniversityRegistryTests::reopeningValidatesCachedIdentityEvenWithResourceEntries() {
+    QTemporaryDir community, identities, cache;
+    QVERIFY(QFile::copy(CONFIG_FILE, community.filePath("neepu.json")));
+    auto seed = UnknownUniversityDiscovery::seedDocument(QUrl("https://www.hit.edu.cn/"), "哈尔滨工业大学");
+    const auto write = [](const QString &path, const QJsonObject &document) {
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly) || file.write(QJsonDocument(document).toJson()) < 0)
+            throw std::runtime_error("Cannot write identity fixture");
+    };
+    write(identities.filePath("hit.json"), seed);
+    const UniversityRegistry registry(community.path(), identities.path());
+    auto document = seed;
+    const auto config = cache.filePath("school.json");
+    write(config, document);
+    QVERIFY(registry.loadSessionPackage(config).automaticallyIdentified);
+    auto metadata = document["school"].toObject();
+    metadata.remove("identity_provenance");
+    document["school"] = metadata;
+    write(config, document);
+    QVERIFY_THROWS_EXCEPTION(std::runtime_error, registry.loadSessionPackage(config));
+    // Explicit --config does not override a registered identity mismatch.
+    QVERIFY_THROWS_EXCEPTION(std::runtime_error, registry.loadSessionPackage(config, true));
+    document = seed;
+    metadata = document["school"].toObject();
+    metadata["official_homepage"] = "https://www.fake.edu.cn/";
+    document["school"] = metadata;
+    write(config, document);
+    QVERIFY_THROWS_EXCEPTION(std::runtime_error, registry.loadSessionPackage(config));
+    const UniversityRegistry withoutIdentity(community.path());
+    write(config, seed);
+    QVERIFY_THROWS_EXCEPTION(std::runtime_error, withoutIdentity.loadSessionPackage(config));
+    QVERIFY(withoutIdentity.loadSessionPackage(config, true).automaticallyIdentified);
+    document = seed;
+    metadata = document["school"].toObject();
+    metadata.remove("identity_provenance");
+    document["school"] = metadata;
+    write(config, document);
+    QVERIFY_THROWS_EXCEPTION(std::runtime_error, withoutIdentity.loadSessionPackage(config, true));
 }
 
 QTEST_GUILESS_MAIN(UniversityRegistryTests)

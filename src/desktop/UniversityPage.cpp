@@ -1,5 +1,6 @@
 #include "desktop/UniversityPage.h"
 #include "adapters/UniversityRegistry.h"
+#include "adapters/UnknownUniversityDiscovery.h"
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
@@ -23,9 +24,8 @@ UniversityPage::UniversityPage(const UniversityRegistry &registry, const QString
     subtitle->setObjectName("subtitle");
     layout->addWidget(subtitle);
     auto *scope =
-        new QLabel("输入学校官网首页地址或域名，CampusPulse 会在本地大学目录中匹配学校，"
-                   "再加载已验证配置，或后台发现栏目、自动识别并保存样本。目录由社区逐校维护；"
-                   "尚未收录的大学会显示待接入提示。");
+        new QLabel("输入学校官网首页地址或域名。已有社区配置优先加载；陌生大学可从公开的 .edu.cn "
+                   "官网识别学校、发现栏目并生成本地草案。自动识别结果待社区核验，公开栏目覆盖会逐步完善。");
     scope->setObjectName("scope");
     scope->setWordWrap(true);
     scope->setTextFormat(Qt::PlainText);
@@ -41,18 +41,18 @@ UniversityPage::UniversityPage(const UniversityRegistry &registry, const QString
     url_->setMaxLength(2048);
     label->setBuddy(url_);
     controls->addWidget(url_, 1);
-    load_ = new QPushButton("加载大学配置");
+    load_ = new QPushButton("接入 / 切换大学");
     load_->setObjectName("loadUniversityButton");
     controls->addWidget(load_);
     layout->addLayout(controls);
 
-    feedback_ = new QLabel("请选择下方目录中的大学，或输入对应的官网首页。");
+    feedback_ = new QLabel("选择已有大学，或输入新大学的官网首页开始发现。");
     feedback_->setObjectName("universityFeedback");
     feedback_->setTextFormat(Qt::PlainText);
     feedback_->setWordWrap(true);
     feedback_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     layout->addWidget(feedback_);
-    auto *directoryLabel = new QLabel("当前社区目录");
+    auto *directoryLabel = new QLabel("社区配置与本地识别的大学");
     layout->addWidget(directoryLabel);
     auto *directory = new QListWidget;
     directory->setObjectName("universityDirectory");
@@ -60,6 +60,7 @@ UniversityPage::UniversityPage(const UniversityRegistry &registry, const QString
         const QString homepage = university.homepage.toString();
         auto *item = new QListWidgetItem(university.name +
                                              (university.id == currentSchoolId ? "（当前）" : "") +
+                                             (university.automaticallyIdentified ? " · 自动识别，待核验" : " · 社区配置") +
                                              "\n" + homepage,
                                          directory);
         item->setData(Qt::UserRole, homepage);
@@ -70,7 +71,7 @@ UniversityPage::UniversityPage(const UniversityRegistry &registry, const QString
         }
     }
     layout->addWidget(directory, 1);
-    auto *note = new QLabel("选择目录中的条目会填入官网地址；点击“加载大学配置”切换。"
+    auto *note = new QLabel("选择目录中的条目会填入官网地址；点击“接入 / 切换大学”继续。"
                             "当前学校的通知缓存和本机来源偏好会保留。");
     note->setWordWrap(true);
     note->setTextFormat(Qt::PlainText);
@@ -102,7 +103,14 @@ void UniversityPage::loadUniversity() {
         feedback_->setText("已匹配：" + university.name + "。正在加载该校配置……");
         emit universitySelected(university.configFile);
     } catch (const std::exception &error) {
-        feedback_->setText(QString::fromUtf8(error.what()));
+        try {
+            const auto home = UnknownUniversityDiscovery::normalizedHomepage(url_->text());
+            feedback_->setText("正在检查新大学的公开官网与学校身份……");
+            emit homepageDiscoveryRequested(home.toString());
+        } catch (const std::exception &unknownError) {
+            feedback_->setText(QString::fromUtf8(error.what()) + "\n" +
+                               QString::fromUtf8(unknownError.what()));
+        }
     }
 }
 } // namespace campus

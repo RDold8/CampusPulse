@@ -6,7 +6,7 @@
 
 **基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
-**Windows 预览版下载：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.0/CampusPulse-0.1.0-windows-x64-setup.exe) · [发布说明与便携版](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。
+**已公开的 Windows 0.1.0 预览版：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.0/CampusPulse-0.1.0-windows-x64-setup.exe) · [发布说明与便携版](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。0.2.0 新增陌生高校发现与多套 AI 配置，先提供本地测试包，联网验收与公开发布待继续。
 
 学校官网里有很多有用的内容：教务通知、考试安排、竞赛报名、奖助学金申请、校园活动、招聘信息，还有图书馆和学习资源入口。它们往往散落在不同部门的网站上，查找费时，也容易漏看。
 
@@ -28,6 +28,8 @@
 - **跟进需要办理的事情。** 从通知建立个人待办，分别记录报名、缴费、申请等操作，确认时间，标记办理状态。原文变化后，相关待办会提示复核。
 - **使用日历和提醒。** 已确认日期的待办进入内置日历，可以导出 ICS 文件供手机日历手动导入。桌面程序运行期间可以触发已启用的本地提醒。
 - **查找学校资源。** 在独立的“学校资源”页查看图书馆、课程与培养信息、竞赛、升学、就业等学习和办事入口，按类别与学习阶段筛选，并收藏常用链接。
+- **尝试接入目录外的大学。** 输入尚未收录的 `.edu.cn` 学校官网首页，程序识别首页名称，建立本机学校草案，再发现公开栏目；无需先手工编写学校配置。识别成功仍需栏目和正文校验，无法访问的页面会保留原因。
+- **管理自己的 AI 服务。** 保存多套服务名称、备注、官网、可自选请求地址、认证方式与模型；支持完整 URL、Anthropic Messages 和 OpenAI 兼容格式，显示最终请求地址，获取模型并测试连接。支持搜索工具的路由补充官网栏目；普通模型接口提供待核实建议。
 
 例如，你在软件里找到重修缴费通知，打开官方原文核对要求，建立“重修缴费”待办，确认时间并开启提醒，办理后再标记完成。报名、缴费和核对结果可以分别记录，避免完成其中一步后漏掉后续操作。
 
@@ -37,7 +39,7 @@
 
 我把处理过程分成四步：
 
-1. **找到公开来源。** 在“大学”页输入已收录学校的官网，加载学校配置；需要自动接入时，后台从官网与已配置的部门入口发现栏目，检查网页列表和正文，再生成配置。输入入口只接受学校目录中已核验的官方首页。
+1. **找到公开来源。** 在“大学”页输入官网，已有学校优先使用社区配置。尚未收录的学校从受保护的 `.edu.cn` 首页入口识别大学名称，生成本地草案；后台再沿官网导航发现部门和栏目，检查网页列表与正文，验证通过后接入。请求检查公网 DNS、本校域名和 HTTPS，识别失败不替换当前学校。
 2. **读取并整理信息。** 爬虫通过 HTTP 请求读取公开网页，解析通知与资源链接，把结果保存到本地 SQLite 数据库。普通静态页面无需启动浏览器渲染；以后打开软件优先读取缓存，点击更新后再读取官网。
 3. **按关注规则筛选。** 根据年份、来源、主题和关键词整理通知，本地订阅使用同一套匹配规则。你决定哪些信息与自己有关，哪些需要加入待办。
 4. **安排后续行动。** 待办保存你确认的日期和办理状态，日历、ICS 导出和运行期间的提醒围绕这些待办工作。公开通知和个人完成状态分别保存。
@@ -61,17 +63,17 @@
 | [北华大学](configs/schools/beihua.auto.json) | 已建立学校配置，并对部分公开来源完成接入测试。 |
 | [长春理工大学](configs/schools/cust.auto.json) | 已建立学校配置，并对部分公开来源完成接入测试；需要学校账号的本科教务入口保留“需要登录”状态。 |
 
-面向全国高校是项目的设计目标，后续由社区逐步扩展。目前不能保证找全某所学校的信息，也不能直接接入任意大学网址。尚未收录的学校，需要先补充经过核验的学校配置。
+面向全国高校是项目的设计目标，后续由社区逐步扩展。0.2.0 开始支持目录外学校的自动发现，首轮只接受 `.edu.cn` 根域或 `www` 官网首页，自动身份始终标为待核验草案。没有找到可用栏目时，会保留失败信息和原来的学校；遇到特殊域名、登录或动态网站，仍需要社区配置与共享适配器。目前不能保证找全某所学校的信息。
 
 ### AI 在这里做什么
 
-AI 负责补充寻找规则爬虫可能遗漏的官网栏目。现有 DeepSeek 入口默认关闭，需要用户主动启用；候选链接仍要经过学校域名检查和真实官网采样，验证通过后才接入。调用会消耗 API token，界面记录实际返回的用量，API Key 不写入配置或数据库。
+AI 负责补充寻找规则爬虫可能遗漏的官网栏目。我参考 CC Switch 的提供方列表、预设、编辑表单、模型选择和启用切换，重新用 Qt 实现这一入口。补充功能默认关闭，需要用户主动启用；候选链接仍要经过学校域名检查和真实官网采样，验证通过后才接入。调用会消耗 API token，界面记录实际返回的用量。Key 默认仅保留在当前进程，Windows 可选当前用户 DPAPI 加密保存，不写进学校配置或数据库。
 
-这条检索与校验链路已有代码，尚未完成真实 DeepSeek API 调用验收。另一个“资源说明 AI”方向目前完成了输入输出规范、引文校验、提示词和离线测试，尚未接入桌面业务。
+真实 DeepSeek 模型列表与短连接请求已返回成功，模型使用 `deepseek-flash`。原生搜索也收到真实工具结果，同时触发搜索次数上限；软件已增加保留真实部分结果和显示上限状态的处理，修复后的完整检索与来源补充链仍待网络恢复后复验。自定义兼容接口不内置网页搜索，普通模型回答只作为候选建议。另一个“资源说明 AI”方向目前完成了规范与离线测试，尚未接入桌面业务。
 
 ### 目前的阶段和后续方向
 
-截至 **2026-10-04**，项目是 **0.1 桌面原型**，源码已公开，提供 **0.1.0 Windows 预览安装版与便携版**。
+截至 **2026-10-04**，源码进入 **0.2.0 桌面预览版**，已公开下载的版本仍为 **0.1.0**。0.2.0 先做本地包验收，陌生学校完整接入、修复后的真实 AI 检索及 GitHub 发布待网络恢复后继续；具体证据见 [本轮验收记录](docs/universal-onboarding-validation.md)。
 
 目前需要注意：
 
@@ -92,7 +94,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。现有 DeepSeek �
 | 整体设计与学校扩展 | [平台总框架](docs/platform-framework.md) · [大学包配置契约](docs/university-package-contract.md) |
 | 官网发现与登录入口 | [自动接入](docs/automatic-onboarding.md) · [来源访问](docs/source-access.md) |
 | 待办、日历与资源 | [个人待办](docs/tasks.md) · [日历与 ICS](docs/calendar.md) · [学校资源](docs/school-resources.md) |
-| AI 补充与规范 | [DeepSeek 补充栏目](docs/ai-supplement.md) · [资源说明契约](docs/ai-resource-contract.md) |
+| AI 补充与规范 | [AI 服务配置](docs/ai-provider-management.md) · [DeepSeek 补充栏目](docs/ai-supplement.md) · [资源说明契约](docs/ai-resource-contract.md) |
 
 其他设计和阶段记录保留在 [docs](docs/) 中。原创代码、配置和图标采用 [MIT 许可证](LICENSE)，第三方依赖与学校网页内容保留各自权利，详见 [第三方说明](THIRD_PARTY_NOTICES.md)。
 
@@ -104,7 +106,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。现有 DeepSeek �
 
 **Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
 
-**Windows preview download:** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.0/CampusPulse-0.1.0-windows-x64-setup.exe) · [Release notes and portable ZIP](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required.
+**Published Windows 0.1.0 preview:** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.0/CampusPulse-0.1.0-windows-x64-setup.exe) · [Release notes and portable ZIP](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. Version 0.2.0 adds discovery for unconfigured universities and multiple AI profiles. It is being delivered as a local test package before further live verification and publication.
 
 University websites contain useful information: academic notices, exam schedules, competition registration, scholarships and financial aid, campus events, recruitment, and library or learning resources. These are often scattered across departmental websites, making them time-consuming to find and easy to miss.
 
@@ -126,6 +128,8 @@ I chose Northeast Electric Power University as the first example. My goal is a g
 - **Track actions.** Create personal tasks from notices, record registration, payment, or application steps separately, confirm dates, and track their status. Changes to the original article flag related tasks for review.
 - **Use a calendar and reminders.** Put tasks with confirmed dates in the built-in calendar and export ICS files for manual import into a phone calendar. Enabled local reminders can trigger while the desktop application is running.
 - **Discover university resources.** Find library services, curriculum information, competitions, further study, career resources, and other learning or practical links in a dedicated page. Filter by category or study stage and save favorites.
+- **Try a university outside the registry.** Enter an unconfigured `.edu.cn` university homepage. The application identifies its homepage name, saves a local draft, and discovers public sections without a manually written package. Lists and articles still require validation; inaccessible pages retain their failure reasons.
+- **Manage AI services.** Save several names, notes, websites, custom request routes, authentication modes, and models. Use full URLs or API bases with Anthropic Messages or OpenAI-compatible formats, inspect the resolved request URL, retrieve models, and test connections. Routes with search tools supplement discovery; ordinary model APIs supply unverified suggestions.
 
 For example, you can find a retake payment notice, open the official article to check its requirements, create a payment task, confirm its date, enable a reminder, and mark it complete after paying. Registration, payment, and result verification can be recorded separately, so finishing one step does not hide the remaining actions.
 
@@ -135,7 +139,7 @@ Action dates must be checked against the original notice or explicitly set as pe
 
 I have divided the process into four steps:
 
-1. **Find public sources.** Enter the official homepage of a university already in the registry to load its configuration. When automatic onboarding is needed, the application discovers sections from the homepage and configured department links, checks sample lists and articles, and generates a configuration. The input accepts only verified homepages in the registry.
+1. **Find public sources.** Enter a university homepage. Existing universities use community packages first. An unconfigured `.edu.cn` homepage can supply a university name and a local draft; the application follows official navigation, validates lists and articles, and adds verified sources. Requests check public DNS addresses, the university domain boundary, and HTTPS. Failed discovery preserves the current university.
 2. **Read and organize information.** The crawler reads public pages over HTTP, parses notices and resource links, and stores the results in a local SQLite database. Ordinary static pages do not require browser rendering. Saved information loads from the cache; updating reads the websites again.
 3. **Filter by your interests.** Notices are organized by year, source, topic, and keyword. Local subscriptions use the same matching rules. You decide which information applies to you and which actions belong in your tasks.
 4. **Plan what comes next.** Tasks store the dates you confirm and your progress. The calendar, ICS export, and reminders during application runtime work from these tasks. Public notices and personal completion states are stored separately.
@@ -159,17 +163,17 @@ The current registry includes four universities, each with partial public-source
 | [Beihua University](configs/schools/beihua.auto.json) | A university configuration is available, with onboarding checks for some public sources. |
 | [Changchun University of Science and Technology](configs/schools/cust.auto.json) | A university configuration is available, with onboarding checks for some public sources; undergraduate academic affairs requiring an account remain marked as requiring login. |
 
-Supporting universities across China is the design goal, with coverage extended gradually by the community. The application currently cannot guarantee complete coverage of a university or accept any university URL without prior configuration. Universities outside the registry first need a verified configuration contribution.
+Supporting universities across China is the design goal, with coverage extended gradually by the community. Version 0.2.0 starts automatic discovery outside the registry, initially limited to `.edu.cn` root or `www` homepages. Automatically identified universities remain unreviewed drafts. If no usable section is found, the application preserves the current university and reports the failure. Unusual domains, authentication, and dynamic sites still need community packages or shared adapters. Complete coverage is not guaranteed.
 
 ### What AI does here
 
-AI supplements discovery by proposing official sections that the rule-based crawler may have missed. The existing DeepSeek entry point is disabled by default and requires user activation. Candidate links still undergo university-domain checks and actual website sampling before being added. Calls consume API tokens, the interface records returned usage, and the API key is not written to settings or the database.
+AI supplements discovery by proposing official sections that the rule-based crawler may have missed. I used CC Switch's provider lists, presets, edit forms, model selection, and activation flow as references for an original Qt interface. Supplementation is disabled by default and requires user activation. Candidate links still undergo domain checks and actual website sampling. Calls consume API tokens and show returned usage. Keys stay in process memory by default, with optional current-user Windows DPAPI encryption; university packages and the database contain no key.
 
-The search and validation pipeline is implemented, but a real DeepSeek API call has not yet been verified. A separate resource-description AI feature currently has input and output contracts, evidence validation, prompts, and offline tests; it is not connected to the desktop workflow.
+Real DeepSeek model-list and short connection requests succeeded using `deepseek-flash`. Native search returned real tool results alongside a search-use limit error. The application now retains valid partial results and shows that limit; the repaired search-to-source pipeline still needs another live check when networking is restored. Custom compatible interfaces have no built-in web search and produce suggestions only. A separate resource-description AI contract has offline tests but is not connected to the desktop workflow.
 
 ### Current stage and next steps
 
-As of **October 4, 2026**, this is a **0.1 desktop prototype**. Source code is public, with a **0.1.0 Windows preview installer and portable package** available.
+As of **October 4, 2026**, the source is at **0.2.0 desktop preview**, while the published download remains **0.1.0**. Version 0.2.0 is receiving local package verification. Full onboarding for an unconfigured university, the repaired native AI search, and GitHub publication will continue when networking is restored. See the [validation record](docs/universal-onboarding-validation.md).
 
 Current limitations:
 

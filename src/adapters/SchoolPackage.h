@@ -35,6 +35,7 @@ struct SchoolPackage {
     QUrl officialHomepage;
     QStringList resourceDiscoveryEntries;
     int resourceDiscoveryLimit = 32;
+    bool automaticallyIdentified = false;
     static SchoolPackage load(const QString &filename);
 };
 bool isAllowedUrl(const QUrl &url, const SourceConfig &source);

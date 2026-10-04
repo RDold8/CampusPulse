@@ -4,6 +4,8 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "school", "status", "reviewed_at", "categories", "fetch_defaults", "sources"],
+  "allOf": [{"if": {"properties": {"reviewed_at": {"const": ""}}},
+             "then": {"properties": {"status": {"const": "draft"}}}}],
   "properties": {
     "schema_version": {"const": "0.1-draft"},
     "onboarding_version": {"type":"integer","minimum":1},
@@ -18,11 +20,13 @@
         "province": {"type": "string"},
         "city": {"type": "string"},
         "timezone": {"type": "string", "minLength": 1},
-        "official_homepage": {"$ref": "#/$defs/httpUrl"}
+        "official_homepage": {"$ref": "#/$defs/httpUrl"},
+        "identity_provenance": {"const": "automatic_homepage"},
+        "status": {"const": "draft"}
       }
     },
     "status": {"enum": ["draft", "verified", "degraded", "disabled"]},
-    "reviewed_at": {"type": "string", "format": "date"},
+    "reviewed_at": {"anyOf": [{"type": "string", "format": "date"}, {"const": ""}]},
     "categories": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/category"}},
     "fetch_defaults": {
       "type": "object", "additionalProperties": false,

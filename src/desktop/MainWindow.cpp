@@ -106,6 +106,8 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
     }
     connect(universities, &UniversityPage::universitySelected, this,
             &MainWindow::universitySelected);
+    connect(universities, &UniversityPage::homepageDiscoveryRequested, this,
+            &MainWindow::universityHomepageRequested);
     const auto updateUniversityBusy = [universities, &coordinator, resourceDiscovery] {
         universities->setBusy(coordinator.busy() || (resourceDiscovery && resourceDiscovery->busy()));
     };

@@ -1,4 +1,5 @@
 #include "adapters/RefreshCoordinator.h"
+#include "adapters/PublicUniversityNetwork.h"
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
@@ -40,6 +41,30 @@ void RefreshCoordinator::pump() {
     }
     requestActive_ = true;
     lastRequest_.restart();
+    if (school_.automaticallyIdentified) {
+        auto root = school_.officialHomepage.host();
+        if (root.startsWith("www.")) root.remove(0, 4);
+        const auto target = request.url;
+        PublicUniversityNetwork::get(target, root, this,
+            [this, request = std::move(request)](UniversityPageResponse response) mutable {
+                requestActive_ = false;
+                auto error = response.error;
+                if (!response.redirect.isEmpty()) {
+                    if (request.redirects >= 3 || !isAllowedUrl(response.redirect, request.source))
+                        error = "重定向不被允许";
+                    else {
+                        request.url = response.redirect;
+                        ++request.redirects;
+                        pending_.push_front(std::move(request));
+                        pump();
+                        return;
+                    }
+                }
+                request.complete(response.bytes, error);
+                pump();
+            }, 5 * 1024 * 1024, options_.transferTimeoutMs);
+        return;
+    }
     QNetworkRequest wire(request.url);
     wire.setRawHeader("User-Agent", "CampusPulse/0.1 (public-notice desktop prototype)");
     wire.setAttribute(QNetworkRequest::RedirectPolicyAttribute,

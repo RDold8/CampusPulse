@@ -103,6 +103,7 @@ SchoolPackage SchoolPackage::load(const QString &filename) {
         throw std::runtime_error("不支持的学校配置版本");
     const auto school = obj.value("school").toObject();
     SchoolPackage result{required(school, "key"), required(school, "name"), {}, {}};
+    result.automaticallyIdentified = school.value("identity_provenance") == "automatic_homepage";
     result.configFile = filename;
     result.timeZone = required(school, "timezone");
     if (!QTimeZone(result.timeZone.toUtf8()).isValid())

@@ -1,0 +1,15 @@
+# 陌生大学接入与 AI 提供方配置
+
+用户反馈：未安装大学包就无法检索；AI 接入需要借鉴 CC Switch 的配置交互。
+
+交付范围：社区配置优先，陌生 `.edu.cn` 学校官网通过公开地址、HTTPS 和首页名称识别生成本地草案，再进入通用栏目与资源发现。草案和人工核验身份分别显示；失败不替换当前学校。规则路径模型调用为零。
+
+AI 使用本机提供方库，支持 Anthropic Messages 搜索工具模式和 OpenAI 兼容建议接口，新增、修改、启用、删除、模型获取与显式连接测试。用户进一步提供 CC Switch 截图并要求自选路由：加入备注、官网、完整URL、认证方式、最终请求地址与隐藏Key的配置预览；不读取或执行截图里的 Claude 环境配置、角色映射或 hooks。模型建议始终是未核实候选，来源仍须列表与正文验证。密钥默认仅会话内使用；Windows 记住密钥使用当前用户 DPAPI，配置导出不含密钥。
+
+实现分工：UnknownUniversityDiscovery/PublicUniversityNetwork/采集传输；AiProviderConfig/AiProviderProbe/存储；AiProviderDialog/AiSourcesPage；主程序、目录、搜索协议和回归验收分别负责，避免文件并发覆盖。
+
+验收：危险 URL/私网 DNS/越界跳转、自动身份持久保存、失败不覆盖学校、多提供方及密钥隔离、普通回答不冒充检索、UI 配置交互、陌生大学实网接入。真实 API 鉴权与检索须用户 Key，不以模拟响应当真实成功。
+
+开发测试使用独立数据库、临时设置及桌面2。桌面1已有安装版继续保留。用户原有 schemas/ai-resource-output.schema.json 空白修改不纳入本轮提交。
+
+状态：代码已完成，21套测试通过；原生 AI 页面与表单已经在桌面2验证。2026-10-04 用户选择先交付本地0.2.0包，网络恢复后继续未知学校完整接入、修复后的真实AI检索和GitHub发布。真实模型列表/连接已成功，原生搜索返回结果后触发上限；本机DNS故障使后续复验在发出Key前停止。完成记录与恢复入口见 docs/universal-onboarding-validation.md。

@@ -1,5 +1,7 @@
 #include "adapters/UniversityRegistry.h"
 #include "adapters/SchoolPackage.h"
+#include "adapters/UnknownUniversityDiscovery.h"
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -30,6 +32,9 @@ QUrl homepage(const QString &input, bool allowPlainDomain) {
             throw invalidHomepage();
         value.prepend("https://");
     }
+    const auto rawAuthority = value.section("://", 1).section(QRegularExpression("[/?#]"), 0, 0);
+    if (rawAuthority.contains(':') || rawAuthority.contains('@'))
+        throw invalidHomepage();
     const QUrl url(value, QUrl::StrictMode);
     if (!url.isValid() || (url.scheme() != "https" && url.scheme() != "http") ||
         !url.userInfo().isEmpty() || url.port() != -1 || url.hasQuery() || url.hasFragment() ||
@@ -52,7 +57,7 @@ QUrl homepage(const QString &input, bool allowPlainDomain) {
 
 } // namespace
 
-UniversityRegistry::UniversityRegistry(const QString &directory) {
+UniversityRegistry::UniversityRegistry(const QString &directory, const QString &discoveredDirectory) {
     const QFileInfo directoryInfo(directory);
     const QDir root(directoryInfo.canonicalFilePath());
     if (!directoryInfo.exists() || !directoryInfo.isDir() || root.path().isEmpty())
@@ -87,17 +92,88 @@ UniversityRegistry::UniversityRegistry(const QString &directory) {
                                          .toStdString());
         }
     }
+    if (!discoveredDirectory.isEmpty()) {
+        const QDir local(discoveredDirectory);
+        for (const auto &file : local.entryInfoList({"*.json"}, QDir::Files, QDir::Name)) {
+            const auto resolved = file.canonicalFilePath();
+            if (resolved.isEmpty() || QFileInfo(resolved).absolutePath() != local.canonicalPath())
+                continue;
+            try {
+                addLocalDiscoveredPackage(resolved);
+            } catch (const std::exception &error) {
+                qWarning() << "忽略无效的自动识别学校草案:" << file.fileName() << error.what();
+            }
+        }
+    }
+}
+
+void UniversityRegistry::addLocalDiscoveredPackage(const QString &configFile) {
+    const auto school = SchoolPackage::load(configFile);
+    QFile file(configFile);
+    if (!file.open(QIODevice::ReadOnly))
+        throw std::runtime_error("无法读取自动识别学校草案");
+    const auto metadata = QJsonDocument::fromJson(file.readAll()).object().value("school").toObject();
+    if (metadata.value("identity_provenance") != "automatic_homepage")
+        throw std::runtime_error("本地学校草案缺少自动识别来源标记");
+    const auto official = UnknownUniversityDiscovery::normalizedHomepage(school.officialHomepage.toString());
+    for (const auto &entry : universities_) {
+        auto host = entry.homepage.host();
+        if (host.startsWith("www.")) host.remove(0, 4);
+        auto localHost = official.host();
+        if (localHost.startsWith("www.")) localHost.remove(0, 4);
+        if (host == localHost || entry.id == school.id) {
+            if (entry.automaticallyIdentified && entry.id == school.id && host == localHost)
+                return;
+            throw std::runtime_error("自动识别的学校与已有社区学校身份冲突");
+        }
+    }
+    universities_.push_back({school.id, school.name, official,
+                             QFileInfo(configFile).canonicalFilePath(), true});
 }
 
 const std::vector<RegisteredUniversity> &UniversityRegistry::list() const {
     return universities_;
 }
 
+SchoolPackage UniversityRegistry::loadSessionPackage(const QString &configFile,
+                                                    bool allowUnregistered) const {
+    auto school = SchoolPackage::load(configFile);
+    for (const auto &university : universities_) {
+        if (university.id != school.id)
+            continue;
+        const auto seed = SchoolPackage::load(university.configFile);
+        auto expectedRoot = seed.officialHomepage.host().toLower();
+        auto actualRoot = school.officialHomepage.host().toLower();
+        if (expectedRoot.startsWith("www.")) expectedRoot.remove(0, 4);
+        if (actualRoot.startsWith("www.")) actualRoot.remove(0, 4);
+        if (expectedRoot != actualRoot ||
+            seed.automaticallyIdentified != school.automaticallyIdentified)
+            throw std::runtime_error("学校配置的官网域或自动身份标记与身份种子不一致，请重新接入");
+        if (school.resourceDiscoveryEntries.empty()) {
+            school.resourceDiscoveryEntries = seed.resourceDiscoveryEntries;
+            school.resourceDiscoveryLimit = seed.resourceDiscoveryLimit;
+        }
+        return school;
+    }
+    // A persisted preference cannot establish a school's identity. Explicit
+    // --config remains available for isolated community-package acceptance.
+    if (!allowUnregistered ||
+        (school.id.startsWith("cn-auto-") && !school.automaticallyIdentified))
+        throw std::runtime_error("所选学校配置没有匹配的学校身份，请从大学页重新接入");
+    if (school.automaticallyIdentified)
+        UnknownUniversityDiscovery::normalizedHomepage(school.officialHomepage.toString());
+    return school;
+}
+
 RegisteredUniversity UniversityRegistry::resolve(const QString &input) const {
     const auto requested = homepage(input, true);
     const auto found =
         std::find_if(universities_.begin(), universities_.end(), [&](const auto &university) {
-            return university.homepage.host() == requested.host();
+            auto known = university.homepage.host();
+            auto inputHost = requested.host();
+            if (known.startsWith("www.")) known.remove(0, 4);
+            if (inputHost.startsWith("www.")) inputHost.remove(0, 4);
+            return known == inputHost;
         });
     if (found == universities_.end())
         throw std::runtime_error("尚未收录核验的高校官网，请由社区添加学校包。");

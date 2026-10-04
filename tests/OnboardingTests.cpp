@@ -37,6 +37,33 @@ SourceConfig automatic(const QString &name, const QString &url) {
 class OnboardingTests final : public QObject {
     Q_OBJECT
   private slots:
+    void sharedDepartmentNavigationLabelsReachTeachingEntries() {
+        for (const auto *label : {"教务在线", "组织机构", "人才培养", "本科生院"})
+            QVERIFY(SchoolOnboarding::isDiscoveryLabel(QString::fromUtf8(label)));
+        QVERIFY(!SchoolOnboarding::isDiscoveryLabel("关于2027年重修缴费的通知"));
+        QVERIFY(!SchoolOnboarding::isDiscoveryLabel("校友捐赠"));
+    }
+    void sharedJspCmsLinksReadPublishedDatesWithoutTitleInference() {
+        auto source = automatic("jsp", "https://www.bkjx.example.edu.cn/index/tzgg.htm");
+        source.allowUnknownDates = true;
+        const QByteArray page = "<ul>"
+            "<li><a href='../content.jsp?urltype=news.NewsContentUrl&amp;wbnewsid=38111'>"
+            "<div class='time'><span>09.30</span><i>2026</i></div><h5>关于2027学年竞赛报名的通知</h5></a></li>"
+            "<li><a href='../content.jsp?urltype=news.NewsContentUrl&amp;wbnewsid=38112'>"
+            "<div class='time'><span>09.28</span><i>2026</i></div><h5>奖学金申请通知</h5></a></li>"
+            "<li><a href='../content.jsp?urltype=news.NewsContentUrl&amp;wbnewsid=38113'>"
+            "<div class='time'><span>02.30</span><i>2026</i></div><h5>2027年重修缴费通知</h5></a></li>"
+            "<li><a href='../content.jsp?urltype=tree.TreeTempUrl&amp;wbnewsid=38114'>导航不是通知</a></li>"
+            "<li><a href='https://example.com/content.jsp?urltype=news.NewsContentUrl&amp;wbnewsid=38115'>外站不能加入</a></li>"
+            "</ul>";
+        const auto rows = HtmlAdapter{}.parseList(page, source);
+        QCOMPARE(rows.size(), std::size_t(3));
+        QCOMPARE(rows[0].publishedDate, std::string("2026-09-30"));
+        QCOMPARE(rows[0].title, std::string("关于2027学年竞赛报名的通知"));
+        QVERIFY(rows[0].url.find("content.jsp?") != std::string::npos);
+        QCOMPARE(rows[1].publishedDate, std::string("2026-09-28"));
+        QVERIFY(rows[2].publishedDate.empty());
+    }
     void loginDetectionKeepsOfficialOriginAndSourceId() {
         QTemporaryDir folder;
         QVERIFY(folder.isValid());
@@ -162,7 +189,7 @@ class OnboardingTests final : public QObject {
         QCOMPARE(hits.first().toObject().value("status").toString(), QString("candidate"));
         DeepSeekSearch provider;
         QSignalSpy failure(&provider, &DeepSeekSearch::failed);
-        provider.search({}, "test", "test", "jlu.edu.cn", {});
+        provider.search(QString{}, "test", "test", "jlu.edu.cn", {});
         QCOMPARE(failure.count(), 1);
         QVERIFY(failure.first().first().toString().contains("尚未发起请求"));
     }

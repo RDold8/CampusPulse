@@ -8,9 +8,11 @@
 
 本入口采用 [DeepSeek 官方仓库的搜索实现](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/web/web-search-deepseek/README.zh.md)公开的 Anthropic 兼容 Messages 请求：`POST https://api.deepseek.com/anthropic/v1/messages`，服务端工具 `web_search_20250305`。这是一轮模型请求，不是独立、免费的检索 API。按官方仓库说明计入模型调用费用；搜索是否另有费用及最终用量以提供商规则和响应为准，项目不作固定费用承诺。
 
-默认模型为 `deepseek-flash`，与当前 [DeepSeek API 文档](https://api-docs.deepseek.com/)的模型名称一致。用户之前保存的模型名称保留，可按账户实际支持修改。官方示例支持某协议，不证明每个账户、模型或第三方兼容接口都支持相同搜索工具。项目固定请求 DeepSeek 官方 HTTPS 接口，不提供第三方代理端点，拒绝重定向。截至 2026-10-03，项目没有提供真实 Key 进行 API 验收，因此不能声称真实检索已成功。
+默认模型为 `deepseek-flash`，对应 [DeepSeek 模型接口说明](https://api-docs.deepseek.com/api/list-models/)中的 V4.1 Flash。模型名称可以手动填写，按所选路由实际支持为准。官方示例支持某协议，不证明每个账户、模型或第三方兼容接口都支持相同搜索工具。请求地址可自选：Anthropic Messages 模式按所填路由请求搜索工具，必须实际返回结构化工具结果；OpenAI 兼容模式仅产生候选建议。两种模式均拒绝重定向。2026-10-04 已用用户授权的 Key 验证官方模型列表及连接请求，均返回 HTTP 200；原生搜索收到真实工具结果及次数上限错误。上限处理已修复并通过离线回归，完整实网复验及第三方路由验收待本机 DNS 恢复，见[验收记录](universal-onboarding-validation.md)。
 
-填写 API Key 和模型，然后点击“用 DS 寻找遗漏栏目并校验接入”。Key 只留在进程内存，重启后需重新填写；也可在启动时提供 `DEEPSEEK_API_KEY` 环境变量。设置文件只保存模型、自动开关和最近尝试时间，不保存 Key。发送的信息只有学校名称与官网域名，不发送本地通知库、订阅、个人待办或资源使用账号。
+在 AI 页添加或编辑提供方，填写 API 地址、Key 与模型，启用后点击补充。配置方式见[AI 提供方管理](ai-provider-management.md)。默认 Key 只保留在进程内存；Windows 可选择当前用户 DPAPI 加密保存。`DEEPSEEK_API_KEY` 仅用于官方预设，不用于自定义供应商。请求使用学校名称、官网域与已有公开栏目链接，不发送个人待办、订阅、数据库或学校账号。
+
+自定义 OpenAI 兼容模式使用 Chat Completions，要求完整 `finish_reason: stop` 及严格候选 JSON，最多1024生成 token、8条候选。它没有内置联网工具；输出标记 `provenance: model_suggestion`。未知、猜错或不可访问的 URL 不能直接变成来源，仍由域名、列表和正文验证决定是否接入。实际 token 来自响应，不以预估冒充用量。
 
 ## 输入、输出与准入规则
 
@@ -20,7 +22,7 @@
 
 仅接受 `stop_reason: end_turn` 且内容为有效数组的完整响应。`max_tokens`、`pause_turn`、`tool_use`、拒绝、其他或缺失停止原因都不采纳；项目不自动续接。停止原因按 [DeepSeek 的 Anthropic 兼容说明](https://api-docs.deepseek.com/guides/anthropic_api/)所引用的 [Messages 停止原因定义](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons)处理。这是本项目保守的接收策略，不宣称其他停止原因一定无法继续。
 
-候选只能来自 `web_search_tool_result` 中的 `web_search_result`，普通文字中的 URL 不能当作真实检索。工具错误对象、无效内容块、无效结果结构均导致整次候选响应失败；即使前面已收集 8 条，也继续检查后续块。成功检索但结果数组为空可以返回零候选。
+候选只能来自 `web_search_tool_result` 中的 `web_search_result`，普通文字中的 URL 不能当作真实检索。仅当本轮已经有真实结果时，`max_uses_exceeded` 允许保留这些结果，实际用量中标记 `search_limited: true`，界面说明结果有限；仅返回次数上限错误仍失败。其他工具错误、无效内容块和无效结果结构均导致整次候选响应失败，即使已有 8 条也继续检查后续块。成功检索但结果数组为空可以返回零候选。不提高搜索次数、不自动续接请求。
 
 URL 在进入 `QUrl` 规范化前检查原始 authority 和主机格式，拒绝外校域、假后缀、账号密码（包括空 `@`）、端口（包括空端口）、IP、空格、反斜线、编码主机和无效地址。然后再次通过本校根域边界检查。校内 HTTP 候选只转换成 HTTPS 后采样，不读取 HTTP；过滤新闻正文、登录路径、PDF 和已有栏目。每个保留结果带 `status: candidate`，模型标题只用于展示。
 

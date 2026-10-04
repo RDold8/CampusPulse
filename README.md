@@ -6,6 +6,8 @@
 
 **基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
+**Windows 预览版下载：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.0/CampusPulse-0.1.0-windows-x64-setup.exe) · [发布说明与便携版](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。
+
 学校官网里有很多有用的内容：教务通知、考试安排、竞赛报名、奖助学金申请、校园活动、招聘信息，还有图书馆和学习资源入口。它们往往散落在不同部门的网站上，查找费时，也容易漏看。
 
 我想把这些公开信息集中整理起来，让学生可以按自己的需要查找，并把需要办理的事情加入待办，通过日历和提醒继续跟进。目前先做 C++ 桌面软件，移动 App 和双端同步后续再推进。
@@ -69,7 +71,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。现有 DeepSeek �
 
 ### 目前的阶段和后续方向
 
-截至 **2026-10-04**，项目是 **0.1 桌面原型**，源码已公开，尚未发布可下载的二进制 Release。
+截至 **2026-10-04**，项目是 **0.1 桌面原型**，源码已公开，提供 **0.1.0 Windows 预览安装版与便携版**。
 
 目前需要注意：
 
@@ -101,6 +103,8 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。现有 DeepSeek �
 ## English
 
 **Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
+
+**Windows preview download:** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.0/CampusPulse-0.1.0-windows-x64-setup.exe) · [Release notes and portable ZIP](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required.
 
 University websites contain useful information: academic notices, exam schedules, competition registration, scholarships and financial aid, campus events, recruitment, and library or learning resources. These are often scattered across departmental websites, making them time-consuming to find and easy to miss.
 
@@ -165,7 +169,7 @@ The search and validation pipeline is implemented, but a real DeepSeek API call 
 
 ### Current stage and next steps
 
-As of **October 4, 2026**, this is a **0.1 desktop prototype**. Source code is public; no downloadable binary Release has been published.
+As of **October 4, 2026**, this is a **0.1 desktop prototype**. Source code is public, with a **0.1.0 Windows preview installer and portable package** available.
 
 Current limitations:
 

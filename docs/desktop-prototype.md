@@ -1,6 +1,6 @@
 # CampusPulse 桌面原型 0.1
 
-2026-10-03：C++20 + Qt Widgets + SQLite + Lexbor HTML/CSS选择器 + libical ICS。东北电力大学是第一份学校配置，来源参数独立于核心和界面。当前是本地试用原型，尚未发布到开源托管平台。
+2026-10-04：C++20 + Qt Widgets + SQLite + Lexbor HTML/CSS选择器 + libical ICS。东北电力大学是第一份学校配置，来源参数独立于核心和界面。源码已公开，Windows 0.1.0预览安装版与便携版见[下载与安装](windows-release.md)；仍是早期原型。
 
 ## 使用
 

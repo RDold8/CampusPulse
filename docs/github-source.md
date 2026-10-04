@@ -1,12 +1,12 @@
 # GitHub 源码保存
 
-2026-10-04，当前源码准备保存到公开仓库 `RDold8/CampusPulse`，主分支为 `main`。项目采用MIT许可证，大学页面与第三方依赖的权利分别保留。
+2026-10-04，源码已保存到公开仓库 `RDold8/CampusPulse`，主分支为 `main`。项目采用MIT许可证，大学页面与第三方依赖的权利分别保留。Windows预览安装包单独发布到[Release](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0)，见[下载与安装](windows-release.md)。
 
 ## 保存范围
 
 Git保存C++源码、CMake构建入口、原创图标、通用学校配置、模板、Schema、项目说明、开发工具，以及脱敏离线测试样本。GitHub保存同一提交，后续修改通过新的Git提交和push更新。
 
-本机的 `build/`、`dist/`、虚拟环境、下载依赖、`evidence/`、运行数据库、日志及环境密钥文件由 `.gitignore` 排除。这次保存源码，没有发布包含Qt运行库的二进制Release；本机可运行软件包继续保留在 `dist/CampusPulse/`。
+本机的 `build/`、`dist/`、虚拟环境、下载依赖、`evidence/`、运行数据库、日志及环境密钥文件由 `.gitignore` 排除。Git保存源码与打包入口；安装程序、便携包及对应依赖源码作为Release附件发布，不进入Git历史。本机原型继续保留在 `dist/CampusPulse/`。
 
 部分大学官网测试样本包含联系邮箱与手机号，发布副本已替换为占位文本；原始样本仅保留在本机忽略目录。`tests/fixtures/publication.json` 记录原始与发布副本哈希、脱敏字段和范围。学校原始URL、通知标题、时间、解析结构和附件链接保留，未下载名单附件。
 

@@ -92,7 +92,7 @@
         "item_selector": ".crules_con",
         "title_selector": "a[href]",
         "date_selector": "span",
-        "body_selector": "#vsb_content",
+        "body_selector": "#vsb_content, [id^='vsb_content_']",
         "attachment_selector": ".fujian a[href]"
       },
       "pending": [
@@ -121,7 +121,7 @@
         "item_selector": ".crules_con",
         "title_selector": "a[href]",
         "date_selector": "span",
-        "body_selector": "#vsb_content",
+        "body_selector": "#vsb_content, [id^='vsb_content_']",
         "attachment_selector": ".fujian a[href]"
       },
       "pending": [

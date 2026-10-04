@@ -1,6 +1,6 @@
-# 0.2.0：陌生高校与 AI 配置验收
+# 0.1.1：陌生高校与 AI 配置验收
 
-本轮针对“目录之外的大学不能检索”和“AI 配置入口过于简单”两个反馈，新增通用官网身份发现和多提供方管理。2026-10-04 用户选择先交付本地包，网络恢复后继续实网验收与 GitHub 发布。本页区分已经验证的行为与仍待验证的结果。
+本轮针对“目录之外的大学不能检索”和“AI 配置入口过于简单”两个反馈，新增通用官网身份发现和多提供方管理。2026-10-04 先按用户选择完成本地包，随后用户要求统一版本为0.1.1并提交GitHub发布。本轮发布保持桌面预览状态，网站与AI完整实网复验继续独立记录。未公开的0.2.0内部测试编号不作为公开Release。本页区分已经验证的行为与仍待验证的结果。
 
 ## 实现范围
 
@@ -16,7 +16,7 @@ CMake Release 构建通过，CTest 的 21 套测试全部通过；5份学校配�
 
 使用独立设置与数据库，在 Windows 桌面2实际显示生产 AI 页面和编辑表单；验证两项提供方、当前启用标记、主页面无路由及密钥控件、模型下拉框、八类搜索模板与重修缴费目标，并保存实际 Qt 控件截图。编辑窗口另验证密钥遮蔽、默认不记住密钥、无 Key 时不发出连接请求。自选路由表单另验证地址可编辑、完整URL模式、Bearer认证与自定义地址保留，切换协议不恢复官方地址。界面测试没有使用真实 Key，也没有发送 API 请求。桌面1的0.1.0安装文件没有改动。
 
-本机证据位于忽略目录 `evidence/ai-template-native-final-0.2.0/`（早期记录为 `evidence/ai-native-0.2.0/` 和 `evidence/ai-route-native-0.2.0/`）；最终回归为 `evidence/ai-template-final-ctest.txt`。这些演示截图不证明真实检索成功。
+本机证据位于忽略目录 `evidence/ai-template-native-final-0.2.0/`（早期记录为 `evidence/ai-native-0.2.0/` 和 `evidence/ai-route-native-0.2.0/`）；最终回归为 `evidence/ai-template-final-ctest.txt`。0.1.1版本构建与回归另保存为 `evidence/release-0.1.1-build.txt`、`evidence/release-0.1.1-ctest.txt`。内部0.2.0截图验证同一功能界面，不证明真实检索成功。
 
 ## 真实 DeepSeek 结果
 
@@ -38,10 +38,10 @@ CMake Release 构建通过，CTest 的 21 套测试全部通过；5份学校配�
 
 ## 本地包与恢复入口
 
-版本为 0.2.0，安装包和便携包按干净运行目录生成，带 Qt、SQLite 插件、VC Runtime、学校配置及依赖许可。发布附件不含数据库、运行日志、真实 Key 或本机学校草案。新包采用独立数据库在桌面2验收，不覆盖桌面1安装文件。
+版本为 0.1.1，安装包和便携包按干净运行目录生成，带 Qt、SQLite 插件、VC Runtime、学校配置及依赖许可。发布附件不含数据库、运行日志、真实 Key 或本机学校草案。新包采用独立数据库在桌面2验收，不覆盖桌面1安装文件。
 
-本地文件：`dist/releases/CampusPulse-0.2.0-windows-x64-setup.exe` 与 `CampusPulse-0.2.0-windows-x64-portable.zip`，最终运行目录为 `dist/release-0.2.0-templates/CampusPulse`。移除开发 Qt SDK 与 Visual Studio 路径后，包内 `--version` 返回 `CampusPulse 0.2.0`，退出码0；正常窗口成功显示“AI补充”页面，主页面仅选择模型与搜索模板，没有路由或密钥输入控件。验收使用之前的独立测试库公开通知缓存20条、个人待办0条，没有本轮联网采集。
+本地文件：`dist/releases/v0.1.1/CampusPulse-0.1.1-windows-x64-setup.exe` 与 `CampusPulse-0.1.1-windows-x64-portable.zip`，最终运行目录为 `dist/release-0.1.1/CampusPulse`。移除开发 Qt SDK 与 Visual Studio 路径后，包内 `--version` 返回 `CampusPulse 0.1.1`，退出码0；正常窗口成功显示“AI补充”页面，主页面仅选择模型与搜索模板，没有路由或密钥输入控件。验收使用之前的独立测试库公开通知缓存20条、个人待办0条，没有本轮联网采集。
 
-本轮已编译安装器，但没有执行覆盖现有0.1.0安装的升级测试；不能用包内程序成功启动替代安装升级验收。校验值与具体交付状态保存在版本独立的 `CampusPulse-0.2.0-SHA256SUMS.txt` 和 `CampusPulse-0.2.0-local-manifest.json`。
+本轮已编译安装器，但没有执行覆盖现有0.1.0安装的升级测试；不能用包内程序成功启动替代安装升级验收。校验值与具体交付状态保存在本次Release的 `SHA256SUMS.txt` 和 `release-manifest.json`。
 
-恢复时先检查 `evidence/ccut-unconfigured-proof.json` 与 `evidence/ai-provider-0.2.0-proof.json` 的失败状态，确认本机 DNS 正常，再执行显式 live probe。不要通过 hosts、TLS 忽略或增加模型次数把网络失败掩盖成成功。验收通过后才更新 README 的公开下载版本并上传 v0.2.0；当前公开下载仍为 v0.1.0。
+恢复时先检查 `evidence/ccut-unconfigured-proof.json` 与 `evidence/ai-provider-0.2.0-proof.json` 的失败状态，确认本机 DNS 正常，再执行显式 live probe。不要通过 hosts、TLS 忽略或增加模型次数把网络失败掩盖成成功。用户已明确授权0.1.1预览版发布，源码与下载入口指向v0.1.1。GitHub提交和附件发布不替代上述实网复验；后续通过实际结果更新覆盖与能力声明。

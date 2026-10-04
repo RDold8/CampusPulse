@@ -2,7 +2,7 @@
 .SYNOPSIS
 Build the CampusPulse per-user Windows x64 installer from a clean deployed package.
 .EXAMPLE
-./tools/build-installer.ps1 -PackageDir './dist/release-0.1.0/CampusPulse' -IsccPath 'C:\Program Files\Inno Setup 7\ISCC.exe'
+./tools/build-installer.ps1 -PackageDir './dist/release-0.1.1/CampusPulse' -IsccPath 'C:\Program Files\Inno Setup 7\ISCC.exe'
 .NOTES
 Requires an installed Inno Setup compiler. This script does not install tools,
 deploy Qt, download dependencies, launch CampusPulse, or run the installer.

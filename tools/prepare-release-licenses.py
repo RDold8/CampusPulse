@@ -25,7 +25,7 @@ def main() -> None:
     parser.add_argument("--qt-root", required=True, type=Path)
     parser.add_argument("--source-dir", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
-    parser.add_argument("--version", default="0.1.0")
+    parser.add_argument("--version", default="0.1.1")
     parser.add_argument("--source-release-version", help="Published release containing unchanged dependency sources")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent

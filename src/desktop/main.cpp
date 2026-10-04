@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
     QApplication app(argc, argv);
     app.setOrganizationName("CampusPulse");
     app.setApplicationName("CampusPulse");
-    app.setApplicationVersion("0.2.0");
+    app.setApplicationVersion("0.1.1");
     BrandTheme::installApplication(app);
     QSettings preferences;
     const auto defaultConfig =

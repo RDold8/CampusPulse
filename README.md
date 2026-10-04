@@ -6,7 +6,7 @@
 
 **基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
-**已公开的 Windows 0.1.0 预览版：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.0/CampusPulse-0.1.0-windows-x64-setup.exe) · [发布说明与便携版](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。0.2.0 新增陌生高校发现与多套 AI 配置，先提供本地测试包，联网验收与公开发布待继续。
+**Windows 0.1.1 预览版：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-setup.exe) · [下载便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-portable.zip) · [发布说明](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.1) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。本轮加入陌生高校发现、多套 AI 配置，以及主页面模型选择和八类搜索模板；陌生大学完整实网接入与修复后的 AI 补充链路仍待复验。
 
 学校官网里有很多有用的内容：教务通知、考试安排、竞赛报名、奖助学金申请、校园活动、招聘信息，还有图书馆和学习资源入口。它们往往散落在不同部门的网站上，查找费时，也容易漏看。
 
@@ -63,7 +63,7 @@
 | [北华大学](configs/schools/beihua.auto.json) | 已建立学校配置，并对部分公开来源完成接入测试。 |
 | [长春理工大学](configs/schools/cust.auto.json) | 已建立学校配置，并对部分公开来源完成接入测试；需要学校账号的本科教务入口保留“需要登录”状态。 |
 
-面向全国高校是项目的设计目标，后续由社区逐步扩展。0.2.0 开始支持目录外学校的自动发现，首轮只接受 `.edu.cn` 根域或 `www` 官网首页，自动身份始终标为待核验草案。没有找到可用栏目时，会保留失败信息和原来的学校；遇到特殊域名、登录或动态网站，仍需要社区配置与共享适配器。目前不能保证找全某所学校的信息。
+面向全国高校是项目的设计目标，后续由社区逐步扩展。0.1.1 开始支持目录外学校的自动发现，首轮只接受 `.edu.cn` 根域或 `www` 官网首页，自动身份始终标为待核验草案。没有找到可用栏目时，会保留失败信息和原来的学校；遇到特殊域名、登录或动态网站，仍需要社区配置与共享适配器。目前不能保证找全某所学校的信息。
 
 ### AI 在这里做什么
 
@@ -73,7 +73,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 ### 目前的阶段和后续方向
 
-截至 **2026-10-04**，源码进入 **0.2.0 桌面预览版**，已公开下载的版本仍为 **0.1.0**。0.2.0 先做本地包验收，陌生学校完整接入、修复后的真实 AI 检索及 GitHub 发布待网络恢复后继续；具体证据见 [本轮验收记录](docs/universal-onboarding-validation.md)。
+截至 **2026-10-04**，本轮版本定为 **0.1.1 桌面预览版**，提交源码并提供 Windows 安装包与便携包；此前的 **0.1.0** 保留为历史版本。陌生大学的完整实网接入与修复后的真实 AI 检索、来源补充链路仍待网络恢复后复验；版本发布不代表这些检查已经完成。具体证据见 [本轮验收记录](docs/universal-onboarding-validation.md)。
 
 目前需要注意：
 
@@ -106,7 +106,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 **Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
 
-**Published Windows 0.1.0 preview:** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.0/CampusPulse-0.1.0-windows-x64-setup.exe) · [Release notes and portable ZIP](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. Version 0.2.0 adds discovery for unconfigured universities and multiple AI profiles. It is being delivered as a local test package before further live verification and publication.
+**Windows 0.1.1 preview:** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-portable.zip) · [Release notes](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.1) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. This version adds discovery for unconfigured universities, multiple AI profiles, main-page model selection, and eight category search templates. Full live onboarding and the repaired AI supplementation pipeline still require rechecks.
 
 University websites contain useful information: academic notices, exam schedules, competition registration, scholarships and financial aid, campus events, recruitment, and library or learning resources. These are often scattered across departmental websites, making them time-consuming to find and easy to miss.
 
@@ -163,7 +163,7 @@ The current registry includes four universities, each with partial public-source
 | [Beihua University](configs/schools/beihua.auto.json) | A university configuration is available, with onboarding checks for some public sources. |
 | [Changchun University of Science and Technology](configs/schools/cust.auto.json) | A university configuration is available, with onboarding checks for some public sources; undergraduate academic affairs requiring an account remain marked as requiring login. |
 
-Supporting universities across China is the design goal, with coverage extended gradually by the community. Version 0.2.0 starts automatic discovery outside the registry, initially limited to `.edu.cn` root or `www` homepages. Automatically identified universities remain unreviewed drafts. If no usable section is found, the application preserves the current university and reports the failure. Unusual domains, authentication, and dynamic sites still need community packages or shared adapters. Complete coverage is not guaranteed.
+Supporting universities across China is the design goal, with coverage extended gradually by the community. Version 0.1.1 starts automatic discovery outside the registry, initially limited to `.edu.cn` root or `www` homepages. Automatically identified universities remain unreviewed drafts. If no usable section is found, the application preserves the current university and reports the failure. Unusual domains, authentication, and dynamic sites still need community packages or shared adapters. Complete coverage is not guaranteed.
 
 ### What AI does here
 
@@ -173,7 +173,7 @@ Real DeepSeek model-list and short connection requests succeeded using `deepseek
 
 ### Current stage and next steps
 
-As of **October 4, 2026**, the source is at **0.2.0 desktop preview**, while the published download remains **0.1.0**. Version 0.2.0 is receiving local package verification. Full onboarding for an unconfigured university, the repaired native AI search, and GitHub publication will continue when networking is restored. See the [validation record](docs/universal-onboarding-validation.md).
+As of **October 4, 2026**, this release is named **0.1.1 desktop preview**, with source changes, a Windows installer, and a portable package; **0.1.0** remains a historical release. Full live onboarding for an unconfigured university and the repaired AI search-to-source pipeline still need rechecks when networking is restored. Publishing this version does not establish that those checks have passed. See the [validation record](docs/universal-onboarding-validation.md).
 
 Current limitations:
 

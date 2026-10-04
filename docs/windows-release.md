@@ -1,26 +1,29 @@
 # Windows 下载与安装
 
-CampusPulse 支持 Windows 10 1809 及以上、Windows 11 的 x64 系统。当前公开下载为 0.1.0；0.2.0 本地测试包增加目录外高校发现和 AI 提供方管理，联网验收及发布待继续。详细状态见[本轮验收](universal-onboarding-validation.md)。
+CampusPulse 支持 Windows 10 1809 及以上、Windows 11 的 x64 系统。本次 0.1.1 Windows 预览版加入目录外高校发现、AI 提供方管理、主页面模型选择与八类搜索模板。陌生大学完整实网接入及修复后的 AI 补充链路仍待复验，发布不代表官网全量覆盖或这些检查已通过。详细状态见[本轮验收](universal-onboarding-validation.md)。
 
 ## 下载
 
-- [下载安装程序](https://github.com/RDold8/CampusPulse/releases/download/v0.1.0/CampusPulse-0.1.0-windows-x64-setup.exe)
-- [查看发布说明与其他附件](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0)
+- [下载 0.1.1 安装程序](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-setup.exe)
+- [下载 0.1.1 便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.1/CampusPulse-0.1.1-windows-x64-portable.zip)
+- [查看发布说明与其他附件](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.1)
+
+此前的 [0.1.0](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.0) 保留为历史版本。
 
 双击安装程序，选择简体中文或英文，按向导完成安装。默认安装到当前用户的 `%LOCALAPPDATA%\Programs\CampusPulse`，无需管理员权限；可从开始菜单启动，桌面快捷方式可在安装时选择。安装完成不会自动启动程序。Qt 与 Visual C++ 运行库已随包提供，不需要 Python 或 Qt SDK。
 
-便携版附件为 `CampusPulse-0.1.0-windows-x64-portable.zip`，解压完整目录后打开 `CampusPulse.exe`；不要只复制主程序。安装包和便携包使用相同运行文件。首次启动使用东北电力大学配置，可以在“大学”页选择当前目录中的其他学校。
+便携版附件为 `CampusPulse-0.1.1-windows-x64-portable.zip`，解压完整目录后打开 `CampusPulse.exe`；不要只复制主程序。安装包和便携包使用相同运行文件。首次启动使用东北电力大学配置，可以在“大学”页选择当前目录中的其他学校。
 
 ## 数据与当前范围
 
 默认数据库由程序保存在当前用户的 LocalAppData 中，与安装目录分开。卸载移除安装文件和快捷方式，保留个人数据库、订阅、待办及设置；卸载不是个人数据清理入口。
 
-内置目录有东北电力大学、吉林大学、北华大学、长春理工大学，均只覆盖部分公开来源。0.2.0 可以从尚未收录的 `.edu.cn` 官网尝试自动发现，但来源仍须列表与正文验证，特殊域名、登录和动态栏目可能需要适配。移动 App 与跨设备同步尚未实现；本地提醒要求程序保持运行，手机 ICS 导入及系统通知送达仍需目标环境验证。DeepSeek 模型列表及连接已实测成功，修复后的原生检索与新增来源尚待完整实网复验。
+内置目录有东北电力大学、吉林大学、北华大学、长春理工大学，均只覆盖部分公开来源。0.1.1 可以从尚未收录的 `.edu.cn` 官网尝试自动发现，但来源仍须列表与正文验证，特殊域名、登录和动态栏目可能需要适配。移动 App 与跨设备同步尚未实现；本地提醒要求程序保持运行，手机 ICS 导入及系统通知送达仍需目标环境验证。DeepSeek 模型列表及连接已实测成功，修复后的原生检索与新增来源尚待完整实网复验。
 
 此预览安装程序没有代码签名证书。请通过本仓库 Release 下载，附件 `SHA256SUMS.txt` 用于核对文件完整性：
 
 ```powershell
-Get-FileHash .\CampusPulse-0.1.0-windows-x64-setup.exe -Algorithm SHA256
+Get-FileHash .\CampusPulse-0.1.1-windows-x64-setup.exe -Algorithm SHA256
 ```
 
 ## 构建与分发材料
@@ -30,15 +33,16 @@ Get-FileHash .\CampusPulse-0.1.0-windows-x64-setup.exe -Algorithm SHA256
 ```powershell
 .\tools\build-desktop.ps1 -QtRoot 'D:\Qt\6.8.3\msvc2022_64'
 .\tools\package-desktop.ps1 -QtRoot 'D:\Qt\6.8.3\msvc2022_64' `
-  -Destination '.\dist\release-0.2.0\CampusPulse' `
+  -Destination '.\dist\release-0.1.1\CampusPulse' `
   -VcRuntimeDir '<Visual Studio>\VC\Redist\MSVC\<版本>\x64\Microsoft.VC143.CRT'
 py -X utf8 tools/prepare-release-licenses.py `
-  --package-dir dist/release-0.2.0/CampusPulse `
+  --package-dir dist/release-0.1.1/CampusPulse `
   --qt-root 'D:\Qt\6.8.3\msvc2022_64' `
   --source-dir .deps/release-sources --output-dir dist/releases `
-  --version 0.2.0 --source-release-version 0.1.0
+  --version 0.1.1
 # 从本文件的“安装帮助文本”生成包内 INSTALL-README.txt，再编译安装程序。
-.\tools\build-installer.ps1 -IsccPath '<Inno Setup>\ISCC.exe'
+.\tools\build-installer.ps1 -PackageDir '.\dist\release-0.1.1\CampusPulse' `
+  -Version '0.1.1' -IsccPath '<Inno Setup>\ISCC.exe'
 ```
 
 `package-desktop.ps1` 要求目标目录为空；再次打包应使用新的干净目录。`prepare-release-licenses.py` 需要事先下载的 Qt Base 6.8.3、Lexbor 2.5.0、libical 3.0.20 源码包，以及微软 VC Runtime 用户许可 DOCX；它验证三个源码包的固定 SHA-256、准备许可与 SPDX，并把源码附件复制到输出目录。具体文件名和哈希见工具中的 `SOURCES` 与包内 `licenses/dependency-sources.json`。
@@ -50,7 +54,7 @@ py -X utf8 tools/prepare-release-licenses.py `
 - libical：<https://codeload.github.com/libical/libical/zip/refs/tags/v3.0.20>
 - VC Runtime 条款：<https://visualstudio.microsoft.com/wp-content/uploads/2021/09/Visual-C-Runtime-2015-2022-License-1.docx>
 
-Release 提供三个未经修改的依赖源码包；安装目录 `licenses` 包含完整许可证、第三方归属文本、Qt SPDX、源码地址与哈希。0.2.0 本地包使用与 0.1.0 相同的依赖，暂引用已经公开的 0.1.0 依赖源码附件；`--source-release-version` 单独指定实际可下载的源码 Release，避免指向尚未发布的地址。Qt 动态链接，用户可以替换兼容 DLL、调试并运行修改后的版本，无签名或激活机制阻止替换。Qt 6.8.3 对应源码 commit 是 `c07c2d5a527a644d36e7853d55132ae38921682f`；其构建配置记录在 SPDX 中。更改 ABI 或工具链时，应从本项目 CMake 源码重新构建应用。
+0.1.1 Release 同时提供三个未经修改的依赖源码包；安装目录 `licenses` 包含完整许可证、第三方归属文本、Qt SPDX、源码地址与哈希。源码附件和本次安装包放在同一个 `v0.1.1` Release 中，构建时使用 `--version 0.1.1` 即可生成对应下载地址。Qt 动态链接，用户可以替换兼容 DLL、调试并运行修改后的版本，无签名或激活机制阻止替换。Qt 6.8.3 对应源码 commit 是 `c07c2d5a527a644d36e7853d55132ae38921682f`；其构建配置记录在 SPDX 中。更改 ABI 或工具链时，应从本项目 CMake 源码重新构建应用。
 
 依赖许可分别适用：Qt LGPL-3.0、Lexbor Apache-2.0、libical MPL-2.0、SQLite public domain、Microsoft Runtime 独立条款。CampusPulse 原创代码、配置及图标仍为 MIT。详见 [第三方说明](../THIRD_PARTY_NOTICES.md)。
 
@@ -59,7 +63,7 @@ Release 提供三个未经修改的依赖源码包；安装目录 `licenses` 包
 以下内容同时保存为包内 UTF-8 `INSTALL-README.txt`，供安装完成页显示：
 
 ```text
-CampusPulse 0.2.0 — Windows 本地测试版 / Local Windows test build
+CampusPulse 0.1.1 — Windows 预览版 / Windows preview
 
 从开始菜单启动 CampusPulse，或打开安装目录中的 CampusPulse.exe。
 Start CampusPulse from the Start menu or run CampusPulse.exe in the installation directory.
@@ -73,8 +77,11 @@ Starts with Northeast Electric Power University; discovery can try unconfigured 
 请核对官方原文后设置待办时间。提醒需要程序运行；ICS 导入不会持续同步。
 Confirm task dates against official notices. Reminders require the app to run; ICS is not live sync.
 
-AI页提供服务配置；连接与模型获取已实测，完整检索与新增来源仍待联网复验。
-AI profiles are available; connection/model tests passed. End-to-end discovery needs live rechecks.
+AI主页面选择模型和八类搜索模板；接口与密钥在提供方编辑窗口设置。
+Select a model and one of eight search templates; edit routes and keys in the provider editor.
+
+连接与模型获取已实测，陌生大学完整接入及修复后的AI补充链路仍待联网复验。
+Connection/model tests passed. Full live onboarding and repaired AI supplementation need rechecks.
 
 卸载保留个人数据。移动端和双端同步尚未实现。本包不包含任何真实 API Key。
 Uninstall preserves personal data. Mobile/sync are pending. No real API key is included.

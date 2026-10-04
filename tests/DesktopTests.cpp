@@ -193,7 +193,7 @@ class DesktopTests final : public QObject {
         QCOMPARE(control<QTableView>(window, "noticeTable")->model()->rowCount(), 1);
         QCOMPARE(control<QComboBox>(window, "yearSelector")->currentData().toInt(),
                  QDate::currentDate().year());
-        control<QLineEdit>(window, "deepseekApiKey")->clear();
+        QVERIFY(!window.findChild<QLineEdit *>("deepseekApiKey"));
         control<QPushButton>(window, "aiSearchButton")->click();
         QVERIFY(control<QLabel>(window, "aiStatus")->text().contains("尚未发起请求"));
     }

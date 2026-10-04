@@ -8,15 +8,15 @@
 
 未知学校的身份、栏目、资源、通知刷新与详情请求使用公网地址检查和固定解析 IP，保留原始 Host 及 TLS 主机验证；每次连接独立处理 Cookie、鉴权及重定向边界。既有人工学校包的通知采集保持原路径，本轮不宣称全面改造所有历史传输。缓存加载在首启、重启和切换时都校验学校 ID、官网根域及自动身份标记；无法匹配的隐含偏好回到默认学校。
 
-AI 配置提供列表、增加、编辑、删除、启用、停用、预设、模型获取和显式连接测试。根据用户 CC Switch 截图进一步增加备注、官网、完整 URL、可自选请求路由、API 格式、认证方式、最终请求地址及隐藏 Key 的 JSON 预览。Anthropic Messages 工具模式可以走自定义路由，不把地址强制改回官方；服务仍须支持真实工具结果。OpenAI 兼容接口只提出待核实建议。默认 Key 只在进程内保留，可选 Windows 当前用户 DPAPI 加密保存。地址、协议、认证或URL模式变化会清除旧 Key 授权，删除当前提供方不会自动启用另一家服务。
+AI 配置提供列表、增加、编辑、删除、启用、停用、预设、模型获取和显式连接测试。主页面仅显示模型选择，不显示地址或密钥；连接设置和测试统一在编辑窗口。新增综合、重修补考缴费、奖助申请、竞赛、活动、学习资源、教务和就业八类模板，两种接口都按模板构造不同提示词，按学校保存选择并记录 template_id。单独保存模型保留既有密钥；关闭自动补充会取消尚未执行的排队调用。根据用户 CC Switch 截图进一步增加备注、官网、完整 URL、可自选请求路由、API 格式、认证方式、最终请求地址及隐藏 Key 的 JSON 预览。Anthropic Messages 工具模式可以走自定义路由，不把地址强制改回官方；服务仍须支持真实工具结果。OpenAI 兼容接口只提出待核实建议。默认 Key 只在进程内保留，可选 Windows 当前用户 DPAPI 加密保存。地址、协议、认证或URL模式变化会清除旧 Key 授权，删除当前提供方不会自动启用另一家服务。
 
 ## 自动检查与原生界面
 
 CMake Release 构建通过，CTest 的 21 套测试全部通过；5份学校配置检查通过。回归涵盖旧版订阅、待办、日历和资源，以及未知 URL、公网地址、学校草案持久化、缓存身份、提供方 CRUD、密钥隔离和 Windows DPAPI、原生/兼容搜索响应、AI 界面操作。真实 API 和大学网站测试不进入自动 CTest。
 
-使用独立设置与数据库，在 Windows 桌面2实际显示生产 AI 页面和编辑表单；验证两项提供方、当前启用标记、密钥遮蔽、默认不记住密钥、无 Key 时不发出连接请求，并保存实际 Qt 控件截图。自选路由表单另验证地址可编辑、完整URL模式、Bearer认证与自定义地址保留，切换协议不恢复官方地址。界面测试没有使用真实 Key，也没有发送 API 请求。桌面1的0.1.0安装文件没有改动。
+使用独立设置与数据库，在 Windows 桌面2实际显示生产 AI 页面和编辑表单；验证两项提供方、当前启用标记、主页面无路由及密钥控件、模型下拉框、八类搜索模板与重修缴费目标，并保存实际 Qt 控件截图。编辑窗口另验证密钥遮蔽、默认不记住密钥、无 Key 时不发出连接请求。自选路由表单另验证地址可编辑、完整URL模式、Bearer认证与自定义地址保留，切换协议不恢复官方地址。界面测试没有使用真实 Key，也没有发送 API 请求。桌面1的0.1.0安装文件没有改动。
 
-本机证据位于忽略目录 `evidence/ai-native-0.2.0/` 与后续 `evidence/ai-route-native-0.2.0/`；最终回归为 `evidence/universal-route-final-ctest.txt`。这些演示截图不证明真实检索成功。
+本机证据位于忽略目录 `evidence/ai-template-native-final-0.2.0/`（早期记录为 `evidence/ai-native-0.2.0/` 和 `evidence/ai-route-native-0.2.0/`）；最终回归为 `evidence/ai-template-final-ctest.txt`。这些演示截图不证明真实检索成功。
 
 ## 真实 DeepSeek 结果
 
@@ -40,7 +40,7 @@ CMake Release 构建通过，CTest 的 21 套测试全部通过；5份学校配�
 
 版本为 0.2.0，安装包和便携包按干净运行目录生成，带 Qt、SQLite 插件、VC Runtime、学校配置及依赖许可。发布附件不含数据库、运行日志、真实 Key 或本机学校草案。新包采用独立数据库在桌面2验收，不覆盖桌面1安装文件。
 
-本地文件：`dist/releases/CampusPulse-0.2.0-windows-x64-setup.exe` 与 `CampusPulse-0.2.0-windows-x64-portable.zip`，最终运行目录为 `dist/release-0.2.0-final/CampusPulse`。移除开发 Qt SDK 与 Visual Studio 路径后，包内 `--version` 返回 `CampusPulse 0.2.0`，退出码0；正常窗口成功显示“大学”和“AI补充”页面，Key 输入控件遮蔽且没有填入真实 Key。验收使用之前的独立测试库公开通知缓存20条、个人待办0条，没有本轮联网采集。
+本地文件：`dist/releases/CampusPulse-0.2.0-windows-x64-setup.exe` 与 `CampusPulse-0.2.0-windows-x64-portable.zip`，最终运行目录为 `dist/release-0.2.0-templates/CampusPulse`。移除开发 Qt SDK 与 Visual Studio 路径后，包内 `--version` 返回 `CampusPulse 0.2.0`，退出码0；正常窗口成功显示“AI补充”页面，主页面仅选择模型与搜索模板，没有路由或密钥输入控件。验收使用之前的独立测试库公开通知缓存20条、个人待办0条，没有本轮联网采集。
 
 本轮已编译安装器，但没有执行覆盖现有0.1.0安装的升级测试；不能用包内程序成功启动替代安装升级验收。校验值与具体交付状态保存在版本独立的 `CampusPulse-0.2.0-SHA256SUMS.txt` 和 `CampusPulse-0.2.0-local-manifest.json`。
 

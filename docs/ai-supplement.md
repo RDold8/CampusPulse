@@ -12,6 +12,8 @@
 
 在 AI 页添加或编辑提供方，填写 API 地址、Key 与模型，启用后点击补充。配置方式见[AI 提供方管理](ai-provider-management.md)。默认 Key 只保留在进程内存；Windows 可选择当前用户 DPAPI 加密保存。`DEEPSEEK_API_KEY` 仅用于官方预设，不用于自定义供应商。请求使用学校名称、官网域与已有公开栏目链接，不发送个人待办、订阅、数据库或学校账号。
 
+主页面只选择模型和搜索模板，地址与密钥统一在提供方编辑窗口配置。八个内置模板分别为综合栏目、重修补考与缴费、奖助学金与申请、竞赛、校园活动、学习资源、教务通知、就业招聘。`AiSearchTemplate` 为每类定义部门、目标和关键词，原生搜索与兼容建议请求共用同一分类目标，保留各自的能力边界。选择按学校保存，自动补充同样使用所选模板；未知模板 ID 在发请求前拒绝。每次只选择一类，仍遵守两次搜索与八条候选上限，不增加隐含的后续模型请求。
+
 自定义 OpenAI 兼容模式使用 Chat Completions，要求完整 `finish_reason: stop` 及严格候选 JSON，最多1024生成 token、8条候选。它没有内置联网工具；输出标记 `provenance: model_suggestion`。未知、猜错或不可访问的 URL 不能直接变成来源，仍由域名、列表和正文验证决定是否接入。实际 token 来自响应，不以预估冒充用量。
 
 ## 输入、输出与准入规则
@@ -30,6 +32,6 @@ URL 在进入 `QUrl` 规范化前检查原始 authority 和主机格式，拒绝
 
 ## 本地记录与离线检查
 
-检索记录保存到应用数据目录 `ai-schools/<学校ID>.search.json`，包含 `contract_version: search-v1`、`status: candidate_only`、模型、一次调用、实际用量、候选链接及时间，不包含密钥。记录和补充种子通过原子写入保存；记录保存失败就停止，不添加来源。`ai-schools/<学校ID>/report.json` 是后续无模型爬虫的验证报告，其 `model_calls: 0` 只统计爬虫阶段。网页样本和本机配置也保存在该目录，不自动提交社区或发布。
+检索记录保存到应用数据目录 `ai-schools/<学校ID>.search.json`，包含 `contract_version: search-v1`、`status: candidate_only`、模型、`template_id`、一次调用、实际用量、候选链接及时间，不包含密钥。记录和补充种子通过原子写入保存；记录保存失败就停止，不添加来源。`ai-schools/<学校ID>/report.json` 是后续无模型爬虫的验证报告，其 `model_calls: 0` 只统计爬虫阶段。网页样本和本机配置也保存在该目录，不自动提交社区或发布。
 
 源码分工：`src/adapters/DeepSeekSearch.cpp` 管理官方协议、完整性和候选过滤，`src/adapters/SchoolOnboarding.cpp` 管理采样及校验，`src/desktop/AiSourcesPage.cpp` 管理入口、状态和记录，通用数据与业务层不依赖 DeepSeek。离线测试包含未完成响应、搜索工具错误、非法内容块、八条之后的错误、假后缀、空 userinfo、空端口、重复结果、普通回答冒充检索和无 Key 行为。离线测试不验证账户权限、真实检索质量、服务器收费或网络超时行为；真实 API 成功须另有账户 Key 和实际响应证据。

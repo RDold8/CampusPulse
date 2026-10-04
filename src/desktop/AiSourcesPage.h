@@ -4,12 +4,12 @@
 #include "adapters/AiProviderConfig.h"
 #include "adapters/AiProviderProbe.h"
 #include <QWidget>
-class QLineEdit;
+#include <QHash>
+class QComboBox;
 class QLabel;
 class QPushButton;
 class QCheckBox;
 class QListWidget;
-class QToolButton;
 namespace campus {
 class UniversityRegistry;
 class RefreshCoordinator;
@@ -24,22 +24,24 @@ class AiSourcesPage final : public QWidget {
 
   private:
     SchoolPackage school_;
-    QString root_, requestedModel_;
+    QString root_, requestedModel_, requestedTemplate_;
     AiProviderConfig requestedProvider_;
     AiProviderStore providers_;
     AiProviderProbe probe_;
     DeepSeekSearch search_;
-    QLineEdit *key_, *model_;
-    QLabel *status_, *active_, *selected_, *capability_;
-    QPushButton *run_, *add_, *edit_, *remove_, *activate_, *disable_, *save_, *test_;
-    QToolButton *reveal_;
-    QCheckBox *automatic_, *remember_;
+    QComboBox *model_, *searchTemplate_;
+    QLabel *status_, *active_, *selected_, *capability_, *templateDescription_;
+    QPushButton *run_, *add_, *edit_, *remove_, *activate_, *disable_, *save_, *fetch_;
+    QCheckBox *automatic_;
     QListWidget *results_, *providerList_;
+    QHash<QString, QStringList> modelDirectories_;
     bool busy_ = false;
     bool refreshing_ = false;
     bool storeReady_ = false;
     AiProviderConfig selectedProvider() const;
+    AiProviderConfig selectedModelProvider() const;
     AiProviderConfig activeProvider() const;
+    QString providerKey(const AiProviderConfig &provider) const;
     QString activeKey() const;
     void reloadProviders(QString selectedId = {});
     void loadSelected();
@@ -48,7 +50,8 @@ class AiSourcesPage final : public QWidget {
     void saveSelected();
     void activateSelected();
     void removeSelected();
-    void testSelected();
+    void fetchModels();
+    void updateTemplate();
     void run();
     void validate(QJsonArray candidates, QJsonObject usage);
 };

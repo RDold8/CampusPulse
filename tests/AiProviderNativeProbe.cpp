@@ -107,12 +107,19 @@ int main(int argc, char **argv) {
                 evidence["provider_page_visible"] = page->isVisible();
                 evidence["provider_count"] = control<QListWidget>(*page, "aiProviderList")->count();
                 evidence["current_badge"] = control<QLabel>(*page, "aiActiveProvider")->text();
-                evidence["key_masked"] = control<QLineEdit>(*page, "deepseekApiKey")->echoMode() ==
-                                           QLineEdit::Password;
-                evidence["remember_default_off"] = !control<QCheckBox>(*page, "aiRememberKey")->isChecked();
+                evidence["main_page_has_no_key_field"] = !page->findChild<QLineEdit *>("deepseekApiKey");
+                evidence["main_page_has_no_route"] = !control<QLabel>(*page, "aiSelectedProvider")
+                    ->text().contains("https://") && !page->findChild<QLineEdit *>("aiProviderBaseUrl");
+                evidence["model_selector_visible"] = control<QComboBox>(*page, "deepseekModel")->isVisible();
+                auto *templates = control<QComboBox>(*page, "aiSearchTemplate");
+                templates->setCurrentIndex(templates->findData("retake-payment"));
+                evidence["search_template_count"] = templates->count();
+                evidence["retake_template_focus"] = control<QLabel>(*page, "aiSearchTemplateDescription")
+                    ->text().contains("缴费");
+                window.grab().save(output + "/ai-providers.png");
                 evidence["provider_screenshot_saved"] = pageSaved;
                 editor.show();
-                QTimer::singleShot(500, &application, [&] {
+                QTimer::singleShot(500, &application, [&, pageSaved] {
                     try {
                         control<QPushButton>(editor, "aiProviderTestConnection")->click();
                         const bool guarded = control<QLabel>(editor, "aiProviderDialogStatus")
@@ -120,6 +127,8 @@ int main(int argc, char **argv) {
                             !editor.findChild<AiProviderProbe *>()->busy();
                         const bool dialogSaved = editor.grab().save(output + "/ai-provider-form.png");
                         evidence["editor_visible"] = editor.isVisible();
+                        evidence["key_masked"] = control<QLineEdit>(editor, "aiProviderKey")->echoMode() == QLineEdit::Password;
+                        evidence["remember_default_off"] = !control<QCheckBox>(editor, "aiProviderRememberKey")->isChecked();
                         evidence["editor_no_key_guard"] = guarded;
                         evidence["editor_screenshot_saved"] = dialogSaved;
                         evidence["route_capability"] = control<QLabel>(editor, "aiProviderCapability")->text();
@@ -130,6 +139,11 @@ int main(int argc, char **argv) {
                             evidence.value("key_masked").toBool() &&
                             evidence.value("remember_default_off").toBool() &&
                             evidence.value("provider_count").toInt() == 2 &&
+                            evidence.value("main_page_has_no_key_field").toBool() &&
+                            evidence.value("main_page_has_no_route").toBool() &&
+                            evidence.value("model_selector_visible").toBool() &&
+                            evidence.value("search_template_count").toInt() == 8 &&
+                            evidence.value("retake_template_focus").toBool() &&
                             evidence.value("route_editable").toBool() &&
                             evidence.value("custom_route_preserved").toBool();
                         writeArtifact(output + "/ai-provider-native.json", QJsonDocument(evidence).toJson());

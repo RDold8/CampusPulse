@@ -29,7 +29,7 @@
 - **使用日历和提醒。** 已确认日期的待办进入内置日历，可以导出 ICS 文件供手机日历手动导入。桌面程序运行期间可以触发已启用的本地提醒。
 - **查找学校资源。** 在独立的“学校资源”页查看图书馆、课程与培养信息、竞赛、升学、就业等学习和办事入口，按类别与学习阶段筛选，并收藏常用链接。
 - **尝试接入目录外的大学。** 输入尚未收录的 `.edu.cn` 学校官网首页，程序识别首页名称，建立本机学校草案，再发现公开栏目；无需先手工编写学校配置。识别成功仍需栏目和正文校验，无法访问的页面会保留原因。
-- **管理自己的 AI 服务。** 保存多套服务名称、备注、官网、可自选请求地址、认证方式与模型；支持完整 URL、Anthropic Messages 和 OpenAI 兼容格式，显示最终请求地址，获取模型并测试连接。支持搜索工具的路由补充官网栏目；普通模型接口提供待核实建议。
+- **管理自己的 AI 服务。** 保存多套服务名称、备注、官网、可自选请求地址、认证方式与模型；支持完整 URL、Anthropic Messages 和 OpenAI 兼容格式，显示最终请求地址，获取模型并测试连接。支持搜索工具的路由补充官网栏目；普通模型接口提供待核实建议。主页面只选择模型与分类搜索模板，连接地址和密钥在提供方编辑窗口中设置。
 
 例如，你在软件里找到重修缴费通知，打开官方原文核对要求，建立“重修缴费”待办，确认时间并开启提醒，办理后再标记完成。报名、缴费和核对结果可以分别记录，避免完成其中一步后漏掉后续操作。
 
@@ -67,7 +67,7 @@
 
 ### AI 在这里做什么
 
-AI 负责补充寻找规则爬虫可能遗漏的官网栏目。我参考 CC Switch 的提供方列表、预设、编辑表单、模型选择和启用切换，重新用 Qt 实现这一入口。补充功能默认关闭，需要用户主动启用；候选链接仍要经过学校域名检查和真实官网采样，验证通过后才接入。调用会消耗 API token，界面记录实际返回的用量。Key 默认仅保留在当前进程，Windows 可选当前用户 DPAPI 加密保存，不写进学校配置或数据库。
+AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、重修补考与缴费、奖助学金申请、竞赛、活动、学习资源、教务和就业八种搜索模板，按所选类别使用不同提示词定向寻找栏目。我参考 CC Switch 的提供方列表、预设、编辑表单、模型选择和启用切换，重新用 Qt 实现这一入口。补充功能默认关闭，需要用户主动启用；候选链接仍要经过学校域名检查和真实官网采样，验证通过后才接入。调用会消耗 API token，界面记录实际返回的用量。Key 默认仅保留在当前进程，Windows 可选当前用户 DPAPI 加密保存，不写进学校配置或数据库。
 
 真实 DeepSeek 模型列表与短连接请求已返回成功，模型使用 `deepseek-flash`。原生搜索也收到真实工具结果，同时触发搜索次数上限；软件已增加保留真实部分结果和显示上限状态的处理，修复后的完整检索与来源补充链仍待网络恢复后复验。自定义兼容接口不内置网页搜索，普通模型回答只作为候选建议。另一个“资源说明 AI”方向目前完成了规范与离线测试，尚未接入桌面业务。
 
@@ -129,7 +129,7 @@ I chose Northeast Electric Power University as the first example. My goal is a g
 - **Use a calendar and reminders.** Put tasks with confirmed dates in the built-in calendar and export ICS files for manual import into a phone calendar. Enabled local reminders can trigger while the desktop application is running.
 - **Discover university resources.** Find library services, curriculum information, competitions, further study, career resources, and other learning or practical links in a dedicated page. Filter by category or study stage and save favorites.
 - **Try a university outside the registry.** Enter an unconfigured `.edu.cn` university homepage. The application identifies its homepage name, saves a local draft, and discovers public sections without a manually written package. Lists and articles still require validation; inaccessible pages retain their failure reasons.
-- **Manage AI services.** Save several names, notes, websites, custom request routes, authentication modes, and models. Use full URLs or API bases with Anthropic Messages or OpenAI-compatible formats, inspect the resolved request URL, retrieve models, and test connections. Routes with search tools supplement discovery; ordinary model APIs supply unverified suggestions.
+- **Manage AI services.** Save several names, notes, websites, custom request routes, authentication modes, and models. Use full URLs or API bases with Anthropic Messages or OpenAI-compatible formats, inspect the resolved request URL, retrieve models, and test connections. Routes with search tools supplement discovery; ordinary model APIs supply unverified suggestions. The main page selects a model and category search template; connection addresses and keys stay in the provider editor.
 
 For example, you can find a retake payment notice, open the official article to check its requirements, create a payment task, confirm its date, enable a reminder, and mark it complete after paying. Registration, payment, and result verification can be recorded separately, so finishing one step does not hide the remaining actions.
 
@@ -167,7 +167,7 @@ Supporting universities across China is the design goal, with coverage extended 
 
 ### What AI does here
 
-AI supplements discovery by proposing official sections that the rule-based crawler may have missed. I used CC Switch's provider lists, presets, edit forms, model selection, and activation flow as references for an original Qt interface. Supplementation is disabled by default and requires user activation. Candidate links still undergo domain checks and actual website sampling. Calls consume API tokens and show returned usage. Keys stay in process memory by default, with optional current-user Windows DPAPI encryption; university packages and the database contain no key.
+AI supplements discovery by proposing official sections that the rule-based crawler may have missed. Eight category templates focus prompts on general discovery, retakes and payments, financial aid applications, competitions, campus activities, study resources, teaching administration, and careers. I used CC Switch's provider lists, presets, edit forms, model selection, and activation flow as references for an original Qt interface. Supplementation is disabled by default and requires user activation. Candidate links still undergo domain checks and actual website sampling. Calls consume API tokens and show returned usage. Keys stay in process memory by default, with optional current-user Windows DPAPI encryption; university packages and the database contain no key.
 
 Real DeepSeek model-list and short connection requests succeeded using `deepseek-flash`. Native search returned real tool results alongside a search-use limit error. The application now retains valid partial results and shows that limit; the repaired search-to-source pipeline still needs another live check when networking is restored. Custom compatible interfaces have no built-in web search and produce suggestions only. A separate resource-description AI contract has offline tests but is not connected to the desktop workflow.
 

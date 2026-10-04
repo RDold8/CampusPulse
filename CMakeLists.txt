@@ -58,7 +58,8 @@ target_link_libraries(campus_storage PUBLIC campus_application Qt6::Sql)
 add_library(campus_adapters src/adapters/SchoolPackage.cpp src/adapters/HtmlAdapter.cpp
     src/adapters/RefreshCoordinator.cpp src/adapters/UniversityRegistry.cpp src/adapters/SchoolOnboarding.cpp src/adapters/DeepSeekSearch.cpp src/adapters/IcsExporter.cpp src/adapters/ArtifactWriter.cpp src/adapters/ReminderScheduler.cpp src/adapters/ResourceDiscovery.cpp src/adapters/ResourceClassifier.cpp)
 target_sources(campus_adapters PRIVATE src/adapters/PublicUniversityNetwork.cpp
-    src/adapters/UnknownUniversityDiscovery.cpp src/adapters/AiProviderConfig.cpp src/adapters/AiProviderProbe.cpp)
+    src/adapters/UnknownUniversityDiscovery.cpp src/adapters/AiProviderConfig.cpp src/adapters/AiProviderProbe.cpp
+    src/adapters/AiSearchTemplate.cpp)
 target_link_libraries(campus_adapters PUBLIC campus_application Qt6::Network PRIVATE lexbor_static ical)
 if(WIN32)
     target_link_libraries(campus_adapters PRIVATE crypt32)

@@ -3,7 +3,9 @@
 #include "adapters/SchoolOnboarding.h"
 #include "adapters/UniversityRegistry.h"
 #include "adapters/RefreshCoordinator.h"
+#include "adapters/AiSearchTemplate.h"
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -20,7 +22,6 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTimer>
-#include <QToolButton>
 #include <QVBoxLayout>
 #include <stdexcept>
 
@@ -97,7 +98,7 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
     providerLayout->addLayout(activateRow);
     panels->addWidget(providerPanel, 2);
 
-    auto *settingsPanel = new QGroupBox("所选配置");
+    auto *settingsPanel = new QGroupBox("模型选择");
     auto *settingsLayout = new QVBoxLayout(settingsPanel);
     active_ = new QLabel;
     active_->setObjectName("aiActiveProvider");
@@ -110,49 +111,54 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
     selected_->setWordWrap(true);
     settingsLayout->addWidget(selected_);
     auto *form = new QFormLayout;
-    auto *keyRow = new QHBoxLayout;
-    key_ = new QLineEdit;
-    key_->setEchoMode(QLineEdit::Password);
-    key_->setObjectName("deepseekApiKey");
-    key_->setAccessibleName("所选提供方的 API Key");
-    key_->setMaxLength(8192);
-    key_->setPlaceholderText("本次使用；可选择加密记住");
-    reveal_ = new QToolButton;
-    reveal_->setObjectName("aiRevealKeyButton");
-    reveal_->setCheckable(true);
-    reveal_->setText("显示");
-    reveal_->setAccessibleName("显示或隐藏 API Key");
-    keyRow->addWidget(key_, 1);
-    keyRow->addWidget(reveal_);
-    form->addRow("API Key", keyRow);
-    model_ = new QLineEdit;
+    model_ = new QComboBox;
+    model_->setEditable(true);
+    model_->setInsertPolicy(QComboBox::NoInsert);
     model_->setObjectName("deepseekModel");
-    model_->setAccessibleName("所选提供方的模型 ID");
-    model_->setMaxLength(160);
-    model_->setPlaceholderText("可手动输入；在编辑配置中获取模型列表");
+    model_->setAccessibleName("选择所选提供方的模型，也可输入模型 ID");
+    model_->lineEdit()->setMaxLength(160);
+    model_->lineEdit()->setPlaceholderText("选择模型，或输入服务支持的模型 ID");
     form->addRow("模型", model_);
     settingsLayout->addLayout(form);
-    remember_ = new QCheckBox("在此 Windows 用户下加密记住 Key");
-    remember_->setObjectName("aiRememberKey");
-    remember_->setToolTip("默认关闭。勾选并保存后使用 Windows DPAPI 加密；"
-                          "不勾选并保存会移除已保存的密钥。Key 不写入学校包、普通配置或日志。");
-    settingsLayout->addWidget(remember_);
     capability_ = new QLabel;
     capability_->setObjectName("aiProviderSearchCapability");
     capability_->setWordWrap(true);
     capability_->setTextFormat(Qt::PlainText);
     settingsLayout->addWidget(capability_);
     auto *settingsButtons = new QHBoxLayout;
-    save_ = new QPushButton("保存模型与 Key");
+    save_ = new QPushButton("保存模型");
     save_->setObjectName("saveAiProviderSettingsButton");
-    test_ = new QPushButton("测试所选连接与模型");
-    test_->setObjectName("testAiProviderButton");
-    test_->setToolTip("显式发送一次短模型请求，可能消耗 token；成功不代表联网搜索可用。");
+    fetch_ = new QPushButton("获取模型列表");
+    fetch_->setObjectName("fetchAiProviderModelsButton");
+    fetch_->setToolTip("读取所选提供方的模型目录；服务没有模型列表时可手动填写。连接测试在提供方编辑窗口中进行。");
     settingsButtons->addWidget(save_);
-    settingsButtons->addWidget(test_);
+    settingsButtons->addWidget(fetch_);
     settingsLayout->addLayout(settingsButtons);
     panels->addWidget(settingsPanel, 3);
     layout->addLayout(panels);
+
+    auto *templatePanel = new QGroupBox("搜索模板");
+    auto *templateLayout = new QVBoxLayout(templatePanel);
+    searchTemplate_ = new QComboBox;
+    searchTemplate_->setObjectName("aiSearchTemplate");
+    searchTemplate_->setAccessibleName("选择官网栏目搜索类别");
+    for (const auto &entry : AiSearchTemplate::defaults())
+        searchTemplate_->addItem(entry.name, entry.id);
+    const auto templateId = QSettings().value("ai/searchTemplate/" + school_.id, "general").toString();
+    const auto templateIndex = searchTemplate_->findData(templateId);
+    searchTemplate_->setCurrentIndex(templateIndex < 0 ? 0 : templateIndex);
+    templateDescription_ = new QLabel;
+    templateDescription_->setObjectName("aiSearchTemplateDescription");
+    templateDescription_->setTextFormat(Qt::PlainText);
+    templateDescription_->setWordWrap(true);
+    templateLayout->addWidget(searchTemplate_);
+    templateLayout->addWidget(templateDescription_);
+    layout->addWidget(templatePanel);
+    connect(searchTemplate_, &QComboBox::currentIndexChanged, this, [this] {
+        QSettings().setValue("ai/searchTemplate/" + school_.id, searchTemplate_->currentData());
+        updateTemplate();
+    });
+    updateTemplate();
 
     automatic_ = new QCheckBox("规则更新完成后自动补充（每校至少间隔 1 小时，可能消耗 token）");
     automatic_->setObjectName("aiAutoSupplement");
@@ -163,7 +169,7 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
     run_ = new QPushButton("补充栏目候选并校验接入");
     run_->setObjectName("aiSearchButton");
     layout->addWidget(run_);
-    status_ = new QLabel("尚未发起请求。连接测试只验证接口与模型回复，不证明搜索或官网覆盖。");
+    status_ = new QLabel("选择模型和搜索模板后可补充栏目。尚未发起请求；模型列表不证明搜索能力或官网覆盖。");
     status_->setObjectName("aiStatus");
     status_->setWordWrap(true);
     status_->setTextFormat(Qt::PlainText);
@@ -189,23 +195,22 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
         }
     });
     connect(save_, &QPushButton::clicked, this, &AiSourcesPage::saveSelected);
-    connect(test_, &QPushButton::clicked, this, &AiSourcesPage::testSelected);
-    connect(reveal_, &QToolButton::toggled, this, [this](bool visible) {
-        key_->setEchoMode(visible ? QLineEdit::Normal : QLineEdit::Password);
-        reveal_->setText(visible ? "隐藏" : "显示");
-    });
+    connect(fetch_, &QPushButton::clicked, this, &AiSourcesPage::fetchModels);
     connect(run_, &QPushButton::clicked, this, &AiSourcesPage::run);
     connect(&probe_, &AiProviderProbe::finished, this, [this](const AiProbeResult &result) {
         updateEnabled();
-        status_->setText(QString("%1 · HTTP %2 · %3 ms\n%4\n连接测试不代表联网搜索可用。")
-                             .arg(result.success ? "接口测试通过" : "接口测试失败")
+        status_->setText(QString("%1 · HTTP %2 · %3 ms\n%4\n模型目录不代表联网搜索可用。")
+                             .arg(result.success ? "模型列表读取成功" : "模型列表读取失败")
                              .arg(result.httpStatus)
                              .arg(result.elapsedMs)
                              .arg(result.message));
         if (result.success) {
-            status_->setText(status_->text() + "\n返回模型：" +
-                             (result.responseModel.isEmpty() ? "未返回" : result.responseModel) +
-                             " · " + usageText(result.usage));
+            const auto current = model_->currentText();
+            modelDirectories_[selectedProvider().id] = result.modelIds;
+            for (const auto &id : result.modelIds)
+                if (model_->findText(id) < 0)
+                    model_->addItem(id);
+            model_->setCurrentText(current);
         }
     });
     connect(&search_, &DeepSeekSearch::failed, this, [this](const QString &reason) {
@@ -225,7 +230,10 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
         if (storeReady_ && !probe_.busy() && automatic_->isChecked() && good > 0 &&
             !activeProvider().id.isEmpty() && !activeKey().isEmpty() &&
             QDateTime::currentSecsSinceEpoch() - last >= 3600)
-            QTimer::singleShot(0, this, &AiSourcesPage::run);
+            QTimer::singleShot(0, this, [this] {
+                if (automatic_->isChecked())
+                    run();
+            });
     });
     try {
         providers_.load();
@@ -250,12 +258,14 @@ AiProviderConfig AiSourcesPage::activeProvider() const {
             return provider;
     return {};
 }
-QString AiSourcesPage::activeKey() const {
-    const auto provider = activeProvider();
+AiProviderConfig AiSourcesPage::selectedModelProvider() const {
+    auto provider = selectedProvider();
+    provider.model = model_->currentText().trimmed();
+    return provider;
+}
+QString AiSourcesPage::providerKey(const AiProviderConfig &provider) const {
     if (provider.id.isEmpty())
         return {};
-    if (provider.id == selectedProvider().id)
-        return key_->text().trimmed();
     try {
         auto key = providers_.key(provider.id);
         if (key.isEmpty() && provider.isOfficialDeepSeek())
@@ -264,6 +274,13 @@ QString AiSourcesPage::activeKey() const {
     } catch (const std::exception &) {
         return {};
     }
+}
+QString AiSourcesPage::activeKey() const {
+    return providerKey(activeProvider());
+}
+void AiSourcesPage::updateTemplate() {
+    const auto entry = AiSearchTemplate::byId(searchTemplate_->currentData().toString());
+    templateDescription_->setText(entry.description + "\n" + entry.focus);
 }
 void AiSourcesPage::reloadProviders(QString selectedId) {
     if (selectedId.isEmpty())
@@ -279,7 +296,7 @@ void AiSourcesPage::reloadProviders(QString selectedId) {
             (provider.model.isEmpty() ? "模型待选择" : provider.model) + " · " + capability,
             providerList_);
         item->setData(Qt::UserRole, provider.id);
-        item->setToolTip(provider.baseUrl);
+        item->setToolTip(provider.name);
         if (provider.id == selectedId)
             selectedRow = providerList_->count() - 1;
     }
@@ -290,30 +307,24 @@ void AiSourcesPage::reloadProviders(QString selectedId) {
     const auto active = activeProvider();
     active_->setText(active.id.isEmpty() ? "当前启用：无（AI 已停用）"
                                         : "当前启用：" + active.name);
-    run_->setText(active.nativeSearch() ? "通过所选路由搜索栏目并校验"
-                                      : "让兼容模型提出栏目候选并校验");
+    run_->setText(active.nativeSearch() ? "使用当前启用的提供方搜索并校验"
+                                      : "让当前启用模型提出栏目候选并校验");
     loadSelected();
 }
 void AiSourcesPage::loadSelected() {
     const auto provider = selectedProvider();
     selected_->setText(provider.id.isEmpty() ? "请选择或添加提供方"
-        : "所选：" + provider.name + "\n" + provider.baseUrl);
-    model_->setText(provider.model);
-    key_->clear();
-    reveal_->setChecked(false);
-    remember_->setChecked(!provider.id.isEmpty() && providers_.keyIsRemembered(provider.id));
+        : "所选：" + provider.name + (provider.id == providers_.activeId() ? "" : "（尚未启用）"));
+    model_->clear();
+    if (!provider.model.isEmpty())
+        model_->addItem(provider.model);
+    for (const auto &id : modelDirectories_.value(provider.id))
+        if (model_->findText(id) < 0)
+            model_->addItem(id);
+    model_->setCurrentText(provider.model);
     capability_->setText(provider.nativeSearch()
-        ? "工具搜索：使用所选路由；接口与模型须支持搜索工具，连接成功不代表搜索可用。"
+        ? "工具搜索：接口与模型须支持搜索工具，连接成功不代表搜索可用。"
         : "候选建议：兼容模型不代表联网搜索，提出的地址还要由爬虫实查。");
-    if (!provider.id.isEmpty())
-        try {
-            auto key = providers_.key(provider.id);
-            if (key.isEmpty() && provider.isOfficialDeepSeek())
-                key = DeepSeekSearch::sessionKey();
-            key_->setText(key);
-        } catch (const std::exception &error) {
-            status_->setText(QString::fromUtf8(error.what()));
-        }
     updateEnabled();
 }
 void AiSourcesPage::updateEnabled() {
@@ -322,14 +333,12 @@ void AiSourcesPage::updateEnabled() {
     const bool hasSelected = !selected.id.isEmpty();
     providerList_->setEnabled(idle);
     add_->setEnabled(idle);
-    for (auto *button : {edit_, remove_, save_, test_})
+    for (auto *button : {edit_, remove_, save_, fetch_})
         button->setEnabled(idle && hasSelected);
     activate_->setEnabled(idle && hasSelected && selected.id != providers_.activeId());
     disable_->setEnabled(idle && !providers_.activeId().isEmpty());
-    key_->setEnabled(idle && hasSelected);
     model_->setEnabled(idle && hasSelected);
-    reveal_->setEnabled(idle && hasSelected);
-    remember_->setEnabled(idle && hasSelected && AiProviderStore::persistentSecretsSupported());
+    searchTemplate_->setEnabled(idle);
     automatic_->setEnabled(idle && !activeProvider().id.isEmpty());
     run_->setEnabled(idle && !activeProvider().id.isEmpty());
 }
@@ -343,21 +352,13 @@ void AiSourcesPage::editProvider(bool add) {
     }
 }
 void AiSourcesPage::saveSelected() {
-    auto provider = selectedProvider();
+    const auto provider = selectedModelProvider();
     if (provider.id.isEmpty())
         return;
-    provider.model = model_->text().trimmed();
-    const bool remember = remember_->isChecked();
-    const auto key = key_->text().trimmed();
     try {
         providers_.upsert(provider);
-        providers_.setKey(provider.id, key, remember);
         reloadProviders(provider.id);
-        status_->setText(key.isEmpty()
-            ? "模型已保存，当前 Key 已清空，未保留凭据。尚未发送请求。"
-            : remember
-            ? "模型已保存，Key 已用 Windows 当前用户密钥加密。尚未发送请求。"
-            : "模型已保存，Key 仅供本次使用，未保留加密凭据。尚未发送请求。");
+        status_->setText("模型已保存，尚未发送请求。需要修改接口或密钥时，请在左侧编辑提供方。");
     } catch (const std::exception &error) {
         status_->setText("保存未完成，请检查配置与密钥状态：" + QString::fromUtf8(error.what()));
     }
@@ -391,20 +392,18 @@ void AiSourcesPage::removeSelected() {
         status_->setText(QString::fromUtf8(error.what()));
     }
 }
-void AiSourcesPage::testSelected() {
-    auto provider = selectedProvider();
-    provider.model = model_->text().trimmed();
+void AiSourcesPage::fetchModels() {
+    const auto provider = selectedModelProvider();
+    const auto key = providerKey(provider);
     auto error = AiProviderConfig::validationError(provider);
-    if (error.isEmpty() && key_->text().trimmed().isEmpty())
-        error = "请填写所选提供方的 API Key；尚未发起请求，不会消耗 token。";
-    if (error.isEmpty() && provider.model.isEmpty())
-        error = "请填写模型 ID；尚未发起请求。";
+    if (error.isEmpty() && key.isEmpty())
+        error = "请在左侧编辑所选提供方，填写密钥后获取模型。尚未发起请求。";
     if (!error.isEmpty()) {
         status_->setText(error);
         return;
     }
-    status_->setText("正在发送一次短模型请求，可能消耗 token；不测试联网搜索，不自动重试。");
-    probe_.probe(provider, key_->text().trimmed());
+    status_->setText("正在读取所选提供方的模型目录，不测试联网搜索，不自动重试。");
+    probe_.fetchModels(provider, key);
     updateEnabled();
 }
 void AiSourcesPage::run() {
@@ -416,11 +415,11 @@ void AiSourcesPage::run() {
         return;
     }
     if (provider.id == selectedProvider().id)
-        provider.model = model_->text().trimmed();
+        provider = selectedModelProvider();
     const auto key = activeKey();
     auto error = AiProviderConfig::validationError(provider);
     if (error.isEmpty() && key.isEmpty())
-        error = "请填写当前提供方的 API Key；尚未发起请求，不会消耗 token。";
+        error = "请在左侧编辑当前启用的提供方并填写密钥；尚未发起请求，不会消耗 token。";
     if (error.isEmpty() && provider.model.isEmpty())
         error = "请填写当前提供方的模型 ID；尚未发起请求。";
     if (error.isEmpty() && root_.isEmpty())
@@ -434,6 +433,7 @@ void AiSourcesPage::run() {
     results_->clear();
     requestedProvider_ = provider;
     requestedModel_ = provider.model;
+    requestedTemplate_ = searchTemplate_->currentData().toString();
     QSettings().setValue("ai/lastAttempt/" + school_.id, QDateTime::currentSecsSinceEpoch());
     QSet<QString> known;
     for (const auto &source : school_.catalog) {
@@ -443,9 +443,9 @@ void AiSourcesPage::run() {
         known.insert(url.toString(QUrl::FullyEncoded));
     }
     status_->setText(provider.nativeSearch()
-        ? "正在通过所选路由调用搜索工具。候选仍需官网校验；不会自动重试。"
+        ? "正在通过当前启用的提供方调用搜索工具。候选仍需官网校验；不会自动重试。"
         : "正在让兼容模型提出栏目候选。这不是联网搜索证据，后续由爬虫验证；不会自动重试。");
-    search_.search(provider, key, school_.name, root_, known);
+    search_.search(provider, key, school_.name, root_, known, requestedTemplate_);
 }
 
 void AiSourcesPage::validate(QJsonArray candidates, QJsonObject usage) {
@@ -459,6 +459,7 @@ void AiSourcesPage::validate(QJsonArray candidates, QJsonObject usage) {
                             {"school_id", school_.id},
                             {"provider_id", requestedProvider_.id},
                             {"model", requestedModel_},
+                            {"template_id", requestedTemplate_},
                             {"model_calls", 1},
                             {"usage", usage},
                             {"candidates", candidates},

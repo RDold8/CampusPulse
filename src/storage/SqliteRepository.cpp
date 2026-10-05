@@ -106,13 +106,18 @@ void SqliteRepository::upsertBatch(const std::vector<Notice> &notices) {
     if (!db_.transaction())
         throw std::runtime_error("无法开始保存事务");
     try {
-        for (const auto &n : notices) {
+        for (const auto &incoming : notices) {
+            auto n = incoming;
             QSqlQuery old(db_);
             old.prepare("SELECT title,published_date,body,attachments,category,school_id,url FROM "
                         "notices WHERE id=?");
             old.addBindValue(QString::fromStdString(n.id));
             execute(old);
             const bool exists = old.next();
+            // Missing list metadata is not evidence that an already verified
+            // publication date disappeared. Keep detail-derived dates on refresh.
+            if (exists && n.publishedDate.empty())
+                n.publishedDate = old.value(1).toString().toStdString();
             if (exists && (old.value(5).toString() != QString::fromStdString(n.schoolId) ||
                            old.value(6).toString() != QString::fromStdString(n.url)))
                 throw std::runtime_error("通知标识与已保存的学校或URL冲突");
@@ -165,21 +170,27 @@ void SqliteRepository::saveDetail(const Notice &n) {
         throw std::runtime_error("无法开始正文保存事务");
     try {
         QSqlQuery old(db_);
-        old.prepare("SELECT body,attachments FROM notices WHERE id=? AND school_id=?");
+        old.prepare("SELECT body,attachments,published_date FROM notices WHERE id=? AND school_id=?");
         old.addBindValue(QString::fromStdString(n.id));
         old.addBindValue(QString::fromStdString(n.schoolId));
         execute(old);
         if (!old.next())
             throw std::runtime_error("正文没有对应通知");
+        const auto published = old.value(2).toString().isEmpty()
+            ? QString::fromStdString(n.publishedDate) : old.value(2).toString();
         if (old.value(0).toString() != QString::fromStdString(n.body) ||
-            old.value(1).toString() != attachmentsJson(n.attachments)) {
+            old.value(1).toString() != attachmentsJson(n.attachments) ||
+            old.value(2).toString() != published) {
             QSqlQuery q(db_);
-            q.prepare("UPDATE notices SET body=?,attachments=? WHERE id=?");
+            q.prepare("UPDATE notices SET body=?,attachments=?,published_date=? WHERE id=?");
             q.addBindValue(QString::fromStdString(n.body));
             q.addBindValue(attachmentsJson(n.attachments));
+            q.addBindValue(published);
             q.addBindValue(QString::fromStdString(n.id));
             execute(q);
-            recordRevision(db_, n);
+            auto revision = n;
+            revision.publishedDate = published.toStdString();
+            recordRevision(db_, revision);
         }
         if (!db_.commit())
             throw std::runtime_error("正文保存提交失败");

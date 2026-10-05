@@ -6,7 +6,7 @@
 
 **基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
-**Windows 0.1.2 预览版：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2/CampusPulse-0.1.2-windows-x64-setup.exe) · [下载便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2/CampusPulse-0.1.2-windows-x64-portable.zip) · [发布说明](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。0.1.2 修复北邮等官网浏览器验证页阻断陌生大学接入的问题，改善教务入口发现；验证记录见[北邮接入验收](docs/bupt-onboarding-validation.md)。
+**Windows 0.1.2 更新预览版（2026-10-05）：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-setup.exe) · [下载便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-portable.zip) · [发布说明](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2-r1) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。本次更新改善目录外高校的栏目、通知和资源发现，补充北邮重修、补考等公开办事指南；见[更新说明](docs/release-0.1.2-r1.md)、[五校对比](docs/five-school-universal-validation.md)与[北邮教务指南验收](docs/bupt-generic-crawling-validation.md)。软件内版本号仍为 0.1.2，发布标签为 `v0.1.2-r1`。
 
 学校官网里有很多有用的内容：教务通知、考试安排、竞赛报名、奖助学金申请、校园活动、招聘信息，还有图书馆和学习资源入口。它们往往散落在不同部门的网站上，查找费时，也容易漏看。
 
@@ -73,7 +73,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 ### 目前的阶段和后续方向
 
-截至 **2026-10-04**，当前版本为 **0.1.2 桌面预览版**，提供源码、Windows 安装包和便携包；0.1.1、0.1.0 保留为历史版本。这次以北京邮电大学验证目录外高校从输入官网、识别学校、发现栏目到读取通知的流程，全程不调用模型。来源覆盖仍有边界，AI 检索补充链路与手机日历等检查继续单独记录。详情见[北邮接入验收](docs/bupt-onboarding-validation.md)及[此前 AI 验收](docs/universal-onboarding-validation.md)。
+截至 **2026-10-05**，当前提供 **0.1.2 更新桌面预览版（`v0.1.2-r1`）** 的源码、Windows 安装包和便携包；原 `v0.1.2`、0.1.1、0.1.0 保留为历史版本。本轮针对五所目录外高校改进共享采集器，再用北邮教务处验证学生服务索引与重修、补考正文，均不调用模型。最终 CTest 22/22 组通过。五校实网结果冻结于较早的本地整改构建，最终代码另通过共享 DOM 回归；北邮最终资源实网复测保存 57 项入口，其中 13 项完成公开页面核实。详情见[五校对比](docs/five-school-universal-validation.md)、[北邮教务指南验收](docs/bupt-generic-crawling-validation.md)和[此前 AI 验收](docs/universal-onboarding-validation.md)。
 
 目前需要注意：
 
@@ -106,7 +106,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 **Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
 
-**Windows 0.1.2 preview:** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2/CampusPulse-0.1.2-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2/CampusPulse-0.1.2-windows-x64-portable.zip) · [Release notes](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. Version 0.1.2 handles public browser verification that blocked unconfigured university onboarding and improves teaching-section discovery. See the [BUPT validation record](docs/bupt-onboarding-validation.md).
+**Windows 0.1.2 updated preview (2026-10-05):** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-portable.zip) · [Release notes](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2-r1) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. This update improves discovery of sections, notices, and resources outside the registry, including public retake and resit guides at BUPT. See the [update notes](docs/release-0.1.2-r1.md), [five-university comparison](docs/five-school-universal-validation.md), and [BUPT guide validation](docs/bupt-generic-crawling-validation.md). The application version remains 0.1.2; the release tag is `v0.1.2-r1`.
 
 University websites contain useful information: academic notices, exam schedules, competition registration, scholarships and financial aid, campus events, recruitment, and library or learning resources. These are often scattered across departmental websites, making them time-consuming to find and easy to miss.
 
@@ -173,7 +173,7 @@ Real DeepSeek model-list and short connection requests succeeded using `deepseek
 
 ### Current stage and next steps
 
-As of **October 4, 2026**, the current release is **0.1.2 desktop preview**, with source, a Windows installer, and a portable package; 0.1.1 and 0.1.0 remain historical releases. BUPT was used to verify onboarding outside the registry from homepage input through identity, section discovery, and notice collection, without model calls. Coverage remains partial; AI supplementation and mobile calendar checks retain their separate validation status. See [BUPT validation](docs/bupt-onboarding-validation.md) and [earlier AI validation](docs/universal-onboarding-validation.md).
+As of **October 5, 2026**, the current **0.1.2 updated desktop preview (`v0.1.2-r1`)** provides source, a Windows installer, and a portable package. The original `v0.1.2`, 0.1.1, and 0.1.0 remain historical releases. Five universities outside the registry drove improvements to the shared crawler; BUPT then verified student-service indexes and retake/resit article text, without model calls. All 22 final CTest groups passed. The five-university live results are frozen at an earlier local build, with shared DOM regressions passing on the final code. The final BUPT live resource check saved 57 entries and verified 13 public pages. See the [five-university comparison](docs/five-school-universal-validation.md), [BUPT guide validation](docs/bupt-generic-crawling-validation.md), and [earlier AI validation](docs/universal-onboarding-validation.md).
 
 Current limitations:
 

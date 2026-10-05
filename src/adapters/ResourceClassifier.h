@@ -14,6 +14,7 @@ class ResourceClassifier {
     static bool isOfficial(const QUrl &url, const QString &officialRoot);
     static QUrl canonicalUrl(QUrl url);
     static bool isDownload(const QUrl &url);
+    static bool isStudentServiceNavigation(const QString &label);
     // Uses a known resource-page category only for explicit version labels.
     static QString labelInContext(const QString &label, const QString &parentCategory = {});
     static bool isPractical(const QString &title, const QUrl &url);

@@ -62,6 +62,11 @@ bool ResourceClassifier::isDownload(const QUrl &url) {
                     "\\.(?:pdf|docx?|xlsx?|pptx?|zip|rar|7z|exe|msi|mp4|mp3|png|jpe?g|gif)$") ||
            contains(url.path(), "(?:^|/)(?:download|filedownload)\\.(?:jsp|php|aspx?)$");
 }
+bool ResourceClassifier::isStudentServiceNavigation(const QString &label) {
+    return contains(label.simplified(),
+        "^(?:学生服务|学业服务|选课(?:和|与|及)?退课|课程(?:和|与|及)?培养|"
+        "考试(?:和|与|及)?成绩|教学服务|办事指南|学籍管理|成绩管理|课程管理|培养过程|规章制度)$");
+}
 QString ResourceClassifier::labelInContext(const QString &label, const QString &parentCategory) {
     auto value = label.simplified();
     static const QRegularExpression dated("^(\\d{4}-\\d{2}-\\d{2})\\s*(.+)$");
@@ -77,6 +82,8 @@ bool ResourceClassifier::isPractical(const QString &label, const QUrl &) {
     const auto text = label.simplified();
     if (text.size() < 2 || text.size() > 180)
         return false;
+    if (isStudentServiceNavigation(text))
+        return true;
     if (contains(text,
                  "举办|举行|召开|开展|颁奖|斩获|荣获|顺利完成|圆满完成|闭幕|开幕|新闻|动态|研讨会"))
         return false;
@@ -103,8 +110,8 @@ bool ResourceClassifier::isPractical(const QString &label, const QUrl &) {
               "学术支持|学科服务|科研工具|论文检索|检索证明|学术写作|研究支持|读者服务|"
               "竞赛平台|竞赛指南|竞赛网站|竞赛官方|竞赛官网|数学建模平台|学科竞赛|创新创业平台|"
               "挑战杯平台|"
-              "办事|服务指南|办理指南|办理流程|学生服务|服务大厅|教务系统|教务管理系统|"
-              "学生证|成绩查询|成绩单|学籍|选课|重修安排|重考安排|^重修$|^补考$|毕业证|"
+              "办事|服务指南|办理指南|办理流程|学生服务|服务大厅|教务系统|教务管理系统|校内门户|信息门户|"
+              "学生证|成绩查询|成绩单|学籍|选课|^退课$|^缺考$|^缓考$|课程考核.*(?:细则|办法)|考试纪律|重修安排|重考安排|^重修$|^补考$|毕业证|"
               "资助|奖助|助学贷款|学费|缴费流程|缴费指南|就业服务|就业指导|求职指南|"
               "招聘平台|就业信息网|心理咨询|心理服务|校园卡|校车|校历|住宿指南|入馆|借阅|"
               "座位预约|VPN校外访问|常用阅读器|读者手册|离校流程");
@@ -123,7 +130,9 @@ SchoolResource ResourceClassifier::describe(const QString &schoolId, const QStri
     resource.url = encoded.toStdString();
     resource.provider = url.host().toStdString();
     resource.discoveredFrom = canonicalUrl(from).toString(QUrl::FullyEncoded).toStdString();
-    if (contains(label, "培养方案|教学大纲"))
+    if (isStudentServiceNavigation(label) || contains(label, "课程考核.*(?:细则|办法)|考试纪律"))
+        resource.category = "student_services";
+    else if (contains(label, "培养方案|教学大纲"))
         resource.category = "study_plan";
     else if (contains(label, "课程|教材|学习资料"))
         resource.category = "course_material";
@@ -144,7 +153,7 @@ SchoolResource ResourceClassifier::describe(const QString &schoolId, const QStri
         resource.category = "campus_life";
     else if (contains(
                  label,
-                 "办事|服务|部门|概况|职责|学籍|学生证|成绩|选课|重修|重考|毕业证|资助|奖助|贷款|学费|缴费|教务"))
+                 "办事|服务|门户|部门|概况|职责|学籍|学生证|成绩|选课|退课|补考|缺考|缓考|重修|重考|毕业证|资助|奖助|贷款|学费|缴费|教务"))
         resource.category = "student_services";
     if (contains(label, "本科|学士"))
         resource.audiences.push_back("undergraduate");
@@ -196,6 +205,12 @@ QString ResourceClassifier::staticText(const QByteArray &html) {
 }
 QString ResourceClassifier::unverifiedReason(const QByteArray &html, const QString &text,
                                              bool hasUsefulLinks) {
+    if (text.size() < 500 && contains(text, "没有访问.*权限|无权访问|访问权限不足|当前栏目.*权限|访问被拒绝"))
+        return "官网返回访问权限提示，尚未验证公开资源";
+    if (text.size() < 500 && contains(text, "仅.*(?:校内|校园网)|请.*(?:校园网|校内网络).*访问"))
+        return "官网提示需要校园网，尚未验证公开资源";
+    if (text.size() < 500 && contains(text, "访问地址无效|访问的地址.*无效|栏目不存在|页面不存在"))
+        return "官网返回无效地址提示，尚未验证公开资源";
     if (contains(text, "暂无内容|暂无数据|栏目建设中|正在建设|内容为空|尚无内容"))
         return "栏目暂为空或建设中，尚未验证可用资源";
     if (!hasUsefulLinks && text.size() < 35 &&

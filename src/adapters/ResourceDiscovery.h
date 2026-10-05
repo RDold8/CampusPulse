@@ -56,9 +56,12 @@ class ResourceDiscovery final : public QObject {
     std::deque<Page> queue_;
     QSet<QString> queued_, observed_, verifiedUrls_;
     QHash<QString, SchoolResource> resources_;
+    QHash<QString, int> hostRequests_;
     int fetched_ = 0, failures_ = 0;
     bool busy_ = false;
+    bool cancelled_ = false;
     void enqueue(const Page &page);
+    Page takeNext();
     void next();
     void consume(const Page &page, const QByteArray &bytes, const QString &error);
     void saveResource(SchoolResource resource);

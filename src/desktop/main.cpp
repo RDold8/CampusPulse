@@ -64,14 +64,14 @@ struct DesktopSession {
                    SqliteSubscriptionRepository &subscriptionRepository,
                    SqliteTaskRepository &taskRepository,
                    SqliteResourceRepository &resourceRepository, const UniversityRegistry &registry,
-                   bool allowUnregistered = false)
+                   bool allowUnregistered = false, ResourceDiscoveryOptions resourceOptions = {})
         : school(registry.loadSessionPackage(configFile, allowUnregistered)), service(repository, school.id.toStdString()),
           sources(school.id.toStdString(), school.catalog, sourceRepository),
           subscriptions(school.id.toStdString(), subscriptionRepository, service),
           tasks(school.id.toStdString(), school.timeZone.toStdString(), taskRepository, service),
           resources(resourceRepository, school.id.toStdString()),
           network(school, service, sources),
-          resourceDiscovery(school, resources),
+          resourceDiscovery(school, resources, nullptr, std::move(resourceOptions)),
           window(school, service, sources, network, registry, subscriptions, tasks,
                  &resources, &resourceDiscovery) {
         sources.recover(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs).toStdString());
@@ -190,10 +190,13 @@ int main(int argc, char **argv) {
         SqliteSubscriptionRepository subscriptionRepository(database);
         SqliteTaskRepository taskRepository(database);
         SqliteResourceRepository resourceRepository(database);
+        ResourceDiscoveryOptions resourceOptions;
+        if (cli.isSet("database"))
+            resourceOptions.evidenceDirectory = QFileInfo(dbfile).absolutePath() + "/resource-evidence";
         auto session =
             std::make_unique<DesktopSession>(startupConfig, repository, sourceRepository,
                                              subscriptionRepository, taskRepository, resourceRepository,
-                                             registry, cli.isSet("config"));
+                                             registry, cli.isSet("config"), resourceOptions);
         auto &school = session->school;
         auto &service = session->service;
         auto &sources = session->sources;
@@ -385,13 +388,22 @@ int main(int argc, char **argv) {
         switchSchool = [&](const QString &configFile) {
             auto next =
                 std::make_unique<DesktopSession>(configFile, repository, sourceRepository,
-                                                 subscriptionRepository, taskRepository, resourceRepository, registry);
+                                                 subscriptionRepository, taskRepository, resourceRepository, registry,
+                                                 false, resourceOptions);
             next->window.setGeometry(session->window.geometry());
             placeWindowOnDesktop(next->window, cli.value("desktop-id"));
             next->window.show();
             session.swap(next);
             attachSelection(*session);
             preferences.setValue("selectedSchoolConfig", configFile);
+            // A homepage-only onboarding includes practical resources. Run the
+            // existing bounded collector after notices, without requiring the
+            // user to open a second tab or start a separate crawl manually.
+            if (session->resources.list().empty())
+                QObject::connect(&session->network, &RefreshCoordinator::finished,
+                    &session->resourceDiscovery,
+                    [scanner = &session->resourceDiscovery](int, int) { scanner->start(); },
+                    Qt::SingleShotConnection);
             QTimer::singleShot(100, &session->network, &RefreshCoordinator::refresh);
         };
         attachSelection = [&](DesktopSession &current) {
@@ -490,9 +502,14 @@ int main(int argc, char **argv) {
                                 scan, &SchoolOnboarding::finished, &app,
                                 [&, scan](const QString &generated, int, int) {
                                     onboardingBusy = false;
-                                    QTimer::singleShot(0, &app, [&, generated, scan] {
+                                    const auto verified = scan->verifiedNotices();
+                                    QTimer::singleShot(0, &app, [&, generated, scan, verified] {
                                         try {
                                             switchSchool(generated);
+                                            session->service.ingest(verified);
+                                            for (const auto &notice : verified)
+                                                session->service.saveDetail(notice);
+                                            session->window.reload();
                                         } catch (const std::exception &e) {
                                             auto *currentPage =
                                                 session->window.findChild<UniversityPage *>(

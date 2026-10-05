@@ -1,0 +1,110 @@
+[
+  {
+    "fixture": "webplus-list.html",
+    "source_url": "https://hituc.hit.edu.cn/",
+    "source_html_sha256": "a1ef2a43ed6b513313e1f700f6c1eb1f21ad1cedf0714491fc5ed3d86197a488",
+    "verified_at": "2026-10-04",
+    "reduction": "Selected actual DOM nodes; body limited to first two paragraphs, inline styles removed. Relative official paths retained. Public contact email and phone replaced with placeholders for publication; DOM and parsed fields retained.",
+    "published_fixture_sha256": "c9b816586a0695dd5ea3efca7b1c3353d2ef42b34ee41ee1da697594b6c3e9c5",
+    "redactions": {
+      "public_contact_emails": 1,
+      "public_contact_phones": 1
+    }
+  },
+  {
+    "fixture": "webplus-detail.html",
+    "source_url": "https://hituc.hit.edu.cn/2026/0910/c17860a401334/page.htm",
+    "source_html_sha256": "6503793c939dd9d4ba0e1f5bd7aeb33937f0b9b2f0cb779ff61cd86b4cfb3b60",
+    "verified_at": "2026-10-04",
+    "reduction": "Selected actual DOM nodes; body limited to first two paragraphs, inline styles removed. Relative official paths retained.",
+    "published_fixture_sha256": "56296fd5506a433e2b7f5ce0a022d573194e731c852c658b2776a156880f0c39"
+  },
+  {
+    "fixture": "drupal-detail.html",
+    "source_url": "https://today.hit.edu.cn/article/2026/09/30/132915",
+    "source_html_sha256": "f31a5fe4518ba733bc86d70fd4b1223b7c14c5c10940d005879065d19d66ec60",
+    "verified_at": "2026-10-04",
+    "reduction": "Selected actual DOM nodes; body limited to first two paragraphs, inline styles removed. Relative official paths retained.",
+    "published_fixture_sha256": "84371a132119d1309b04c4dbfc12d698ab90e84a0aa6fc477ffeab447eb838d0"
+  },
+  {
+    "fixture": "drupal-event.html",
+    "source_url": "https://today.hit.edu.cn/event/2026/09/22/132738",
+    "source_html_sha256": "e4260135a80a20caf20972483361ff4ca607f6f6950f2bef7d2fa297ae56d6fb",
+    "verified_at": "2026-10-04",
+    "reduction": "Selected actual DOM nodes; body limited to first two paragraphs, inline styles removed. Relative official paths retained.",
+    "published_fixture_sha256": "7da3e111409a7c8fc3e46a26104f7157d20455ec108f1366f558176bfd5c3983"
+  },
+  {
+    "fixture": "vsb-list.html",
+    "source_url": "https://www.bkjx.sdu.edu.cn/",
+    "source_html_sha256": "941944b518a1773633749faf63dc41f69fac20679f68b87bed62b32572362e9d",
+    "verified_at": "2026-10-04",
+    "reduction": "Selected actual DOM nodes; body limited to first two paragraphs, inline styles removed. Relative official paths retained.",
+    "published_fixture_sha256": "f5aa0c20d44e53d0e9cc680378110ae5e7f844b1a8a7197dde675732dea85295"
+  },
+  {
+    "fixture": "vsb-detail.html",
+    "source_url": "https://www.cwc.sdu.edu.cn/info/1031/3450.htm",
+    "source_html_sha256": "1e26ed2a4ae9d493f061d2ba3147e22eba661b12dca4e5ec95cf9b10ef7b4164",
+    "verified_at": "2026-10-04",
+    "reduction": "Selected actual DOM nodes; body limited to first two paragraphs, inline styles removed. Relative official paths retained.",
+    "published_fixture_sha256": "fe232a3e7ae708c0f28eebd107a58eb256e0d07cadb522d521d96c53493d1c12"
+  },
+  {
+    "fixture": "webplus-homepage-navigation.html",
+    "source_url": "https://jwc.njupt.edu.cn/",
+    "source_html_sha256": "c847ddc2be70cdb687270a8a039a09eb96463069a3bbb420abf2ce5a83188cd8",
+    "verified_at": "2026-10-04",
+    "reduction": "Selected real public homepage notification block; navigation/footer retained only to reproduce pollution; not a school-specific selector.",
+    "published_fixture_sha256": "b19a1dcea11ac6afb6b0732bb9d76be3c200c3613d9a0c46886c0afd806597d4"
+  },
+  {
+    "fixture": "vsb-div-cards.html",
+    "source_url": "https://teach.dlut.edu.cn/",
+    "source_html_sha256": "c7f7378e63ece2f45b24a6e6929de5c4cae8a7b582cd2dbda4f105d8550d1d1f",
+    "verified_at": "2026-10-04",
+    "reduction": "Selected real public homepage notification block; navigation/footer retained only to reproduce pollution; not a school-specific selector.",
+    "published_fixture_sha256": "e669cdfe32b17e206055aa8f89a4835c5d93f8b8541b121e665535b91a57b762"
+  },
+  {
+    "fixture": "webplus-carousel-and-notices.html",
+    "source_url": "https://jwc.njupt.edu.cn/",
+    "source_html_sha256": "c847ddc2be70cdb687270a8a039a09eb96463069a3bbb420abf2ce5a83188cd8",
+    "verified_at": "2026-10-05",
+    "reduction": "Three actual publicity carousel entries preceding the actual notification block; preserves the failing DOM combination.",
+    "published_fixture_sha256": "7f2a9ea3c0fec74be2d9a0d3f8a33e51d7cd4ea55387cd04ee95c0af2398ce4f"
+  },
+  {
+    "fixture": "vsb-student-menu.html",
+    "source_url": "https://jwc.bupt.edu.cn/",
+    "source_html_sha256": "8136185252da8b6371f40995ef7d3b2b2f54ee7d37065803d058ca34d14efe5e",
+    "verified_at": "2026-10-04",
+    "reduction": "Actual student-service navigation/list/body DOM. Only the first introductory guide paragraph retained; scripts/styles omitted. Relative paths retained.",
+    "published_fixture_sha256": "f88ecca94a77d157a1537698d0b93954739aa29b77508354b77d0a428b4ab0f7"
+  },
+  {
+    "fixture": "vsb-service-selection.html",
+    "source_url": "https://jwc.bupt.edu.cn/xsfw1/xkhtk.htm",
+    "source_html_sha256": "59039375e1ffd5f7a3df3677a3d11dfd430605a6b5c48a9384272e3e27ac957c",
+    "verified_at": "2026-10-05",
+    "reduction": "Actual student-service navigation/list/body DOM. Only the first introductory guide paragraph retained; scripts/styles omitted. Relative paths retained.",
+    "published_fixture_sha256": "330cb850178d4d0d9f1bd3369bec820898ceee42f7ce791f85530287948971bb"
+  },
+  {
+    "fixture": "vsb-service-exams.html",
+    "source_url": "https://jwc.bupt.edu.cn/xsfw1/kshcj.htm",
+    "source_html_sha256": "72aca33aa4207cf5af38d3cf2782b46e69ab2e26a4b7dd527c715b5118a5d554",
+    "verified_at": "2026-10-05",
+    "reduction": "Actual student-service navigation/list/body DOM. Only the first introductory guide paragraph retained; scripts/styles omitted. Relative paths retained.",
+    "published_fixture_sha256": "08b564f05cfb3c46a8d7c461c2f14fef8f56f2e6f11850b524ea1cbce3fd3323"
+  },
+  {
+    "fixture": "vsb-retake-guide.html",
+    "source_url": "https://jwc.bupt.edu.cn/info/1254/2768.htm",
+    "source_html_sha256": "843d2c68b96b97a476e40328737aa8f63d0540cae87d9abc3bb12ad00258ef40",
+    "verified_at": "2026-10-05",
+    "reduction": "Actual student-service navigation/list/body DOM. Only the first introductory guide paragraph retained; scripts/styles omitted. Relative paths retained.",
+    "published_fixture_sha256": "cb9cf951bb7395ff9f17de624f2cd6abf60c057f4996f5121910823383489e44"
+  }
+]

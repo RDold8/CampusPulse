@@ -10,6 +10,9 @@ struct PageLink {
 };
 class HtmlAdapter {
   public:
+    // Structural CMS article recognition only. Callers must still validate the
+    // university host, transport, access state and actual public body.
+    static bool isArticleUrl(const QUrl &url);
     std::vector<Notice> parseList(const QByteArray &html, const SourceConfig &source) const;
     QUrl nextPage(const QByteArray &html, const SourceConfig &source, const QUrl &current) const;
     Notice parseDetail(const QByteArray &html, const SourceConfig &source, Notice notice) const;

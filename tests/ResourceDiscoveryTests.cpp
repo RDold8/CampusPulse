@@ -60,6 +60,107 @@ const SchoolResource &find(const MemoryResources &repository, const QString &url
 class ResourceDiscoveryTests : public QObject {
     Q_OBJECT
   private slots:
+    void discoveredRetakeBodyIsCheckedBeforeMoreMenusButOtherHostsStillRun() {
+        QTemporaryDir directory;
+        MemoryResources repository;
+        ResourceService service(repository, "cn-neepu");
+        ResourceDiscovery discovery(school(), service, nullptr, options(directory));
+        const QUrl rules("https://jwc.neepu.edu.cn/rules");
+        const QUrl courses("https://jwc.neepu.edu.cn/course-services");
+        const QUrl retake("https://jwc.neepu.edu.cn/info/1001/1002.htm");
+        const QUrl library("https://lib.neepu.edu.cn/");
+        discovery.enqueue({rules, rules, school().officialHomepage, "培养过程", 1, 0});
+        discovery.enqueue({courses, courses, school().officialHomepage, "选课和退课", 1, 0});
+        discovery.fetched_ = 1;
+        QCOMPARE(discovery.takeNext().url, courses);
+        discovery.enqueue({retake, retake, courses, "重修选课", 2, 0});
+        discovery.enqueue({library, library, school().officialHomepage, "图书馆", 1, 0});
+        discovery.hostRequests_[retake.host()] = 3;
+        QCOMPARE(discovery.takeNext().url, retake);
+        discovery.enqueue({retake.resolved(QUrl("1003.htm")), retake, courses, "补考", 2, 0});
+        discovery.hostRequests_[retake.host()] = 8;
+        QCOMPARE(discovery.takeNext().url, library);
+    }
+    void actualStudentServiceListsLeadToVerifiedGuideBodies() {
+        QTemporaryDir directory;
+        MemoryResources repository;
+        auto pack = school();
+        pack.officialHomepage = QUrl("https://www.example.edu.cn/");
+        ResourceService service(repository, pack.id.toStdString());
+        ResourceDiscovery discovery(pack, service, nullptr, options(directory));
+        const auto read = [](const char *name) {
+            QFile file(QString(GENERAL_TEMPLATE_FIXTURES) + "/" + name);
+            if (!file.open(QIODevice::ReadOnly)) throw std::runtime_error("Missing service fixture");
+            return file.readAll();
+        };
+        const QUrl selection("https://jwc.example.edu.cn/xsfw1/xkhtk.htm");
+        const QUrl exams("https://jwc.example.edu.cn/xsfw1/kshcj.htm");
+        discovery.consume({selection, selection, pack.officialHomepage, "选课和退课", 1, 0},
+                          read("vsb-service-selection.html"), {});
+        discovery.consume({exams, exams, pack.officialHomepage, "考试和成绩", 1, 0},
+                          read("vsb-service-exams.html"), {});
+        const QUrl retake("https://jwc.example.edu.cn/info/1254/2768.htm");
+        QCOMPARE(find(repository, retake.toString()).status, std::string("discovered"));
+        QCOMPARE(find(repository, "https://jwc.example.edu.cn/info/1273/2774.htm").category,
+                 std::string("student_services"));
+        QVERIFY(std::any_of(discovery.queue_.begin(), discovery.queue_.end(), [&](const auto &page) {
+            return page.url == retake;
+        }));
+        discovery.consume({retake, retake, selection, "重修选课", 2, 0}, read("vsb-retake-guide.html"), {});
+        const auto &guide = find(repository, retake.toString());
+        QCOMPARE(guide.status, std::string("verified"));
+        QCOMPARE(guide.category, std::string("student_services"));
+        QVERIFY(QString::fromStdString(guide.description).startsWith("学校每学期开学初"));
+        QVERIFY(!QString::fromStdString(guide.description).contains("首页"));
+        discovery.consume({retake, retake, selection, "重修选课", 2, 0},
+                          "<title>重修选课</title><nav>学生服务及选课指南</nav><p>只有页面导航，没有指南正文。</p>", {});
+        QCOMPARE(find(repository, retake.toString()).status, std::string("discovered"));
+        QVERIFY(!find(repository, retake.toString()).error.empty());
+    }
+    void guideChecksPrecedeDepartmentDescriptionsWithoutStarvingOtherHosts() {
+        QTemporaryDir directory;
+        MemoryResources repository;
+        ResourceService service(repository, "cn-neepu");
+        ResourceDiscovery discovery(school(), service, nullptr, options(directory));
+        const QUrl intro("https://jwc.neepu.edu.cn/overview");
+        const QUrl guide("https://jwc.neepu.edu.cn/guides");
+        const QUrl library("https://lib.neepu.edu.cn/");
+        discovery.enqueue({intro, intro, school().officialHomepage, "教务处概况", 1, 0});
+        discovery.enqueue({guide, guide, school().officialHomepage, "选课和退课", 1, 0});
+        discovery.fetched_ = 1;
+        QCOMPARE(discovery.takeNext().url, guide);
+        discovery.enqueue({library, library, school().officialHomepage, "图书馆", 1, 0});
+        discovery.hostRequests_[guide.host()] = 5;
+        QCOMPARE(discovery.takeNext().url, library);
+    }
+    void redirectChainCompletesBeforeAnotherHostTakesItsBudget() {
+        QTemporaryDir directory;
+        MemoryResources repository;
+        ResourceService service(repository, "cn-neepu");
+        ResourceDiscovery discovery(school(), service, nullptr, options(directory));
+        const QUrl library("https://lib.neepu.edu.cn/index.html");
+        const QUrl other("https://jwc.neepu.edu.cn/services");
+        discovery.queue_.push_back({library, library, school().officialHomepage, "图书馆", 0, 1});
+        discovery.queue_.push_back({other, other, school().officialHomepage, "办事指南", 1, 0});
+        discovery.fetched_ = 3;
+        discovery.hostRequests_[library.host()] = 3;
+        QCOMPARE(discovery.takeNext().url, library);
+        QCOMPARE(discovery.takeNext().url, other);
+    }
+    void permissionMessageIsNotAVerifiedResource() {
+        QTemporaryDir directory;
+        MemoryResources repository;
+        ResourceService service(repository, "cn-neepu");
+        ResourceDiscovery discovery(school(), service, nullptr, options(directory));
+        const QUrl url("https://lib.neepu.edu.cn/");
+        discovery.consume({url, url, school().officialHomepage, "图书馆", 1, 0},
+            "<title>系统提示</title><p>您没有访问当前栏目的权限</p>", {});
+        QCOMPARE(find(repository, url.toString()).status, std::string("discovered"));
+        QVERIFY(!find(repository, url.toString()).error.empty());
+        for (const auto &message : {QString("仅允许校内地址访问，您当前访问地址不在许可范围。"),
+                                    QString("访问地址无效，请返回学校主页。")})
+            QVERIFY(!ResourceClassifier::unverifiedReason({}, message, false).isEmpty());
+    }
     void departmentOverviewIsAResourceWithoutNoticeListGate() {
         QTemporaryDir directory;
         MemoryResources repository;

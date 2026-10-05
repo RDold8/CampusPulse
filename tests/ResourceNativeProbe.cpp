@@ -115,6 +115,7 @@ int main(int argc, char **argv) {
     parser.addOption({"desktop-id", "Target Windows virtual desktop UUID", "uuid"});
     parser.addOption({"evidence", "JSON evidence output", "file"});
     parser.addOption({"screenshot", "Production resource page PNG output", "file"});
+    parser.addOption({"select-resource", "Exact cached resource title to inspect", "title"});
     parser.process(application);
     try {
         for (const auto &option : {"database", "config", "desktop-id", "evidence", "screenshot"})
@@ -152,6 +153,14 @@ int main(int argc, char **argv) {
         auto chosen = std::find_if(cached.begin(), cached.end(), [](const auto &resource) {
             return resource.category == "library" && !resource.accessNote.empty();
         });
+        if (parser.isSet("select-resource")) {
+            const auto requestedTitle = parser.value("select-resource").toStdString();
+            chosen = std::find_if(cached.begin(), cached.end(), [&](const auto &resource) {
+                return resource.title == requestedTitle;
+            });
+            if (chosen == cached.end())
+                throw std::invalid_argument("Requested cached resource title was not found");
+        }
         if (chosen == cached.end())
             chosen = std::find_if(cached.begin(), cached.end(), [](const auto &resource) {
                 return resource.status == "verified" && resource.category == "library";

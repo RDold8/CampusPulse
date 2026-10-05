@@ -2,11 +2,13 @@
 #include "adapters/ArtifactWriter.h"
 #include "adapters/ResourceClassifier.h"
 #include "adapters/PublicUniversityNetwork.h"
+#include "adapters/SchoolOnboarding.h"
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QUuid>
@@ -74,7 +76,7 @@ bool navigation(const QString &label) {
         "教学服务|办事指南|课表考表|双创教育|创新创业|"
         "服务指南|电子资源");
     return label.size() <= 40 && !label.contains("通知") && !label.contains("关于") &&
-           pattern.match(label).hasMatch();
+           (pattern.match(label).hasMatch() || SchoolOnboarding::isDiscoveryLabel(label));
 }
 } // namespace
 
@@ -150,11 +152,13 @@ void ResourceDiscovery::start() {
     if (busy_)
         return;
     busy_ = true;
+    cancelled_ = false;
     queue_.clear();
     queued_.clear();
     observed_.clear();
     resources_.clear();
     verifiedUrls_.clear();
+    hostRequests_.clear();
     fetched_ = failures_ = 0;
     try {
         for (const auto &resource : service_.list())
@@ -207,6 +211,7 @@ void ResourceDiscovery::start() {
 void ResourceDiscovery::cancel() {
     if (!busy_)
         return;
+    cancelled_ = true;
     timer_.stop();
     queue_.clear();
     if (reply_) {
@@ -220,6 +225,21 @@ void ResourceDiscovery::complete() {
     if (!busy_)
         return;
     busy_ = false;
+    QJsonArray frontier;
+    for (const auto &page : queue_)
+        frontier.append(QJsonObject{{"url", canonical(page.url)}, {"label", page.label},
+                                    {"depth", page.depth}, {"redirects", page.redirects}});
+    try {
+        writeArtifact(evidenceDirectory_ + "/report.json", QJsonDocument(QJsonObject{
+            {"school_id", school_.id}, {"fetched_pages", fetched_}, {"model_calls", 0},
+            {"resources", static_cast<int>(observed_.size())},
+            {"verified", static_cast<int>(verifiedUrls_.size())}, {"failures", failures_},
+            {"cancelled", cancelled_}, {"finished_at", now()},
+            {"budget_exhausted", !queue_.empty() && fetched_ >= std::min(options_.maxPages, school_.resourceDiscoveryLimit)},
+            {"pending_frontier", frontier}}).toJson());
+    } catch (const std::exception &error) {
+        emit failed("无法保存资源发现报告：" + QString::fromUtf8(error.what()));
+    }
     emit finished(observed_.size(), verifiedUrls_.size(), failures_);
 }
 void ResourceDiscovery::next() {
@@ -231,64 +251,94 @@ void ResourceDiscovery::next() {
         complete();
         return;
     }
-    const auto page = queue_.front();
-    queue_.pop_front();
+    const auto page = takeNext();
     if (!ResourceClassifier::isOfficial(page.url, officialRoot_)) {
         next();
         return;
     }
     ++fetched_;
+    ++hostRequests_[page.url.host()];
     emit progress(QString("资源发现 %1/%2：%3")
                       .arg(fetched_)
                       .arg(std::min(options_.maxPages, school_.resourceDiscoveryLimit))
                       .arg(page.url.host()));
     reply_ = PublicUniversityNetwork::get(
         page.url, officialRoot_, this, [this, page](UniversityPageResponse result) {
-        if (!busy_)
-            return;
-        reply_ = nullptr;
-        auto redirect = result.redirect;
-        QString error = result.error;
-        const QByteArray bytes = result.bytes;
-        if (error.isEmpty() && !redirect.isEmpty()) {
-            if (ResourceClassifier::isOfficial(redirect, officialRoot_) &&
-                !ResourceClassifier::isDownload(redirect) && page.redirects < 3) {
-                try {
-                    const QJsonObject evidence{{"requested_url", canonical(page.url)},
-                                               {"resource_url", canonical(page.origin)},
-                                               {"redirect_url", canonical(redirect)},
-                                               {"discovered_from", canonical(page.discoveredFrom)},
-                                               {"checked_at", now()},
-                                               {"status", "redirect"}};
-                    writeArtifact(evidenceDirectory_ + "/" + hash(canonical(page.url)) +
-                                      "-redirect-" + QString::number(page.redirects) + ".json",
-                                  QJsonDocument(evidence).toJson());
-                    auto target = page;
-                    target.url = redirect;
-                    ++target.redirects;
-                    queue_.push_front(target);
-                } catch (const std::exception &failure) {
-                    error = QString::fromUtf8(failure.what());
-                }
-            } else
-                error = "重定向超出高校官方HTTPS域、指向文件或超过次数上限";
-        }
-        if (!redirect.isEmpty() && error.isEmpty()) {
-            // Redirects count toward the same request cap and never verify a resource.
-            emit progress("官网重定向已记录，等待目标静态内容验证。");
-        } else {
-            try {
-                consume(page, bytes, error);
-            } catch (const std::exception &failure) {
-                busy_ = false;
-                queue_.clear();
-                emit failed(QString::fromUtf8(failure.what()));
+            if (!busy_)
                 return;
+            reply_ = nullptr;
+            auto redirect = result.redirect;
+            QString error = result.error;
+            const QByteArray bytes = result.bytes;
+            if (error.isEmpty() && !redirect.isEmpty()) {
+                if (ResourceClassifier::isOfficial(redirect, officialRoot_) &&
+                    !ResourceClassifier::isDownload(redirect) && page.redirects < 3) {
+                    try {
+                        const QJsonObject evidence{{"requested_url", canonical(page.url)},
+                                                   {"resource_url", canonical(page.origin)},
+                                                   {"redirect_url", canonical(redirect)},
+                                                   {"discovered_from", canonical(page.discoveredFrom)},
+                                                   {"checked_at", now()},
+                                                   {"status", "redirect"}};
+                        writeArtifact(evidenceDirectory_ + "/" + hash(canonical(page.url)) +
+                                          "-redirect-" + QString::number(page.redirects) + ".json",
+                                      QJsonDocument(evidence).toJson());
+                        auto target = page;
+                        target.url = redirect;
+                        ++target.redirects;
+                        queue_.push_front(target);
+                    } catch (const std::exception &failure) {
+                        error = QString::fromUtf8(failure.what());
+                    }
+                } else
+                    error = "重定向超出高校官方HTTPS域、指向文件或超过次数上限";
             }
+            if (!redirect.isEmpty() && error.isEmpty()) {
+                emit progress("官网重定向已记录，等待目标静态内容验证。");
+            } else {
+                try {
+                    consume(page, bytes, error);
+                } catch (const std::exception &failure) {
+                    busy_ = false;
+                    queue_.clear();
+                    emit failed(QString::fromUtf8(failure.what()));
+                    return;
+                }
+            }
+            if (busy_)
+                timer_.start(options_.requestIntervalMs);
+        }, options_.maxResponseBytes, options_.transferTimeoutMs);
+}
+ResourceDiscovery::Page ResourceDiscovery::takeNext() {
+    auto selected = queue_.begin();
+    if (fetched_ > 0) {
+        const auto score = [&](const Page &entry) {
+            // Finish a discovered deadline-related guide before expanding more
+            // administrative menus. Host accounting still yields to other hosts
+            // after a bounded sequence; the global request cap is unchanged.
+            const bool urgentBody = HtmlAdapter::isArticleUrl(entry.url) &&
+                QRegularExpression("重修|补考|缴费").match(entry.label).hasMatch();
+            const bool actionSection = QRegularExpression(
+                "选课|退课|考试(?:和|与|及)成绩|成绩.*证明").match(entry.label).hasMatch();
+            const bool guide = ResourceClassifier::isStudentServiceNavigation(entry.label) ||
+                QRegularExpression("重修|补考|选课|退课|成绩.*证明").match(entry.label).hasMatch();
+            const int purpose = urgentBody ? 8 : actionSection ? 6 : guide ? 4 :
+                entry.label.contains("图书馆") || entry.label.contains("机构") ? 3 :
+                ResourceClassifier::isPractical(entry.label, entry.url) ? 2 : 1;
+            return purpose * 10 - hostRequests_.value(entry.url.host()) * 10 - entry.depth;
+        };
+        for (auto entry = queue_.begin(); entry != queue_.end(); ++entry) {
+            if (entry->redirects > 0) {
+                selected = entry;
+                break;
+            }
+            if (score(*entry) > score(*selected))
+                selected = entry;
         }
-        if (busy_)
-            timer_.start(options_.requestIntervalMs);
-    }, options_.maxResponseBytes, options_.transferTimeoutMs);
+    }
+    const auto page = *selected;
+    queue_.erase(selected);
+    return page;
 }
 void ResourceDiscovery::consume(const Page &page, const QByteArray &bytes, const QString &failure) {
     const auto checked = now();
@@ -382,13 +432,32 @@ void ResourceDiscovery::consume(const Page &page, const QByteArray &bytes, const
     if (!candidate.id.empty()) {
         const auto text = ResourceClassifier::staticText(bytes);
         auto reason = ResourceClassifier::unverifiedReason(bytes, text, useful);
+        QString description = text;
+        if (reason.isEmpty() && HtmlAdapter::isArticleUrl(page.url)) {
+            // A guide article is useful only after its actual body is read;
+            // menu/footer text cannot establish the guide's content.
+            try {
+                SourceConfig source;
+                source.entry = page.url;
+                source.allowedHosts = {page.url.host()};
+                source.autoDetect = true;
+                Notice article;
+                article.url = page.url.toString(QUrl::FullyEncoded).toStdString();
+                const auto detail = parser_.parseDetail(bytes, source, std::move(article));
+                description = QString::fromStdString(detail.body);
+                if (description.size() < 30)
+                    reason = "公开指南正文过短，尚未核实";
+            } catch (const std::exception &failure) {
+                reason = "公开指南正文尚未核实：" + QString::fromUtf8(failure.what());
+            }
+        }
         if (title.isEmpty() && page.label.isEmpty())
             reason = "资源入口缺少可识别的真实页面标题，默认入口名称不作为可用证据";
         candidate.status = reason.isEmpty() ? "verified" : "discovered";
         candidate.lastCheckedAt = checked.toStdString();
         candidate.error = reason.toStdString();
         if (reason.isEmpty()) {
-            candidate.description = text.left(500).toStdString();
+            candidate.description = description.left(500).toStdString();
             verifiedUrls_.insert(targetUrl);
         }
         saveResource(candidate);

@@ -27,6 +27,31 @@ class PrototypeTests : public QObject {
         return f.readAll();
     }
   private slots:
+    void detailPublicationSurvivesUndatedListRefreshAndRestart() {
+        QTemporaryDir folder;
+        const auto path = folder.path() + "/publication.sqlite";
+        auto rows = HtmlAdapter{}.parseList(fixture("notices.html"), source("academic-affairs-notices"));
+        auto row = rows.front();
+        row.publishedDate.clear();
+        {
+            SqliteRepository db(path);
+            NoticeService service(db);
+            service.ingest({row});
+            auto detail = row;
+            detail.publishedDate = "2026-08-29";
+            detail.body = "经公开官网正文核实的重修报名说明";
+            service.saveDetail(detail);
+            QCOMPARE(service.list().front().publishedDate, std::string("2026-08-29"));
+            const auto revisions = db.revisionCount(row.id);
+            service.ingest({row});
+            service.saveDetail(detail);
+            QCOMPARE(service.list().front().publishedDate, detail.publishedDate);
+            QCOMPARE(service.list().front().body, detail.body);
+            QCOMPARE(db.revisionCount(row.id), revisions);
+        }
+        SqliteRepository reopened(path);
+        QCOMPARE(reopened.list().front().publishedDate, std::string("2026-08-29"));
+    }
     void sourceConfiguration() {
         const auto school = SchoolPackage::load(CONFIG_FILE);
         QCOMPARE(school.sources.size(), size_t(6));

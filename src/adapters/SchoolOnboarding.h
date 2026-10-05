@@ -14,11 +14,12 @@ namespace campus {
 class SchoolOnboarding final : public QObject {
     Q_OBJECT
   public:
-    static constexpr int AlgorithmVersion = 4;
+    static constexpr int AlgorithmVersion = 8;
     SchoolOnboarding(const QString &seedFile, const QString &outputDirectory,
                      QObject *parent = nullptr, int intervalMs = 3000,
                      QStringList supplementalEntries = {});
     void start();
+    const std::vector<Notice> &verifiedNotices() const { return verifiedNotices_; }
     static bool withinUniversity(const QUrl &url, const QString &officialRoot);
     static bool isDiscoveryLabel(const QString &label);
   signals:
@@ -49,6 +50,9 @@ class SchoolOnboarding final : public QObject {
     QSet<QString> queued_;
     QJsonArray sources_, samples_, failures_;
     QHash<QString, int> counts_;
+    QHash<QString, int> hostRequests_;
+    QHash<QString, std::deque<Notice>> bodyCandidates_;
+    std::vector<Notice> verifiedNotices_;
     QMap<QString, QJsonObject> deferredFrontier_;
     bool frontierTruncated_ = false;
     int interval_, fetched_ = 0, ready_ = 0, rows_ = 0;
@@ -59,6 +63,7 @@ class SchoolOnboarding final : public QObject {
     static QString frontierId(const Page &page);
     static QJsonObject frontierEntry(const Page &page, const QString &reason);
     QStringList pageHosts(const Page &page) const;
+    Page takeNext();
     void next();
     void consume(const Page &page, const QByteArray &bytes, const QString &error);
     void finish();

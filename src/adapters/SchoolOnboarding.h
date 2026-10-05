@@ -14,7 +14,7 @@ namespace campus {
 class SchoolOnboarding final : public QObject {
     Q_OBJECT
   public:
-    static constexpr int AlgorithmVersion = 8;
+    static constexpr int AlgorithmVersion = 9;
     SchoolOnboarding(const QString &seedFile, const QString &outputDirectory,
                      QObject *parent = nullptr, int intervalMs = 3000,
                      QStringList supplementalEntries = {});
@@ -62,6 +62,7 @@ class SchoolOnboarding final : public QObject {
     void defer(const Page &page, const QString &reason);
     static QString frontierId(const Page &page);
     static QJsonObject frontierEntry(const Page &page, const QString &reason);
+    QString sourceKeyForUrl(const QUrl &url) const;
     QStringList pageHosts(const Page &page) const;
     Page takeNext();
     void next();

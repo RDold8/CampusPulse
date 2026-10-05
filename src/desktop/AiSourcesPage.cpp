@@ -4,6 +4,9 @@
 #include "adapters/UniversityRegistry.h"
 #include "adapters/RefreshCoordinator.h"
 #include "adapters/AiSearchTemplate.h"
+#include "adapters/AiSourceRepair.h"
+#include "adapters/AiSearchHistory.h"
+#include "adapters/ArtifactWriter.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDateTime>
@@ -23,6 +26,9 @@
 #include <QStandardPaths>
 #include <QTimer>
 #include <QToolButton>
+#include <QPlainTextEdit>
+#include <QUuid>
+#include <QDesktopServices>
 #include <QVBoxLayout>
 #include <stdexcept>
 
@@ -59,6 +65,7 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
     : QWidget(parent), school_(school), providers_(providerFolder(providerDirectory)),
       probe_(this), search_(this) {
     setObjectName("aiSourcesPage");
+    historyDirectory_ = providerFolder(providerDirectory);
     for (const auto &entry : registry.list())
         if (entry.id == school.id)
             root_ = entry.homepage.host();
@@ -192,6 +199,21 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
         updateTemplate();
     });
     updateTemplate();
+    pendingOnly_ = new QCheckBox("优先补充待接入来源");
+    pendingOnly_->setObjectName("aiRepairPendingSources");
+    pendingOnly_->setChecked(true);
+    targets_ = new QLabel;
+    targets_->setObjectName("aiPendingSourcesSummary");
+    targets_->setWordWrap(true);
+    targets_->setTextFormat(Qt::PlainText);
+    const auto pending = AiSourceRepair::pending(school_);
+    QStringList pendingNames;
+    for (const auto &entry : pending) pendingNames << entry.toObject().value("title").toString();
+    targets_->setText(pending.empty() ? "当前没有可补充的待接入公开来源；可搜索其他遗漏栏目。"
+        : QString("待接入 %1 项：%2").arg(pending.size()).arg(pendingNames.join("、")));
+    layout->addWidget(pendingOnly_);
+    layout->addWidget(targets_);
+    connect(pendingOnly_, &QCheckBox::toggled, this, [this] { focusedSourceId_.clear(); });
 
     automatic_ = new QCheckBox("规则更新完成后自动补充（每校至少间隔 1 小时，可能消耗 token）");
     automatic_->setObjectName("aiAutoSupplement");
@@ -212,7 +234,25 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
     layout->addWidget(advancedPanel);
     results_ = new QListWidget;
     results_->setObjectName("aiCandidates");
+    results_->setWordWrap(true);
+    results_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    resultSummary_ = new QLabel("搜索结果将显示在这里，包括官网链接、校验状态和新增数量。");
+    resultSummary_->setObjectName("aiResultsSummary");
+    resultSummary_->setWordWrap(true);
+    resultSummary_->setTextFormat(Qt::PlainText);
+    layout->addWidget(resultSummary_);
     layout->addWidget(results_, 1);
+    feedback_ = new QPlainTextEdit;
+    feedback_->setObjectName("aiSearchFeedback");
+    feedback_->setReadOnly(true);
+    feedback_->setMaximumBlockCount(60);
+    feedback_->setMaximumHeight(110);
+    feedback_->setPlaceholderText("读取官网、AI 搜索和栏目校验的进度会逐步显示。双击结果可打开官网原文。");
+    layout->addWidget(feedback_);
+    connect(results_, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem *item) {
+        const QUrl url(item->data(Qt::UserRole).toString());
+        if (SchoolOnboarding::withinUniversity(url, root_)) QDesktopServices::openUrl(url);
+    });
     connect(providerList_, &QListWidget::currentRowChanged, this, &AiSourcesPage::loadSelected);
     connect(add_, &QPushButton::clicked, this, [this] { editProvider(true); });
     connect(edit_, &QPushButton::clicked, this, [this] { editProvider(false); });
@@ -252,10 +292,15 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
     connect(&search_, &DeepSeekSearch::failed, this, [this](const QString &reason) {
         busy_ = false;
         updateEnabled();
+        report_["phase"] = "failed";
+        report_["message"] = reason;
+        recordProgress(reason);
+        renderReport();
         status_->setText(reason);
+        saveReport();
     });
     connect(&search_, &DeepSeekSearch::progress, this, [this](const QString &message) {
-        status_->setText(message);
+        recordProgress(message);
     });
     connect(&search_, &DeepSeekSearch::finished, this, &AiSourcesPage::validate);
     connect(&refresh, &RefreshCoordinator::started, this, [this] {
@@ -282,6 +327,79 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
         status_->setText("AI 配置读取失败，未覆盖原文件：" + QString::fromUtf8(error.what()));
         updateEnabled();
     }
+    try {
+        report_ = AiSearchHistory::load(historyDirectory_, school_.id);
+        if (!report_.isEmpty()) {
+            if (report_.value("phase") == "searching" || report_.value("phase") == "validating") {
+                report_["phase"] = "interrupted";
+                report_["message"] = "上次搜索或校验未完成；已保留当时的目标与候选。";
+            }
+            renderReport();
+            status_->setText("上次搜索：" + report_.value("message").toString());
+        }
+    } catch (const std::exception &error) {
+        recordProgress(QString::fromUtf8(error.what()));
+    }
+}
+void AiSourcesPage::focusPendingSource(const QString &sourceId) {
+    if (busy_) return;
+    pendingOnly_->setChecked(true);
+    focusedSourceId_ = sourceId;
+    const auto pending = AiSourceRepair::pending(school_, sourceId);
+    targets_->setText(pending.empty() ? "此来源没有可补充的公开入口。"
+        : "本次定向补充：" + pending.first().toObject().value("title").toString());
+    status_->setText("已选择待接入来源。点击一键搜索后开始寻找公开列表或替代入口；尚未调用模型。");
+}
+void AiSourcesPage::recordProgress(const QString &message) {
+    status_->setText(message);
+    feedback_->appendPlainText(QDateTime::currentDateTime().toString("HH:mm:ss") + "  " + message);
+}
+bool AiSourcesPage::saveReport() {
+    try {
+        report_["feedback"] = feedback_->toPlainText();
+        AiSearchHistory::save(historyDirectory_, school_.id, report_);
+        return true;
+    } catch (const std::exception &error) {
+        recordProgress("搜索结果已显示，但本地记录保存失败：" + QString::fromUtf8(error.what()));
+        return false;
+    }
+}
+void AiSourcesPage::renderReport() {
+    if (report_.isEmpty()) return;
+    results_->clear();
+    const auto candidates = report_.value("candidates").toArray();
+    int verified = 0;
+    for (const auto &entry : candidates) {
+        const auto candidate = entry.toObject();
+        const auto state = candidate.value("status").toString();
+        QString label = state == "verified" ? "已校验并接入" : state == "not_ready" ? "仍待接入" : "等待官网校验";
+        if (state == "verified") ++verified;
+        QString text = label + " · " + candidate.value("title").toString() +
+            "\n" + candidate.value("url").toString() + "\n" + candidate.value("reason").toString();
+        for (const auto &source : candidate.value("verified_sources").toArray())
+            text += "\n已接入：" + source.toObject().value("title").toString() + " · " + source.toObject().value("url").toString();
+        auto *item = new QListWidgetItem(text, results_);
+        item->setData(Qt::UserRole, candidate.value("url").toString());
+        item->setToolTip(item->text());
+    }
+    QSet<QString> shown;
+    for (const auto &entry : candidates) shown.insert(entry.toObject().value("url").toString());
+    for (const auto &entry : report_.value("repair_targets").toArray()) {
+            const auto target = entry.toObject();
+            if (shown.contains(target.value("url").toString())) continue;
+            const bool repaired = target.value("status") == "verified";
+            QString text = (repaired ? "已修复目标 · " : "待接入目标 · ") + target.value("title").toString() +
+                "\n" + target.value("url").toString() + "\n" + target.value("reason").toString(report_.value("message").toString());
+            for (const auto &source : target.value("verified_sources").toArray())
+                text += "\n已接入：" + source.toObject().value("title").toString() + " · " + source.toObject().value("url").toString();
+            auto *item = new QListWidgetItem(text, results_);
+            item->setData(Qt::UserRole, target.value("url").toString());
+        }
+    const auto use = usageText(report_.value("usage").toObject());
+    resultSummary_->setText(QString("%1 · 找到 %2 个候选，%3 个候选确认接入，新增或修复 %4 个来源\n%5\n%6")
+        .arg(report_.value("searched_at").toString()).arg(candidates.size()).arg(verified)
+        .arg(report_.value("added_sources").toInt()).arg(report_.value("message").toString()).arg(use));
+    if (feedback_->toPlainText().isEmpty()) feedback_->setPlainText(report_.value("feedback").toString());
 }
 
 AiProviderConfig AiSourcesPage::selectedProvider() const {
@@ -376,6 +494,7 @@ void AiSourcesPage::updateEnabled() {
     disable_->setEnabled(idle && !providers_.activeId().isEmpty());
     model_->setEnabled(idle && hasSelected);
     searchTemplate_->setEnabled(idle);
+    pendingOnly_->setEnabled(idle);
     automatic_->setEnabled(idle && !activeProvider().id.isEmpty());
     run_->setEnabled(idle && !activeProvider().id.isEmpty());
     run_->setText(busy_ ? "正在搜索…" : "一键搜索");
@@ -484,110 +603,173 @@ void AiSourcesPage::run() {
     busy_ = true;
     updateEnabled();
     results_->clear();
+    feedback_->clear();
     requestedProvider_ = provider;
     requestedModel_ = provider.model;
     requestedTemplate_ = searchTemplate_->currentData().toString();
     QSettings().setValue("ai/lastAttempt/" + school_.id, QDateTime::currentSecsSinceEpoch());
-    QSet<QString> known;
-    for (const auto &source : school_.catalog) {
-        QUrl url(QString::fromStdString(source.entryUrl));
-        if (url.scheme() == "http")
-            url.setScheme("https");
-        known.insert(url.toString(QUrl::FullyEncoded));
+    const auto known = AiSourceRepair::existing(school_);
+    const auto repair = pendingOnly_->isChecked() ? AiSourceRepair::pending(school_, focusedSourceId_)
+                                                 : QJsonArray{};
+    report_ = {{"school_id", school_.id}, {"phase", "searching"},
+        {"searched_at", QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss")},
+        {"provider_id", provider.id}, {"model", provider.model}, {"template_id", requestedTemplate_},
+        {"repair_targets", repair}, {"candidates", QJsonArray{}},
+        {"message", QString("开始搜索：优先补充 %1 个待接入入口；已有可采集来源不会重复添加。").arg(repair.size())}};
+    renderReport();
+    if (!saveReport()) {
+        busy_ = false;
+        updateEnabled();
+        return;
     }
     status_->setText(nativeWebSearch(provider)
         ? "正在通过当前启用的提供方调用搜索工具。候选仍需官网校验；不会自动重试。"
         : "正在读取学校官网，再由 AI 从真实页面发现的链接中筛选。候选仍需官网校验。");
-    search_.search(provider, key, school_.name, root_, known, requestedTemplate_, school_.officialHomepage);
+    recordProgress(status_->text());
+    search_.search(provider, key, school_.name, root_, known, requestedTemplate_, school_.officialHomepage, repair);
 }
 
 void AiSourcesPage::validate(QJsonArray candidates, QJsonObject usage) {
-    const auto auditFolder =
-        QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/ai-schools";
-    const auto origin = usage.value("candidate_origin").toString(
-        nativeWebSearch(requestedProvider_) ? "native_web_search" : "official_site_crawl_ai_selection");
-    const QJsonObject audit{{"contract_version", origin == "native_web_search"
-                                                        ? "search-v1" : "grounded-selection-v1"},
-                            {"status", "candidate_only"},
-                            {"candidate_origin", origin},
-                            {"school_id", school_.id},
-                            {"provider_id", requestedProvider_.id},
-                            {"model", requestedModel_},
-                            {"template_id", requestedTemplate_},
-                            {"model_calls", usage.value("model_calls").toInt(1)},
-                            {"usage", usage},
-                            {"candidates", candidates},
-                            {"searched_at", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}};
-    QSaveFile auditFile(auditFolder + "/" + school_.id + ".search.json");
-    const auto auditBytes = QJsonDocument(audit).toJson();
-    if (!QDir().mkpath(auditFolder) || !auditFile.open(QIODevice::WriteOnly) ||
-        auditFile.write(auditBytes) != auditBytes.size() || !auditFile.commit()) {
+    // Show the actual response immediately, before persistence or network validation can fail.
+    for (int i = 0; i < candidates.size(); ++i) {
+        auto candidate = candidates[i].toObject();
+        candidate["status"] = "candidate";
+        candidate["reason"] = "AI 已找到入口，尚未通过列表和正文校验。";
+        candidates[i] = candidate;
+    }
+    report_["candidates"] = candidates;
+    report_["usage"] = usage;
+    report_["phase"] = "validating";
+    report_["message"] = candidates.empty() ? "本次未发现新的可校验栏目；待接入目标保留在下方。"
+                                            : "AI 已返回候选，正在校验真实官网列表和正文。";
+    renderReport();
+    recordProgress(report_.value("message").toString() + " " + usageText(usage));
+    if (!saveReport()) {
         busy_ = false;
+        report_["phase"] = "failed";
         updateEnabled();
-        status_->setText("模型已返回，但候选记录保存失败；未添加来源。");
         return;
     }
-    const auto use = usageText(usage);
     if (candidates.empty()) {
         busy_ = false;
+        report_["phase"] = "completed";
         updateEnabled();
-        status_->setText("补充完成，没有新的本校栏目候选。" + use);
+        saveReport();
         return;
     }
     QStringList urls;
-    for (const auto &value : candidates) {
-        const auto hit = value.toObject();
-        urls.append(hit.value("url").toString());
-        results_->addItem(hit.value("title").toString() + "\n" + urls.back());
-    }
+    for (const auto &entry : candidates) urls << entry.toObject().value("url").toString();
     try {
         QFile current(school_.configFile);
-        if (!current.open(QIODevice::ReadOnly))
-            throw std::runtime_error("无法读取当前学校配置");
-        QJsonParseError parseError;
-        const auto document = QJsonDocument::fromJson(current.readAll(), &parseError);
-        current.close();
-        if (parseError.error != QJsonParseError::NoError || !document.isObject())
+        if (!current.open(QIODevice::ReadOnly)) throw std::runtime_error("无法读取当前学校配置");
+        QJsonParseError error;
+        const auto document = QJsonDocument::fromJson(current.readAll(), &error);
+        if (error.error != QJsonParseError::NoError || !document.isObject())
             throw std::runtime_error("当前学校配置不是有效 JSON");
         auto seed = document.object();
-        auto schoolIdentity = seed.value("school").toObject();
-        if (schoolIdentity.value("official_homepage").toString().isEmpty() &&
-            !school_.officialHomepage.isEmpty()) {
-            schoolIdentity["official_homepage"] = school_.officialHomepage.toString();
-            seed["school"] = schoolIdentity;
+        auto identity = seed.value("school").toObject();
+        if (identity.value("official_homepage").toString().isEmpty()) {
+            identity["official_homepage"] = school_.officialHomepage.toString();
+            seed["school"] = identity;
         }
         seed["auto_discovery"] = QJsonObject{{"department_urls", QJsonArray{}}, {"max_pages", 24}};
-        const auto folder =
-            QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/ai-schools";
+        const auto folder = QDir(historyDirectory_).filePath("school-validation/" + school_.id + "/" +
+            QUuid::createUuid().toString(QUuid::WithoutBraces));
         if (!QDir().mkpath(folder))
-            throw std::runtime_error("无法创建 AI 补充缓存目录");
-        const auto seedFile = folder + "/" + school_.id + ".seed.json";
-        QSaveFile file(seedFile);
-        const auto bytes = QJsonDocument(seed).toJson();
-        if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
-            throw std::runtime_error("无法保存 AI 补充种子");
+            throw std::runtime_error("无法创建本次官网校验目录");
+        const auto seedFile = folder + "/seed-" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".json";
+        writeArtifact(seedFile, QJsonDocument(seed).toJson());
         auto *scan = new SchoolOnboarding(seedFile, folder, this, 3000, urls);
-        connect(scan, &SchoolOnboarding::progress, this,
-                [this, use](const QString &message) { status_->setText(use + "\n" + message); });
-        connect(scan, &SchoolOnboarding::failed, this, [this, scan, use](const QString &error) {
-            busy_ = false;
-            updateEnabled();
-            status_->setText(use + "\n" + error);
+        connect(scan, &SchoolOnboarding::progress, this, [this](const QString &message) { recordProgress(message); });
+        connect(scan, &SchoolOnboarding::failed, this, [this, scan, folder](const QString &message) {
+            completeValidation(folder + "/" + school_.id + "/school.json", message);
             scan->deleteLater();
         });
         connect(scan, &SchoolOnboarding::finished, this,
-                [this, scan, use](const QString &config, int count, int) {
-                    busy_ = false;
-                    updateEnabled();
-                    status_->setText(QString("新增 %1 个已校验来源。%2").arg(count).arg(use));
-                    scan->deleteLater();
-                    emit configReady(config);
-                });
+            [this, scan](const QString &config, int, int) {
+                completeValidation(config);
+                scan->deleteLater();
+            });
         scan->start();
     } catch (const std::exception &error) {
-        busy_ = false;
-        updateEnabled();
-        status_->setText(use + "\n" + QString::fromUtf8(error.what()));
+        completeValidation({}, QString::fromUtf8(error.what()));
+    }
+}
+void AiSourcesPage::completeValidation(const QString &config, const QString &error) {
+    busy_ = false;
+    updateEnabled();
+    auto candidates = report_.value("candidates").toArray();
+    QJsonArray added, failures;
+    QString failure = error;
+    try {
+        if (error.isEmpty()) {
+            const auto validated = SchoolPackage::load(config);
+            const auto baseline = AiSourceRepair::existing(school_);
+            for (const auto &source : validated.catalog) {
+                QUrl url(QString::fromStdString(source.entryUrl));
+                if (url.scheme() == "http") url.setScheme("https");
+                if (source.ready && source.configuredEnabled &&
+                    !baseline.contains(url.toString(QUrl::FullyEncoded)))
+                    added.append(QJsonObject{{"url", url.toString(QUrl::FullyEncoded)},
+                        {"title", QString::fromStdString(source.name)}, {"source_id", QString::fromStdString(source.id)}});
+            }
+        }
+        if (!config.isEmpty()) {
+            QFile reportFile(QFileInfo(config).dir().filePath("report.json"));
+            if (reportFile.open(QIODevice::ReadOnly))
+                failures = QJsonDocument::fromJson(reportFile.readAll()).object().value("failures").toArray();
+        }
+    } catch (const std::exception &exception) {
+        failure = QString::fromUtf8(exception.what());
+        added = {};
+    }
+    const auto annotate = [&](QJsonArray &entries) {
+      for (int i = 0; i < entries.size(); ++i) {
+        auto candidate = entries[i].toObject();
+        const QUrl candidateUrl(candidate.value("url").toString());
+        QJsonArray matched;
+        for (const auto &entry : added) {
+            const QUrl url(entry.toObject().value("url").toString());
+            auto prefix = candidateUrl.path();
+            if (!prefix.endsWith('/')) prefix += '/';
+            if ((!candidate.value("source_id").toString().isEmpty() &&
+                 candidate.value("source_id") == entry.toObject().value("source_id")) ||
+                url == candidateUrl || (url.host() == candidateUrl.host() && url.path().startsWith(prefix)))
+                matched.append(entry);
+        }
+        candidate["status"] = matched.empty() ? "not_ready" : "verified";
+        candidate["verified_sources"] = matched;
+        QString reason = matched.empty() ? "本轮未确认此入口可采集，仍待接入；可打开官网检查。"
+                                        : QString("已验证并接入 %1 个通知来源。").arg(matched.size());
+        for (const auto &entry : failures) {
+            const auto item = entry.toObject();
+            if (QUrl(item.value("url").toString()) == candidateUrl)
+                reason += " " + item.value("error").toString(item.value("reason").toString());
+        }
+        if (!failure.isEmpty() && matched.empty()) reason += " " + failure;
+        candidate["reason"] = reason;
+        entries[i] = candidate;
+      }
+    };
+    annotate(candidates);
+    auto repairTargets = report_.value("repair_targets").toArray();
+    annotate(repairTargets);
+    report_["repair_targets"] = repairTargets;
+    report_["candidates"] = candidates;
+    report_["added_sources"] = added.size();
+    if (failure.isEmpty()) report_["validated_config"] = config;
+    report_["new_sources"] = added;
+    report_["phase"] = failure.isEmpty() ? "completed" : "failed";
+    report_["message"] = failure.isEmpty()
+        ? QString("校验完成，新增或修复 %1 个来源。未通过的入口保留状态和原因。").arg(added.size())
+        : "官网校验未完成，当前学校保留。" + failure;
+    recordProgress(report_.value("message").toString());
+    renderReport();
+    const bool saved = saveReport();
+    if (failure.isEmpty() && !added.empty() && saved) {
+        // The replacement page reloads this same report, so visible results survive configReady.
+        QSettings().setValue("pendingAiResultsSchool", school_.id);
+        emit configReady(config);
     }
 }
 } // namespace campus

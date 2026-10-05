@@ -32,6 +32,47 @@ AiProviderConfig customProvider(AiApiProtocol protocol = AiApiProtocol::OpenAiCo
 class DeepSeekSearchTests final : public QObject {
     Q_OBJECT
   private slots:
+    void nativeSearchRejectsWebPlusMobileArticlesAndPdfViewers() {
+        QJsonArray hits;
+        for (const auto &path : {"/610/list1.htm", "/2026/0828/c610a222457/pagem.htm",
+            "/2025/0726/c611a209533/page.htm?out=embedded_pdf", "/pdfjs22228/web/viewer.html?file=/_upload/a.pdf"})
+            hits.append(QJsonObject{{"type", "web_search_result"}, {"title", "官方搜索返回"},
+                {"url", "https://sample.edu.cn" + QString(path)}});
+        const auto accepted = DeepSeekSearch::candidates(
+            {{"stop_reason", "end_turn"}, {"content", QJsonArray{QJsonObject{
+                {"type", "web_search_tool_result"}, {"content", hits}}}}}, "sample.edu.cn", {});
+        QCOMPARE(accepted.size(), 1);
+        QCOMPARE(accepted.first().toObject().value("url").toString(), QString("https://sample.edu.cn/610/list1.htm"));
+    }
+    void pendingTargetsAreIncludedWithoutCrossSchoolOrLoginUrls() {
+        const QJsonArray targets{QJsonObject{{"title", "待接入教务"}, {"url", "https://jwc.sample.edu.cn/tzgg/"}},
+            QJsonObject{{"url", "https://evil.org/"}}, QJsonObject{{"url", "https://sample.edu.cn/login"}}};
+        const auto body = DeepSeekSearch::withRepairTargets(
+            DeepSeekSearch::requestBody("model", "大学", "sample.edu.cn"), targets, "sample.edu.cn");
+        const auto text = QJsonDocument(body).toJson(QJsonDocument::Compact);
+        QVERIFY(text.contains("https://jwc.sample.edu.cn/tzgg/"));
+        QVERIFY(!text.contains("evil.org"));
+        QVERIFY(!text.contains("https://sample.edu.cn/login"));
+        QVERIFY(body.contains("tools"));
+    }
+    void pendingEntryIsReadEvenWhenHomepageDoesNotLinkToIt() {
+        QStringList visited;
+        DeepSeekSearch search(nullptr, [&](const QUrl &url, const QString &, QObject *,
+                                          PublicUniversityNetwork::Callback callback) {
+            visited << url.toString();
+            callback({"<html><title>公开学校页面</title><p>真实公开内容</p></html>", {}, {}, 200});
+        });
+        const QString target = "https://jwc.sample.edu.cn/tzgg/";
+        // Secret echo filtering removes this synthetic URL from model evidence; no API dispatch.
+        QSignalSpy failed(&search, &DeepSeekSearch::failed);
+        QSignalSpy diagnostic(&search, &DeepSeekSearch::diagnostic);
+        search.search(customProvider(), target, "大学", "sample.edu.cn", {}, "general",
+            QUrl("https://www.sample.edu.cn/"), {QJsonObject{{"url", target}, {"title", "待接入教务"}}});
+        QTRY_COMPARE_WITH_TIMEOUT(failed.count(), 1, 5000);
+        QVERIFY(visited.contains(target));
+        QVERIFY(visited.size() <= 6);
+        QCOMPARE(diagnostic.last().first().toJsonObject().value("model_calls").toInt(), 0);
+    }
     void crawlLinksHaveRealHtmlProvenanceAndRespectScope() {
         const QByteArray html =
             "<html><a href='https://jwc.sample.edu.cn/tzgg/'>教务通知</a>"
@@ -39,6 +80,9 @@ class DeepSeekSearchTests final : public QObject {
             "<a href='https://sample.edu.cn.evil.org/'>假后缀</a>"
             "<a href='/info/12/1234.htm'>单篇文章</a>"
             "<a href='/login'>登录</a><a href='/a.pdf'>附件</a>"
+            "<a href='/2026/0828/c610a222457/pagem.htm'>移动文章</a>"
+            "<a href='/2025/0726/c611a209533/page.htm?out=embedded_pdf'>嵌入附件</a>"
+            "<a href='/pdfjs22228/web/viewer.html'>PDF查看器</a>"
             "<a href='/account?token=synthetic'>敏感参数</a>"
             "<a href='javascript:alert(1)'>脚本</a></html>";
         const auto links = DeepSeekSearch::discoveredLinks(html, QUrl("https://sample.edu.cn/"),

@@ -221,6 +221,19 @@ QStringList SchoolOnboarding::pageHosts(const Page &page) const {
             throw std::runtime_error("已验证跳转主机超出高校官方域");
     return hosts;
 }
+QString SchoolOnboarding::sourceKeyForUrl(const QUrl &url) const {
+    auto normalize = [](QUrl value) {
+        if (value.scheme() == "http") value.setScheme("https");
+        value.setFragment({});
+        return value.toString(QUrl::FullyEncoded);
+    };
+    for (const auto &entry : sources_) {
+        const auto source = entry.toObject();
+        if (normalize(QUrl(source.value("entry_url").toString())) == normalize(url))
+            return source.value("key").toString();
+    }
+    return key(url);
+}
 void SchoolOnboarding::start() {
     if (started_)
         return;
@@ -234,6 +247,8 @@ void SchoolOnboarding::start() {
             enqueue(QUrl(entry), "官方入口", 0, true);
     } else {
         for (const auto &source : sources_) {
+            if (!source.toObject().value("enabled").toBool() ||
+                !source.toObject().value("extraction").isObject()) continue;
             QUrl existing(source.toObject().value("entry_url").toString());
             if (existing.scheme() == "http")
                 existing.setScheme("https");
@@ -329,7 +344,7 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
         }
         if (listCandidate && page.sourceKey.isEmpty()) {
             const auto original = page.origin.isEmpty() ? page.url : page.origin;
-            const auto id = key(original);
+            const auto id = sourceKeyForUrl(original);
             bool exists = false;
             for (int i = 0; i < sources_.size(); ++i) {
                 auto value = sources_[i].toObject();
@@ -380,7 +395,7 @@ void SchoolOnboarding::consume(const Page &page, const QByteArray &bytes, const 
     try {
         if (bytes.size() > 5 * 1024 * 1024)
             throw std::runtime_error("页面超过5MB");
-        const auto id = key(page.url);
+        const auto id = sourceKeyForUrl(page.origin.isEmpty() ? page.url : page.origin);
         const auto samplePath = "samples/" + id + ".html";
         writeArtifact(directory_ + "/" + samplePath, bytes);
         samples_.append(QJsonObject{

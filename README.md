@@ -6,7 +6,7 @@
 
 **基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
-**当前工作区：0.1.3 本地桌面预览版。** 本版简化 AI 接口配置、修复本地保存失败，并显示学校接入动画；见 [0.1.3 更新说明](docs/release-0.1.3.md)与 [存储修复验收](docs/ai-storage-fix-validation.md)。本地安装包已更新，GitHub 公开下载仍为下方 0.1.2-r1。
+**当前工作区：0.1.3 本地桌面预览版。** 本版简化 AI 接口配置、修复本地保存失败，并显示学校接入动画；新增待接入来源的 AI 定向补充与可持久查看的搜索反馈，见 [0.1.3 更新说明](docs/release-0.1.3.md)与 [存储修复验收](docs/ai-storage-fix-validation.md)。本地安装包已更新，GitHub 公开下载仍为下方 0.1.2-r1。
 
 **Windows 0.1.2 更新预览版（2026-10-05）：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-setup.exe) · [下载便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-portable.zip) · [发布说明](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2-r1) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。本次更新改善目录外高校的栏目、通知和资源发现，补充北邮重修、补考等公开办事指南；见[更新说明](docs/release-0.1.2-r1.md)、[五校对比](docs/five-school-universal-validation.md)与[北邮教务指南验收](docs/bupt-generic-crawling-validation.md)。软件内版本号仍为 0.1.2，发布标签为 `v0.1.2-r1`。
 
@@ -108,7 +108,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 **Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
 
-**Current workspace: 0.1.3 local desktop preview.** This version simplifies AI setup, fixes local configuration persistence, and adds animated university-onboarding progress. See the [0.1.3 notes](docs/release-0.1.3.md) and [storage validation](docs/ai-storage-fix-validation.md). Local packages are updated; public GitHub downloads remain at 0.1.2-r1 below.
+**Current workspace: 0.1.3 local desktop preview.** This version simplifies AI setup, fixes local configuration persistence, and adds animated university-onboarding progress, targeted AI supplementation of pending sources, and persistent search feedback. See the [0.1.3 notes](docs/release-0.1.3.md) and [storage validation](docs/ai-storage-fix-validation.md). Local packages are updated; public GitHub downloads remain at 0.1.2-r1 below.
 
 **Windows 0.1.2 updated preview (2026-10-05):** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-portable.zip) · [Release notes](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2-r1) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. This update improves discovery of sections, notices, and resources outside the registry, including public retake and resit guides at BUPT. See the [update notes](docs/release-0.1.2-r1.md), [five-university comparison](docs/five-school-universal-validation.md), and [BUPT guide validation](docs/bupt-generic-crawling-validation.md). The application version remains 0.1.2; the release tag is `v0.1.2-r1`.
 

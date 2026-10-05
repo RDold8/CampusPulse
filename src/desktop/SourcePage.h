@@ -19,6 +19,8 @@ class SourcePage final : public QWidget {
     SourcePage(const SchoolPackage &school, SourceService &sources, RefreshCoordinator &coordinator,
                QWidget *parent = nullptr);
     void reload();
+  signals:
+    void aiSupplementRequested(QString sourceId);
 
   private:
     SourceService &sources_;
@@ -31,6 +33,7 @@ class SourcePage final : public QWidget {
     QLabel *status_;
     QPushButton *update_;
     QPushButton *pause_;
+    QPushButton *aiSupplement_;
     QWidget *loginPanel_;
     QLabel *loginSummary_;
     QLabel *loginExplanation_;

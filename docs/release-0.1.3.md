@@ -8,7 +8,9 @@
 
 版本号统一为 0.1.3，包括程序信息、Windows 可执行文件属性和安装包。安装仍为当前 Windows 用户，沿用原 AppId，运行数据位于安装目录外。升级不修改校园通知、订阅、待办和收藏。
 
-本版先交付本地安装包和便携包，公开 GitHub Release 尚未更新。真实 API 连接与完整搜索需要另行验收；本地存储和合成 API 响应测试不代表真实服务已经连通。已发布的 0.1.2-r1 与本版本是不同构建。
+2026-10-06 增补：来源页可以选择待接入入口并定向进行 AI 补充；搜索页默认优先待接入目标。候选、目标、官网校验结果、失败原因和进度显示在下方，并按学校保存在 SQLite 中，页面重建后仍可查看。只有实际通过列表和正文校验的来源才合并；相同入口保留原来源 ID。加强 WebPlus 移动文章与 PDF 查看器过滤。
+
+本版先交付本地安装包和便携包，公开 GitHub Release 尚未更新。北京化工大学已完成一次真实 DeepSeek 原生搜索与生产界面流程验收：返回4个栏目候选，新增1个通过列表和正文校验的“学生通知”来源；其他入口显示未通过状态，不代表学校全量覆盖。详见 [AI 待接入补充验收](ai-pending-validation.md)。已发布的 0.1.2-r1 与本版本是不同构建。
 
 验收：最终 CTest 23/23 组通过；在原失败目录执行的生产存储探针通过，保存、重新加载、DPAPI 密钥恢复与无明文检查均成功，未调用真实 API。
 
@@ -20,4 +22,4 @@ Official DeepSeek search requires typed native search results. Compatible provid
 
 AI configuration, DPAPI-encrypted credentials and activation now commit together in a SQLite transaction, fixing local JSON replacement failures. Existing JSON profiles remain readable and migrate on the first successful save. Storage is checked before API requests; after a successful connection, a failed save can be retried locally without another model call.
 
-This is a local preview delivery. GitHub Release has not been updated. Production API connectivity and complete search require separate live validation.
+The October 6 update adds targeted repair of pending public sources, visible candidate links, verification states, failure reasons and progress. Per-university SQLite reports survive page recreation. A live DeepSeek search for Beijing University of Chemical Technology returned four section candidates; one student-notice source passed list and article verification. Other entries retain their unresolved states. This is a local preview delivery; GitHub Release has not been updated, and the live sample does not establish complete university coverage.

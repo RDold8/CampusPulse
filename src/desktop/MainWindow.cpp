@@ -16,6 +16,7 @@
 #include <utility>
 #include <QTabWidget>
 #include <QStatusBar>
+#include <QSettings>
 
 namespace campus {
 MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, SourceService &sources,
@@ -30,7 +31,8 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
     pages->setObjectName("mainTabs");
     notices_ = new NoticePage(school, notices, coordinator);
     pages->addTab(notices_, "通知");
-    pages->addTab(new SourcePage(school, sources, coordinator), "来源");
+    auto *sourcePage = new SourcePage(school, sources, coordinator);
+    pages->addTab(sourcePage, "来源");
     auto *subscriptionPage = new SubscriptionPage(school, subscriptions, coordinator);
     pages->addTab(subscriptionPage, "我的订阅");
     tasks_ = new TaskPage(school, tasks, coordinator);
@@ -59,6 +61,16 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
     pages->addTab(universities, "大学");
     auto *ai = new AiSourcesPage(school, registry, coordinator);
     pages->addTab(ai, "AI补充");
+    connect(sourcePage, &SourcePage::aiSupplementRequested, this,
+        [pages, ai](const QString &sourceId) {
+            ai->focusPendingSource(sourceId);
+            pages->setCurrentWidget(ai);
+        });
+    QSettings navigationSettings;
+    if (navigationSettings.value("pendingAiResultsSchool").toString() == school.id) {
+        navigationSettings.remove("pendingAiResultsSchool");
+        pages->setCurrentWidget(ai);
+    }
     calendar_ = new CalendarPage(school, tasks);
     pages->addTab(calendar_, "日历");
     if (resources) {

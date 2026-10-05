@@ -73,6 +73,27 @@ QJsonObject objectFile(const QString &path) {
 class OnboardingTests final : public QObject {
     Q_OBJECT
   private slots:
+    void supplementalPendingSourceUpgradesOriginalIdentity() {
+        QTemporaryDir folder;
+        SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);
+        QVERIFY(QDir().mkpath(scan.directory_ + "/samples"));
+        const QUrl url("https://jwc.example.edu.cn/");
+        scan.sources_.append(QJsonObject{{"key", "community-pending-jwc"}, {"name", "待接入教务"},
+            {"entry_url", url.toString()}, {"enabled", false}});
+        QCOMPARE(scan.sourceKeyForUrl(url), QString("community-pending-jwc"));
+        SchoolOnboarding::Page page{url, "教务处", 1, false};
+        page.origin = url;
+        scan.consume(page, departmentList(), {});
+        QCOMPARE(scan.sources_.size(), 1);
+        QVERIFY(!scan.queue_.empty());
+        const auto body = scan.queue_.front();
+        scan.queue_.pop_front();
+        scan.consume(body, validBody(), {});
+        QCOMPARE(scan.sources_.size(), 1);
+        QCOMPARE(scan.sources_.first().toObject().value("key").toString(), QString("community-pending-jwc"));
+        QVERIFY(scan.sources_.first().toObject().value("enabled").toBool());
+        QCOMPARE(scan.ready_, 1);
+    }
     void studentServiceGuidesAreTraversedAsResourcesRatherThanNoticeSources() {
         QTemporaryDir folder;
         SchoolOnboarding scan(unknownSeed(folder.path()), folder.path(), nullptr, 0);

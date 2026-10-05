@@ -1,6 +1,9 @@
 #include "adapters/AiProviderConfig.h"
 #include "adapters/AiProviderProbe.h"
 #include "adapters/AiSearchTemplate.h"
+#include "adapters/AiSearchHistory.h"
+#include "adapters/AiSourceRepair.h"
+#include "adapters/DeepSeekSearch.h"
 #include "adapters/RefreshCoordinator.h"
 #include "adapters/UniversityRegistry.h"
 #include "desktop/AiProviderDialog.h"
@@ -106,6 +109,57 @@ QByteArray readFile(const QString &path) {
 class AiProviderDesktopTests final : public QObject {
     Q_OBJECT
   private slots:
+    void pendingPlanExcludesCollectedAndLoginSources() {
+        auto university = school();
+        SourceDescription source;
+        source.id = "pending"; source.name = "待接入教务";
+        source.entryUrl = "https://jwc.ui-school.edu.cn/tzgg/";
+        university.catalog.push_back(source);
+        source.id = "ready"; source.entryUrl = "https://lib.ui-school.edu.cn/";
+        source.ready = source.configuredEnabled = true;
+        university.catalog.push_back(source);
+        source.id = "login"; source.requiresLogin = true;
+        source.entryUrl = "https://sso.ui-school.edu.cn/";
+        university.catalog.push_back(source);
+        source = {}; source.id = "outside"; source.entryUrl = "https://evil.org/";
+        university.catalog.push_back(source);
+        QCOMPARE(AiSourceRepair::existing(university).size(), 1);
+        const auto targets = AiSourceRepair::pending(university);
+        QCOMPARE(targets.size(), 1);
+        QCOMPARE(targets.first().toObject().value("source_id").toString(), QString("pending"));
+        QVERIFY(!AiSourceRepair::existing(university).contains(targets.first().toObject().value("url").toString()));
+        QVERIFY(AiSourceRepair::pending(university, "ready").isEmpty());
+    }
+    void realCandidatesRemainVisibleAfterValidationFailureAndPageRecreation() {
+        Session s;
+        const auto candidate = QJsonObject{{"title", "【测试】待接入教务"},
+            {"url", "https://jwc.ui-school.edu.cn/tzgg/"}};
+        {
+            AiSourcesPage page(s.university, s.registry, s.refresh, nullptr, s.providersPath());
+            page.findChild<DeepSeekSearch *>()->finished({candidate}, {{"model_calls", 1}, {"input_tokens", 42}});
+            const auto *rows = control<QListWidget>(page, "aiCandidates");
+            QCOMPARE(rows->count(), 1);
+            QVERIFY(rows->item(0)->text().contains("仍待接入"));
+            QVERIFY(rows->item(0)->text().contains(candidate.value("url").toString()));
+            QVERIFY(control<QPlainTextEdit>(page, "aiSearchFeedback")->toPlainText().contains("无法读取当前学校配置"));
+        }
+        AiSourcesPage restored(s.university, s.registry, s.refresh, nullptr, s.providersPath());
+        const auto *rows = control<QListWidget>(restored, "aiCandidates");
+        QCOMPARE(rows->count(), 1);
+        QVERIFY(rows->item(0)->text().contains("【测试】待接入教务"));
+        const auto report = AiSearchHistory::load(s.providersPath(), s.university.id);
+        QCOMPARE(report.value("phase").toString(), QString("failed"));
+        QVERIFY(AiSearchHistory::load(s.providersPath(), "another-school").isEmpty());
+        QCOMPARE(report.value("added_sources").toInt(), 0);
+        restored.resize(1250, 880);
+        restored.show();
+        QCoreApplication::processEvents();
+        const auto evidence = qEnvironmentVariable("CAMPUSPULSE_UI_EVIDENCE");
+        if (!evidence.isEmpty()) {
+            QVERIFY(QDir().mkpath(evidence));
+            QVERIFY(restored.grab().save(QDir(evidence).filePath("ai-results-offline.png")));
+        }
+    }
     void unwritableStorageStopsBeforeAnyConnectionAndPreservesDraft() {
         QTemporaryDir folder;
         AiProviderStore store(folder.path());

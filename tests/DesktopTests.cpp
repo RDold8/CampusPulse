@@ -78,6 +78,34 @@ class DesktopTests final : public QObject {
         output.write(QJsonDocument(result).toJson());
     }
   private slots:
+    void pendingSourceOffersAiWithoutStartingSearch() {
+        auto school = SchoolPackage::load(CONFIG_FILE);
+        SourceDescription pending;
+        pending.schoolId = school.id.toStdString(); pending.id = "test-pending";
+        pending.name = "【测试】待接入"; pending.entryUrl = "https://www.neepu.edu.cn/tzgg/";
+        auto login = pending;
+        login.id = "test-login"; login.requiresLogin = true;
+        school.catalog = {pending, login};
+        QTemporaryDir folder;
+        Database database(folder.filePath("repair.sqlite"));
+        SqliteRepository repository(database);
+        SqliteSourceRepository sourceRepository(database);
+        NoticeService notices(repository, school.id.toStdString());
+        SourceService sources(school.id.toStdString(), school.catalog, sourceRepository);
+        RefreshCoordinator network(school, notices, sources);
+        SourcePage page(school, sources, network);
+        auto *table = control<QTableView>(page, "sourceTable");
+        auto *button = control<QPushButton>(page, "aiSupplementSourceButton");
+        QSignalSpy requested(&page, &SourcePage::aiSupplementRequested);
+        table->setCurrentIndex(table->model()->index(0, 0));
+        QVERIFY(button->isEnabled());
+        button->click();
+        QCOMPARE(requested.count(), 1);
+        QCOMPARE(requested.first().first().toString(), QString("test-pending"));
+        QVERIFY(!network.busy());
+        table->setCurrentIndex(table->model()->index(1, 0));
+        QVERIFY(!button->isEnabled());
+    }
     void loginAccessCardAndOfficialBrowserRequest() {
         auto school = SchoolPackage::load(CONFIG_FILE);
         SourceDescription restricted;

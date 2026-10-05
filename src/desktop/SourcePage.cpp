@@ -112,6 +112,14 @@ SourcePage::SourcePage(const SchoolPackage &school, SourceService &sources,
     pause_->setObjectName("pauseSourceButton");
     controls->addWidget(update_);
     controls->addWidget(pause_);
+    aiSupplement_ = new QPushButton("用 AI 补充此来源");
+    aiSupplement_->setObjectName("aiSupplementSourceButton");
+    controls->addWidget(aiSupplement_);
+    connect(aiSupplement_, &QPushButton::clicked, this, [this] {
+        if (const auto *view = selected(); view && view->effectiveStatus() == "not_ready" &&
+            !view->description.requiresLogin)
+            emit aiSupplementRequested(QString::fromStdString(view->description.id));
+    });
     layout->addLayout(controls);
 
     auto *loginNotice = new QHBoxLayout;
@@ -291,6 +299,9 @@ const SourceView *SourcePage::selected() const {
 }
 
 void SourcePage::updateSelection() {
+    const auto *repair = selected();
+    aiSupplement_->setEnabled(repair && repair->effectiveStatus() == "not_ready" &&
+                              !repair->description.requiresLogin && !coordinator_.busy());
     const auto *view = selected();
     const bool requiresLogin = view && view->description.requiresLogin;
     const bool configured = view && !requiresLogin && view->description.configuredEnabled && view->description.ready;

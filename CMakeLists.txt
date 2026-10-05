@@ -60,6 +60,7 @@ add_library(campus_adapters src/adapters/SchoolPackage.cpp src/adapters/HtmlAdap
 target_sources(campus_adapters PRIVATE src/adapters/PublicUniversityNetwork.cpp
     src/adapters/UnknownUniversityDiscovery.cpp src/adapters/AiProviderConfig.cpp src/adapters/AiProviderProbe.cpp
     src/adapters/AiSearchTemplate.cpp)
+target_sources(campus_adapters PRIVATE src/adapters/AiSourceRepair.cpp src/adapters/AiSearchHistory.cpp)
 target_link_libraries(campus_adapters PUBLIC campus_application Qt6::Network PRIVATE Qt6::Sql lexbor_static ical)
 if(WIN32)
     # The small SDK loader uses the separately installed Evergreen runtime.
@@ -122,6 +123,8 @@ add_executable(campus_ai_provider_native_probe tests/AiProviderNativeProbe.cpp)
 target_link_libraries(campus_ai_provider_native_probe PRIVATE campus_desktop campus_storage)
 add_executable(campus_ai_provider_live_probe tests/AiProviderLiveProbe.cpp)
 target_link_libraries(campus_ai_provider_live_probe PRIVATE campus_adapters Qt6::Core)
+add_executable(campus_ai_pending_live_probe EXCLUDE_FROM_ALL tests/AiPendingLiveProbe.cpp)
+target_link_libraries(campus_ai_pending_live_probe PRIVATE campus_desktop campus_storage Qt6::Widgets)
 add_executable(campus_ai_provider_storage_probe tests/AiProviderStorageProbe.cpp)
 target_link_libraries(campus_ai_provider_storage_probe PRIVATE campus_adapters Qt6::Core)
 add_executable(campus_tests tests/PrototypeTests.cpp)

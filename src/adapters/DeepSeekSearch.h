@@ -19,7 +19,10 @@ class DeepSeekSearch final : public QObject {
                 const QString &templateId = "general", const QUrl &homepage = {});
     void search(const AiProviderConfig &provider, const QString &key, const QString &school,
                 const QString &root, const QSet<QString> &existing,
-                const QString &templateId = "general", const QUrl &homepage = {});
+                const QString &templateId = "general", const QUrl &homepage = {},
+                const QJsonArray &repairTargets = {});
+    static QJsonObject withRepairTargets(QJsonObject body, const QJsonArray &targets,
+                                         const QString &root);
     static QJsonObject requestBody(const QString &model, const QString &school,
                                    const QString &root, const QString &templateId = "general");
     static QJsonArray candidates(const QJsonObject &response, const QString &root,
@@ -47,6 +50,7 @@ class DeepSeekSearch final : public QObject {
   private:
     PageFetcher pageFetcher_;
     bool busy_ = false;
+    QJsonArray repairTargets_;
     void send(const AiProviderConfig &provider, const QString &key, const QString &school,
               const QString &root, const QSet<QString> &existing, const QUrl &pinned,
               const QString &templateId, const QJsonArray &observed = {},

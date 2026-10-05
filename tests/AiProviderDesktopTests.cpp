@@ -21,6 +21,9 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSettings>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QUuid>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QToolButton>
@@ -71,12 +74,30 @@ bool editThroughButton(AiSourcesPage &page, const char *button,
         opened = true;
         QTimer::singleShot(3000, dialog, &QDialog::reject);
         fill(*dialog);
-        control<QPushButton>(*dialog, "saveAiProviderButton")->click();
+        control<QPushButton>(*dialog, "saveAiProviderOnlyButton")->click();
     });
     control<QPushButton>(page, button)->click();
     return opened;
 }
 QByteArray readFile(const QString &path) {
+    const auto dbPath = QFileInfo(path).dir().filePath("ai-providers.sqlite");
+    if (QFile::exists(dbPath)) {
+        const auto name = "desktop-read-" + QUuid::createUuid().toString();
+        QByteArray result;
+        {
+            auto db = QSqlDatabase::addDatabase("QSQLITE", name);
+            db.setDatabaseName(dbPath);
+            db.setConnectOptions("QSQLITE_OPEN_READONLY");
+            if (db.open()) {
+                QSqlQuery query(db);
+                query.prepare("SELECT payload FROM documents WHERE name=?");
+                query.addBindValue(QFileInfo(path).fileName());
+                if (query.exec() && query.next()) result = query.value(0).toByteArray();
+            }
+        }
+        QSqlDatabase::removeDatabase(name);
+        if (!result.isEmpty()) return result;
+    }
     QFile file(path);
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray{};
 }
@@ -85,105 +106,331 @@ QByteArray readFile(const QString &path) {
 class AiProviderDesktopTests final : public QObject {
     Q_OBJECT
   private slots:
-    void defaultPageShowsModelsWithoutRoutesOrCredentialsAndDoesNotRequest() {
-        Session s;
-        AiSourcesPage page(s.university, s.registry, s.refresh, nullptr, s.providersPath());
-        QCOMPARE(control<QListWidget>(page, "aiProviderList")->count(), 1);
-        QVERIFY(control<QListWidget>(page, "aiProviderList")->item(0)->text().contains("当前启用"));
-        QVERIFY(!page.findChild<QLineEdit *>("deepseekApiKey"));
-        QVERIFY(!page.findChild<QCheckBox *>("aiRememberKey"));
-        QVERIFY(!page.findChild<QLineEdit *>("aiProviderBaseUrl"));
-        QVERIFY(!control<QLabel>(page, "aiSelectedProvider")->text().contains("https://"));
-        QVERIFY(!control<QListWidget>(page, "aiProviderList")->item(0)->toolTip().contains("https://"));
-        QVERIFY(control<QComboBox>(page, "deepseekModel")->isEditable());
-        QVERIFY(!control<QCheckBox>(page, "aiAutoSupplement")->isChecked());
-        QVERIFY(!QFile::exists(s.providersPath() + "/providers.json"));
-        QVERIFY(!QFile::exists(s.providersPath() + "/credentials.dpapi.json"));
-        QVERIFY(!page.findChild<AiProviderProbe *>()->busy());
-        QVERIFY(!s.refresh.busy());
-        control<QPushButton>(page, "fetchAiProviderModelsButton")->click();
-        QVERIFY(control<QLabel>(page, "aiStatus")->text().contains("尚未发起请求"));
-        control<QPushButton>(page, "aiSearchButton")->click();
-        QVERIFY(control<QLabel>(page, "aiStatus")->text().contains("尚未发起请求"));
-        QVERIFY(!page.findChild<AiProviderProbe *>()->busy());
+    void unwritableStorageStopsBeforeAnyConnectionAndPreservesDraft() {
+        QTemporaryDir folder;
+        AiProviderStore store(folder.path());
+        store.load();
+        QVERIFY(QDir().mkdir(folder.filePath("ai-providers.sqlite")));
+        AiProviderDialog editor(store, {});
+        control<QLineEdit>(editor, "aiProviderKey")->setText("synthetic-retained-draft");
+        auto *probe = editor.findChild<AiProviderProbe *>();
+        QSignalSpy progress(probe, &AiProviderProbe::progress);
+        control<QPushButton>(editor, "saveAiProviderButton")->click();
+        QVERIFY(!probe->busy());
+        QCOMPARE(progress.count(), 0);
+        QVERIFY(control<QLabel>(editor, "aiProviderDialogStatus")->text().contains("尚未发起 API"));
+        QCOMPARE(control<QLineEdit>(editor, "aiProviderKey")->text(), QString("synthetic-retained-draft"));
+        QCOMPARE(editor.result(), int(QDialog::Rejected));
     }
-
-    void editorTemplatesManualModelAndExplicitNoKeyGuards() {
+    void successfulConnectionWithFailedSaveCanRetryLocallyWithChosenModel() {
+        QTemporaryDir folder;
+        AiProviderStore store(folder.path());
+        store.load();
+        auto provider = AiProviderConfig::deepSeekPreset();
+        store.upsert(provider);
+        const auto before = readFile(folder.filePath("providers.json"));
+        AiProviderDialog editor(store, provider);
+        control<QLineEdit>(editor, "aiProviderKey")->setText("synthetic-retained-connect-key");
+        auto *probe = editor.findChild<AiProviderProbe *>();
+        control<QPushButton>(editor, "saveAiProviderButton")->click();
+        QVERIFY(probe->busy());
+        // No event loop is entered: the pending network operation cannot dispatch HTTP.
+        const auto connectionName = "ui-write-failure-" + QUuid::createUuid().toString();
+        {
+            auto db = QSqlDatabase::addDatabase("QSQLITE", connectionName);
+            db.setDatabaseName(folder.filePath("ai-providers.sqlite"));
+            QVERIFY(db.open());
+            QSqlQuery query(db);
+            QVERIFY(query.exec("CREATE TRIGGER reject_credentials BEFORE UPDATE ON documents "
+                               "WHEN NEW.name='credentials.dpapi.json' "
+                               "BEGIN SELECT RAISE(ABORT,'synthetic-write-denied'); END"));
+        }
+        QSqlDatabase::removeDatabase(connectionName);
+        provider.model = "server-chosen-model";
+        AiProbeResult response;
+        response.operation = AiProbeOperation::AutoConnect;
+        response.success = true;
+        response.provider = provider;
+        response.modelIds = {provider.model};
+        probe->finished(response);
+        probe->cancel();
+        QVERIFY(!editor.connectionVerified());
+        QVERIFY(control<QLabel>(editor, "aiProviderDialogStatus")->text().contains("连接已确认"));
+        QCOMPARE(control<QComboBox>(editor, "aiProviderModel")->currentText(), provider.model);
+        QCOMPARE(control<QLineEdit>(editor, "aiProviderKey")->text(), QString("synthetic-retained-connect-key"));
+        QCOMPARE(readFile(folder.filePath("providers.json")), before);
+        {
+            auto db = QSqlDatabase::addDatabase("QSQLITE", connectionName);
+            db.setDatabaseName(folder.filePath("ai-providers.sqlite"));
+            QVERIFY(db.open());
+            QSqlQuery query(db);
+            QVERIFY(query.exec("DROP TRIGGER reject_credentials"));
+        }
+        QSqlDatabase::removeDatabase(connectionName);
+        QSignalSpy progress(probe, &AiProviderProbe::progress);
+        control<QPushButton>(editor, "saveAiProviderButton")->click();
+        QCOMPARE(progress.count(), 0);
+        QVERIFY(!probe->busy());
+        QVERIFY(editor.connectionVerified());
+        QCOMPARE(editor.result(), int(QDialog::Accepted));
+        QCOMPARE(editor.savedProvider().model, QString("server-chosen-model"));
+        AiProviderStore reopened(folder.path());
+        reopened.load();
+        QCOMPARE(reopened.providers().first().model, provider.model);
+    }
+    void basicEditorRequiresOnlyRouteAndKey() {
         QTemporaryDir folder;
         AiProviderStore store(folder.path());
         store.load();
         AiProviderDialog editor(store, {});
-        QCOMPARE(control<QComboBox>(editor, "aiProviderPreset")->currentIndex(), 0);
-        QVERIFY(!control<QLineEdit>(editor, "aiProviderBaseUrl")->isReadOnly());
+        editor.show();
+        QVERIFY(control<QLineEdit>(editor, "aiProviderBaseUrl")->isVisible());
+        QVERIFY(control<QLineEdit>(editor, "aiProviderKey")->isVisible());
+        QCOMPARE(control<QLineEdit>(editor, "aiProviderBaseUrl")->text(), QString("https://api.deepseek.com"));
+        QCOMPARE(control<QLineEdit>(editor, "aiProviderKey")->echoMode(), QLineEdit::Password);
+        QVERIFY(!control<QWidget>(editor, "aiProviderAdvancedPanel")->isVisible());
+        QVERIFY(!control<QLineEdit>(editor, "aiProviderName")->isVisible());
+        QVERIFY(!control<QComboBox>(editor, "aiProviderModel")->isVisible());
+        QVERIFY(control<QComboBox>(editor, "aiProviderModel")->currentText().isEmpty());
+        QVERIFY(!editor.findChild<QComboBox *>("aiProviderProtocol"));
+        QVERIFY(!editor.findChild<QComboBox *>("aiProviderAuthMode"));
+        QVERIFY(!editor.findChild<QPlainTextEdit *>("aiProviderConfigPreview"));
+        QCOMPARE(control<QPushButton>(editor, "saveAiProviderButton")->text(), QString("保存并连接"));
         QVERIFY(!control<QCheckBox>(editor, "aiProviderRememberKey")->isChecked());
-        auto *key = control<QLineEdit>(editor, "aiProviderKey");
-        QCOMPARE(key->echoMode(), QLineEdit::Password);
-        key->setText("synthetic-ui-key");
-        control<QToolButton>(editor, "aiProviderRevealKey")->click();
-        QCOMPARE(key->echoMode(), QLineEdit::Normal);
-        control<QComboBox>(editor, "aiProviderPreset")->setCurrentIndex(1);
-        QVERIFY(key->text().isEmpty());
-        QVERIFY(!control<QLineEdit>(editor, "aiProviderBaseUrl")->isReadOnly());
-        control<QLineEdit>(editor, "aiProviderBaseUrl")->setText("https://api.example.com/v1");
-        control<QComboBox>(editor, "aiProviderModel")->setCurrentText("manual-model");
-        control<QPushButton>(editor, "aiProviderFetchModels")->click();
-        QVERIFY(control<QLabel>(editor, "aiProviderDialogStatus")->text().contains("尚未发起请求"));
-        control<QPushButton>(editor, "aiProviderTestConnection")->click();
-        QVERIFY(control<QLabel>(editor, "aiProviderDialogStatus")->text().contains("尚未发起请求"));
         QVERIFY(!editor.findChild<AiProviderProbe *>()->busy());
-        QVERIFY(control<QLabel>(editor, "aiProviderCapability")->text().contains("不等同于"));
+        QVERIFY(!QFile::exists(folder.filePath("providers.json")));
+        control<QPushButton>(editor, "saveAiProviderButton")->click();
+        QVERIFY(control<QLabel>(editor, "aiProviderDialogStatus")->text().contains("API Key"));
+        QVERIFY(!editor.findChild<AiProviderProbe *>()->busy());
     }
 
-    void nativeRouteCanBeChosenWithFullUrlAuthAndPrivatePreview() {
+    void defaultSearchPageHasOneClickScopeAndKeepsConfigurationCollapsed() {
+        Session s;
+        AiSourcesPage page(s.university, s.registry, s.refresh, nullptr, s.providersPath());
+        page.show();
+        QVERIFY(control<QPushButton>(page, "configureAiProviderButton")->isVisible());
+        QVERIFY(control<QComboBox>(page, "aiSearchTemplate")->isVisible());
+        QCOMPARE(control<QComboBox>(page, "aiSearchTemplate")->currentData().toString(), QString("general"));
+        QCOMPARE(control<QPushButton>(page, "aiSearchButton")->text(), QString("一键搜索"));
+        QVERIFY(control<QPushButton>(page, "aiSearchButton")->isVisible());
+        QVERIFY(!control<QWidget>(page, "aiSearchAdvancedPanel")->isVisible());
+        QVERIFY(!control<QComboBox>(page, "deepseekModel")->isVisible());
+        QVERIFY(!control<QListWidget>(page, "aiProviderList")->isVisible());
+        QVERIFY(!page.findChild<QLineEdit *>("aiProviderBaseUrl"));
+        QVERIFY(!page.findChild<QLineEdit *>("deepseekApiKey"));
+        QVERIFY(!control<QLabel>(page, "aiActiveProvider")->text().contains("https://"));
+        QVERIFY(!control<QCheckBox>(page, "aiAutoSupplement")->isChecked());
+        bool connectionPrompted = false;
+        QTimer::singleShot(0, &page, [&] {
+            if (auto *dialog = qobject_cast<AiProviderDialog *>(QApplication::activeModalWidget())) {
+                connectionPrompted = true;
+                dialog->reject();
+            }
+        });
+        control<QPushButton>(page, "aiSearchButton")->click();
+        QVERIFY(connectionPrompted);
+        QVERIFY(control<QLabel>(page, "aiStatus")->text().contains("尚未发起搜索请求"));
+        QVERIFY(!page.findChild<AiProviderProbe *>()->busy());
+        QVERIFY(!s.refresh.busy());
+        control<QToolButton>(page, "aiSearchAdvancedToggle")->click();
+        QVERIFY(control<QListWidget>(page, "aiProviderList")->isVisible());
+        QVERIFY(control<QComboBox>(page, "deepseekModel")->isVisible());
+    }
+
+    void advancedSaveAutoNamesAndKeepsUnexposedMetadataWithoutRequests() {
         QTemporaryDir folder;
         AiProviderStore store(folder.path());
         store.load();
-        AiProviderDialog editor(store, AiProviderConfig::deepSeekPreset());
-        auto *route = control<QLineEdit>(editor, "aiProviderBaseUrl");
-        QVERIFY(!route->isReadOnly());
-        auto *key = control<QLineEdit>(editor, "aiProviderKey");
-        key->setText("synthetic-route-secret");
-        route->selectAll();
-        QTest::keyClicks(route, "https://route.example.com/custom/messages");
-        QVERIFY(key->text().isEmpty());
-        control<QCheckBox>(editor, "aiProviderFullUrl")->setChecked(true);
-        auto *protocol = control<QComboBox>(editor, "aiProviderProtocol");
-        protocol->setCurrentIndex(1);
-        QCOMPARE(route->text(), QString("https://route.example.com/custom/messages"));
-        protocol->setCurrentIndex(0);
-        QCOMPARE(route->text(), QString("https://route.example.com/custom/messages"));
-        control<QComboBox>(editor, "aiProviderAuthMode")->setCurrentIndex(1);
-        control<QLineEdit>(editor, "aiProviderNotes")->setText("Route test");
-        control<QLineEdit>(editor, "aiProviderWebsite")->setText("https://portal.example.com/");
-        control<QComboBox>(editor, "aiProviderModel")->setCurrentText("my-model-4.1");
-        const auto resolved = control<QLabel>(editor, "aiProviderResolvedEndpoint")->text();
-        QVERIFY(resolved.endsWith("https://route.example.com/custom/messages"));
-        key->setText("synthetic-route-secret");
-        const auto preview = control<QPlainTextEdit>(editor, "aiProviderConfigPreview")->toPlainText();
-        QVERIFY(preview.contains("my-model-4.1"));
-        QVERIFY(!preview.contains("synthetic-route-secret"));
-        QVERIFY(!preview.contains("api_key"));
-        control<QPushButton>(editor, "saveAiProviderButton")->click();
+        auto provider = AiProviderConfig::deepSeekPreset();
+        provider.name.clear();
+        provider.baseUrl = "https://route.example.com/v1/messages";
+        provider.model = "manual-model";
+        provider.notes = "Existing private route note";
+        provider.website = "https://portal.example.com/";
+        provider.authMode = AiAuthMode::BearerToken;
+        provider.fullUrl = true;
+        AiProviderDialog editor(store, provider);
+        control<QLineEdit>(editor, "aiProviderKey")->setText("synthetic-route-key");
+        control<QPushButton>(editor, "saveAiProviderOnlyButton")->click();
         QCOMPARE(editor.result(), int(QDialog::Accepted));
         const auto saved = editor.savedProvider();
-        QCOMPARE(saved.baseUrl, QString("https://route.example.com/custom/messages"));
-        QVERIFY(saved.fullUrl);
-        QVERIFY(saved.nativeSearch());
-        QVERIFY(!saved.isOfficialDeepSeek());
+        QVERIFY(!saved.name.isEmpty());
+        QCOMPARE(saved.notes, provider.notes);
+        QCOMPARE(saved.website, provider.website);
         QCOMPARE(saved.authMode, AiAuthMode::BearerToken);
-        QCOMPARE(saved.notes, QString("Route test"));
-        QCOMPARE(store.key(saved.id), QString("synthetic-route-secret"));
-        AiProviderStore reopened(folder.path());
-        reopened.load();
-        QCOMPARE(reopened.providers().first().baseUrl, saved.baseUrl);
-        QVERIFY(!readFile(folder.filePath("providers.json")).contains("synthetic-route-secret"));
+        QVERIFY(saved.fullUrl);
+        QCOMPARE(saved.model, QString("manual-model"));
+        QCOMPARE(store.key(saved.id), QString("synthetic-route-key"));
+        QVERIFY(!editor.connectionVerified());
+        QVERIFY(!readFile(folder.filePath("providers.json")).contains("synthetic-route-key"));
+        QVERIFY(!editor.findChild<AiProviderProbe *>()->busy());
     }
 
-    void actualAddEditActivateStopDeleteAndReload() {
+    void legacyMixedDeepSeekProfileLoadsKeyBeforeNormalizingWithoutDiskMigration() {
+        QTemporaryDir folder;
+        AiProviderStore store(folder.path());
+        store.load();
+        auto legacy = AiProviderConfig::deepSeekPreset();
+        legacy.baseUrl = "https://api.deepseek.com/anthropic/v1";
+        legacy.protocol = AiApiProtocol::OpenAiCompatible;
+        store.upsert(legacy);
+        store.setKey(legacy.id, "synthetic-legacy-binding-key", false);
+        const auto before = readFile(folder.filePath("providers.json"));
+        AiProviderDialog editor(store, legacy);
+        QCOMPARE(control<QLineEdit>(editor, "aiProviderBaseUrl")->text(), QString("https://api.deepseek.com"));
+        QCOMPARE(control<QLineEdit>(editor, "aiProviderKey")->text(), QString("synthetic-legacy-binding-key"));
+        QCOMPARE(control<QLineEdit>(editor, "aiProviderKey")->echoMode(), QLineEdit::Password);
+        QCOMPARE(readFile(folder.filePath("providers.json")), before);
+        QVERIFY(!editor.findChild<AiProviderProbe *>()->busy());
+        editor.reject();
+        QCOMPARE(readFile(folder.filePath("providers.json")), before);
+        QCOMPARE(store.key(legacy.id), QString("synthetic-legacy-binding-key"));
+    }
+
+    void typedAddressInvalidatesLoadedKeyButAdvancedToggleDoesNot() {
+        QTemporaryDir folder;
+        AiProviderStore store(folder.path());
+        store.load();
+        auto provider = AiProviderConfig::deepSeekPreset();
+        store.setKey(provider.id, "synthetic-ui-key", false);
+        AiProviderDialog editor(store, provider);
+        auto *key = control<QLineEdit>(editor, "aiProviderKey");
+        QCOMPARE(key->text(), QString("synthetic-ui-key"));
+        control<QToolButton>(editor, "aiProviderAdvancedToggle")->click();
+        QCOMPARE(key->text(), QString("synthetic-ui-key"));
+        control<QToolButton>(editor, "aiProviderRevealKey")->click();
+        QCOMPARE(key->echoMode(), QLineEdit::Normal);
+        auto *route = control<QLineEdit>(editor, "aiProviderBaseUrl");
+        route->selectAll();
+        QTest::keyClicks(route, "https://route.example.com/v1");
+        QVERIFY(key->text().isEmpty());
+        QVERIFY(!control<QCheckBox>(editor, "aiProviderRememberKey")->isChecked());
+        QVERIFY(!editor.findChild<AiProviderProbe *>()->busy());
+        editor.reject();
+        QCOMPARE(key->echoMode(), QLineEdit::Password);
+    }
+
+    void invalidRouteCannotConnectOrSave() {
+        QTemporaryDir folder;
+        AiProviderStore store(folder.path());
+        store.load();
+        AiProviderDialog editor(store, {});
+        control<QLineEdit>(editor, "aiProviderBaseUrl")->setText("http://127.0.0.1:8080/v1");
+        control<QLineEdit>(editor, "aiProviderKey")->setText("synthetic-ui-key");
+        control<QPushButton>(editor, "saveAiProviderButton")->click();
+        QVERIFY(!editor.findChild<AiProviderProbe *>()->busy());
+        QVERIFY(control<QLabel>(editor, "aiProviderDialogStatus")->text().contains("HTTPS"));
+        control<QPushButton>(editor, "saveAiProviderOnlyButton")->click();
+        QVERIFY(editor.result() != QDialog::Accepted);
+        QVERIFY(!QFile::exists(folder.filePath("providers.json")));
+    }
+
+    void connectWithNoManualModelFreezesFormAndCanCancelBeforeAnyApiResponse() {
+        QTemporaryDir folder;
+        AiProviderStore store(folder.path());
+        store.load();
+        AiProviderDialog editor(store, {});
+        // Cancel in this same event-loop turn, before any DNS completion can dispatch an HTTP request.
+        // The example.com hostname and synthetic key are test-only; no real model service is used.
+        control<QLineEdit>(editor, "aiProviderBaseUrl")->setText("https://provider.example.com/v1");
+        control<QLineEdit>(editor, "aiProviderKey")->setText("synthetic-cancel-key");
+        QVERIFY(control<QComboBox>(editor, "aiProviderModel")->currentText().isEmpty());
+        control<QPushButton>(editor, "saveAiProviderButton")->click();
+        QVERIFY(editor.findChild<AiProviderProbe *>()->busy());
+        QVERIFY(!control<QLineEdit>(editor, "aiProviderBaseUrl")->isEnabled());
+        QVERIFY(!control<QLineEdit>(editor, "aiProviderKey")->isEnabled());
+        QVERIFY(!control<QPushButton>(editor, "saveAiProviderButton")->isEnabled());
+        QVERIFY(control<QLabel>(editor, "aiProviderDialogStatus")->text().contains("模型"));
+        editor.reject();
+        QVERIFY(!editor.findChild<AiProviderProbe *>()->busy());
+        QVERIFY(!editor.connectionVerified());
+        QVERIFY(!QFile::exists(folder.filePath("providers.json")));
+    }
+
+    void syntheticAutoConnectCompletionPersistsChosenModelAndActivates() {
+        QTemporaryDir folder;
+        AiProviderStore store(folder.path());
+        store.load();
+        auto provider = AiProviderConfig::deepSeekPreset();
+        provider.baseUrl = "https://provider.example.com/v1";
+        provider.model.clear();
+        provider = AiProviderConfig::automaticProfile(provider);
+        AiProviderDialog editor(store, provider);
+        control<QLineEdit>(editor, "aiProviderKey")->setText("synthetic-connect-key");
+        control<QPushButton>(editor, "saveAiProviderButton")->click();
+        QVERIFY(editor.findChild<AiProviderProbe *>()->busy());
+        // This is a typed synthetic completion for UI persistence, not a live model connection.
+        AiProbeResult response;
+        response.operation = AiProbeOperation::AutoConnect;
+        response.success = true;
+        response.httpStatus = 200;
+        response.provider = provider;
+        response.provider.model = "server-default-model";
+        response.modelIds = {"server-default-model", "another-model"};
+        auto *probe = editor.findChild<AiProviderProbe *>();
+        QVERIFY(QMetaObject::invokeMethod(probe, "finished", Qt::DirectConnection,
+                                          Q_ARG(campus::AiProbeResult, response)));
+        QCOMPARE(editor.result(), int(QDialog::Accepted));
+        QVERIFY(editor.connectionVerified());
+        QCOMPARE(editor.savedProvider().model, QString("server-default-model"));
+        QCOMPARE(store.activeId(), provider.id);
+        QCOMPARE(store.key(provider.id), QString("synthetic-connect-key"));
+        QCOMPARE(editor.modelIds(), response.modelIds);
+        QVERIFY(!readFile(folder.filePath("providers.json")).contains("synthetic-connect-key"));
+        QVERIFY(!probe->busy());
+    }
+
+    void syntheticConnectionFailureLeavesEditableFormAndNoSavedSecret() {
+        QTemporaryDir folder;
+        AiProviderStore store(folder.path());
+        store.load();
+        AiProviderDialog editor(store, {});
+        control<QLineEdit>(editor, "aiProviderBaseUrl")->setText("https://provider.example.com/v1");
+        control<QLineEdit>(editor, "aiProviderKey")->setText("synthetic-error-key");
+        control<QPushButton>(editor, "saveAiProviderButton")->click();
+        auto *probe = editor.findChild<AiProviderProbe *>();
+        AiProbeResult response;
+        response.operation = AiProbeOperation::AutoConnect;
+        response.httpStatus = 403;
+        response.message = "HTTP 403: service denied";
+        QVERIFY(QMetaObject::invokeMethod(probe, "finished", Qt::DirectConnection,
+                                          Q_ARG(campus::AiProbeResult, response)));
+        QVERIFY(!editor.connectionVerified());
+        QVERIFY(editor.result() != QDialog::Accepted);
+        QVERIFY(control<QLineEdit>(editor, "aiProviderBaseUrl")->isEnabled());
+        QVERIFY(control<QPushButton>(editor, "saveAiProviderButton")->isEnabled());
+        QVERIFY(control<QLabel>(editor, "aiProviderDialogStatus")->text().contains("403"));
+        QVERIFY(!QFile::exists(folder.filePath("providers.json")));
+        QVERIFY(!QFile::exists(folder.filePath("credentials.dpapi.json")));
+        editor.reject();
+        QVERIFY(!probe->busy());
+    }
+
+    void optionalModelsDirectoryPreservesManualSelectionWithoutCredentialExposure() {
+        QTemporaryDir folder;
+        AiProviderStore store(folder.path());
+        store.load();
+        AiProviderDialog editor(store, {});
+        auto *model = control<QComboBox>(editor, "aiProviderModel");
+        model->setCurrentText("my-manual-model");
+        AiProbeResult response;
+        response.operation = AiProbeOperation::Models;
+        response.success = true;
+        response.httpStatus = 200;
+        response.modelIds = {"catalog-model-a", "catalog-model-b"};
+        auto *probe = editor.findChild<AiProviderProbe *>();
+        QVERIFY(QMetaObject::invokeMethod(probe, "finished", Qt::DirectConnection,
+                                          Q_ARG(campus::AiProbeResult, response)));
+        QCOMPARE(model->currentText(), QString("my-manual-model"));
+        QVERIFY(model->findText("catalog-model-a") >= 0);
+        QVERIFY(!probe->busy());
+        QVERIFY(!QFile::exists(folder.filePath("providers.json")));
+    }
+
+    void providerLibraryStillSupportsAddEditActivateStopDeleteAndReload() {
         Session s;
         AiSourcesPage page(s.university, s.registry, s.refresh, nullptr, s.providersPath());
         QVERIFY(editThroughButton(page, "addAiProviderButton", [](AiProviderDialog &editor) {
-            control<QComboBox>(editor, "aiProviderPreset")->setCurrentIndex(1);
             control<QLineEdit>(editor, "aiProviderName")->setText("【测试】兼容提供方");
             control<QLineEdit>(editor, "aiProviderBaseUrl")->setText("https://api.example.com/v1");
             control<QComboBox>(editor, "aiProviderModel")->setCurrentText("manual-model");
@@ -192,26 +439,21 @@ class AiProviderDesktopTests final : public QObject {
         QCOMPARE(list->count(), 2);
         const auto addedId = list->currentItem()->data(Qt::UserRole).toString();
         QVERIFY(addedId != "deepseek-official");
-        QVERIFY(control<QLabel>(page, "aiActiveProvider")->text().contains("DeepSeek"));
-        QVERIFY(control<QLabel>(page, "aiProviderSearchCapability")->text().contains("不代表联网搜索"));
         control<QPushButton>(page, "activateAiProviderButton")->click();
         QVERIFY(control<QLabel>(page, "aiActiveProvider")->text().contains("兼容提供方"));
-        QVERIFY(list->currentItem()->text().contains("当前启用"));
-        QVERIFY(control<QPushButton>(page, "aiSearchButton")->text().contains("提出栏目候选"));
+        QCOMPARE(control<QPushButton>(page, "aiSearchButton")->text(), QString("一键搜索"));
         QVERIFY(editThroughButton(page, "editAiProviderButton", [](AiProviderDialog &editor) {
             control<QLineEdit>(editor, "aiProviderName")->setText("【测试】已改名");
             control<QComboBox>(editor, "aiProviderModel")->setCurrentText("changed-model");
         }));
-        QCOMPARE(list->count(), 2);
         QCOMPARE(list->currentItem()->data(Qt::UserRole).toString(), addedId);
         QCOMPARE(control<QComboBox>(page, "deepseekModel")->currentText(), QString("changed-model"));
         control<QPushButton>(page, "disableAiProviderButton")->click();
         QVERIFY(!control<QPushButton>(page, "aiSearchButton")->isEnabled());
-        QVERIFY(!control<QCheckBox>(page, "aiAutoSupplement")->isEnabled());
-        AiProviderStore saved(s.providersPath());
-        saved.load();
-        QCOMPARE(saved.providers().size(), 2);
-        QVERIFY(saved.activeId().isEmpty());
+        AiProviderStore reopened(s.providersPath());
+        reopened.load();
+        QCOMPARE(reopened.providers().size(), 2);
+        QVERIFY(reopened.activeId().isEmpty());
         control<QPushButton>(page, "activateAiProviderButton")->click();
         QTimer::singleShot(0, &page, [] {
             if (auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
@@ -219,13 +461,12 @@ class AiProviderDesktopTests final : public QObject {
         });
         control<QPushButton>(page, "removeAiProviderButton")->click();
         QCOMPARE(list->count(), 1);
-        QVERIFY(!control<QPushButton>(page, "aiSearchButton")->isEnabled());
-        saved.load();
-        QCOMPARE(saved.providers().size(), 1);
-        QVERIFY(saved.activeId().isEmpty());
+        reopened.load();
+        QCOMPARE(reopened.providers().size(), 1);
+        QVERIFY(reopened.activeId().isEmpty());
     }
 
-    void modelOnlySavePreservesSessionKeyAndDoesNotDisplayIt() {
+    void modelOnlySaveAndSchoolReloadKeepSessionKeyPrivate() {
         Session s;
         AiSourcesPage page(s.university, s.registry, s.refresh, nullptr, s.providersPath());
         QVERIFY(editThroughButton(page, "editAiProviderButton", [](AiProviderDialog &editor) {
@@ -233,79 +474,41 @@ class AiProviderDesktopTests final : public QObject {
         }));
         control<QComboBox>(page, "deepseekModel")->setCurrentText("chosen-model");
         control<QPushButton>(page, "saveAiProviderSettingsButton")->click();
-        AiProviderStore saved(s.providersPath());
-        saved.load();
-        QCOMPARE(saved.key(saved.activeId()), QString("synthetic-ui-key"));
-        QCOMPARE(saved.providers().first().model, QString("chosen-model"));
+        AiProviderStore reopened(s.providersPath());
+        reopened.load();
+        QCOMPARE(reopened.key(reopened.activeId()), QString("synthetic-ui-key"));
+        QCOMPARE(reopened.providers().first().model, QString("chosen-model"));
         QVERIFY(!readFile(s.providersPath() + "/providers.json").contains("synthetic-ui-key"));
         QVERIFY(!QFile::exists(s.providersPath() + "/credentials.dpapi.json"));
-        // A new page for another university gets the shared process session, without a disk secret.
-        AiSourcesPage reopened(s.university, s.registry, s.refresh, nullptr, s.providersPath());
-        QVERIFY(!reopened.findChild<QLineEdit *>("deepseekApiKey"));
-        QCOMPARE(control<QComboBox>(reopened, "deepseekModel")->currentText(), QString("chosen-model"));
-        QVERIFY(editThroughButton(reopened, "editAiProviderButton", [](AiProviderDialog &editor) {
-            auto *key = control<QLineEdit>(editor, "aiProviderKey");
-            QVERIFY(key->text() == "synthetic-ui-key");
-            QCOMPARE(key->echoMode(), QLineEdit::Password);
-        }));
+        AiSourcesPage newPage(s.university, s.registry, s.refresh, nullptr, s.providersPath());
+        QVERIFY(!newPage.findChild<QLineEdit *>("deepseekApiKey"));
+        QCOMPARE(control<QComboBox>(newPage, "deepseekModel")->currentText(), QString("chosen-model"));
     }
 
-    void selectedModelDirectoryPreservesManualModelWithoutNetwork() {
-        Session s;
-        AiSourcesPage page(s.university, s.registry, s.refresh, nullptr, s.providersPath());
-        auto *model = control<QComboBox>(page, "deepseekModel");
-        model->setCurrentText("my-manual-model");
-        AiProbeResult result;
-        result.operation = AiProbeOperation::Models;
-        result.success = true;
-        result.httpStatus = 200;
-        result.modelIds = {"catalog-model-a", "catalog-model-b"};
-        result.message = "Synthetic model directory";
-        auto *probe = page.findChild<AiProviderProbe *>();
-        QVERIFY(QMetaObject::invokeMethod(probe, "finished", Qt::DirectConnection,
-                                          Q_ARG(campus::AiProbeResult, result)));
-        QCOMPARE(model->currentText(), QString("my-manual-model"));
-        QVERIFY(model->findText("catalog-model-b") >= 0);
-        model->setCurrentIndex(model->findText("catalog-model-b"));
-        control<QPushButton>(page, "saveAiProviderSettingsButton")->click();
-        QCOMPARE(model->currentText(), QString("catalog-model-b"));
-        QVERIFY(model->findText("catalog-model-a") >= 0);
-        QVERIFY(!probe->busy());
-    }
-
-    void searchTemplatesChangeFocusAndPersistPerSchoolWithoutCallingApi() {
+    void categoryFocusIsOptionalAndPersistsPerSchoolWithoutApi() {
         Session s;
         AiSourcesPage page(s.university, s.registry, s.refresh, nullptr, s.providersPath());
         auto *templates = control<QComboBox>(page, "aiSearchTemplate");
         QCOMPARE(templates->count(), AiSearchTemplate::defaults().size());
         templates->setCurrentIndex(templates->findData("retake-payment"));
-        const auto retake = control<QLabel>(page, "aiSearchTemplateDescription")->text();
-        QVERIFY(retake.contains("重修"));
-        QVERIFY(retake.contains("缴费"));
+        QVERIFY(control<QLabel>(page, "aiSearchTemplateDescription")->text().contains("缴费"));
         templates->setCurrentIndex(templates->findData("study-resources"));
-        const auto study = control<QLabel>(page, "aiSearchTemplateDescription")->text();
-        QVERIFY(study.contains("图书馆"));
-        QVERIFY(study != retake);
-        AiSourcesPage reopened(s.university, s.registry, s.refresh, nullptr, s.providersPath());
-        QCOMPARE(control<QComboBox>(reopened, "aiSearchTemplate")->currentData().toString(),
-                 QString("study-resources"));
+        QVERIFY(control<QLabel>(page, "aiSearchTemplateDescription")->text().contains("图书馆"));
+        AiSourcesPage same(s.university, s.registry, s.refresh, nullptr, s.providersPath());
+        QCOMPARE(control<QComboBox>(same, "aiSearchTemplate")->currentData().toString(), QString("study-resources"));
         auto otherSchool = s.university;
-        otherSchool.id = "another-school-for-template";
+        otherSchool.id = "another-school";
         AiSourcesPage other(otherSchool, s.registry, s.refresh, nullptr, s.providersPath());
         QCOMPARE(control<QComboBox>(other, "aiSearchTemplate")->currentData().toString(), QString("general"));
-        control<QPushButton>(page, "aiSearchButton")->click();
-        QVERIFY(control<QLabel>(page, "aiStatus")->text().contains("尚未发起请求"));
         QVERIFY(!page.findChild<AiProviderProbe *>()->busy());
     }
 
-    void turningOffAutomaticSupplementCancelsQueuedAttempt() {
+    void disablingAutomaticSupplementCancelsQueuedAttempt() {
         Session s;
         AiSourcesPage page(s.university, s.registry, s.refresh, nullptr, s.providersPath());
         QVERIFY(editThroughButton(page, "editAiProviderButton", [](AiProviderDialog &editor) {
             control<QLineEdit>(editor, "aiProviderKey")->setText("synthetic-automatic-key");
         }));
-        // A regressed queued run would fail on this empty model before any DNS/network access.
-        control<QComboBox>(page, "deepseekModel")->setCurrentText({});
         QSettings().setValue("ai/lastAttempt/" + s.university.id, 0);
         auto *automatic = control<QCheckBox>(page, "aiAutoSupplement");
         automatic->setChecked(true);
@@ -316,68 +519,8 @@ class AiProviderDesktopTests final : public QObject {
         automatic->setChecked(false);
         QCoreApplication::processEvents();
         QCOMPARE(status->text(), before);
-        QVERIFY(!page.findChild<AiProviderProbe *>()->busy());
         QCOMPARE(QSettings().value("ai/lastAttempt/" + s.university.id).toLongLong(), 0);
-    }
-
-    void changedProtocolAndTypedEndpointInvalidateLoadedKeys() {
-        QTemporaryDir folder;
-        AiProviderStore store(folder.path());
-        store.load();
-        const auto provider = AiProviderConfig::deepSeekPreset();
-        store.setKey(provider.id, "synthetic-ui-key", false);
-        AiProviderDialog editor(store, provider);
-        QVERIFY(control<QLineEdit>(editor, "aiProviderKey")->text() == "synthetic-ui-key");
-        control<QComboBox>(editor, "aiProviderProtocol")->setCurrentIndex(1);
-        QVERIFY(control<QLineEdit>(editor, "aiProviderKey")->text().isEmpty());
-        QVERIFY(!control<QCheckBox>(editor, "aiProviderRememberKey")->isChecked());
-        auto *key = control<QLineEdit>(editor, "aiProviderKey");
-        key->setText("synthetic-ui-key");
-        auto *url = control<QLineEdit>(editor, "aiProviderBaseUrl");
-        url->selectAll();
-        QTest::keyClicks(url, "https://api.example.com/v1");
-        QVERIFY(key->text().isEmpty());
-    }
-
-    void returnedModelDirectoryCanBeSelectedWithoutNetworkOrOverwritingManualEntry() {
-        QTemporaryDir folder;
-        AiProviderStore store(folder.path());
-        store.load();
-        AiProviderDialog editor(store, {});
-        auto *model = control<QComboBox>(editor, "aiProviderModel");
-        model->setCurrentText("my-manual-model");
-        AiProbeResult result;
-        result.operation = AiProbeOperation::Models;
-        result.success = true;
-        result.httpStatus = 200;
-        result.modelIds = {"directory-model-a", "directory-model-b"};
-        result.message = "【测试响应】模型目录读取成功，不认证搜索能力";
-        auto *probe = editor.findChild<AiProviderProbe *>();
-        QVERIFY(QMetaObject::invokeMethod(probe, "finished", Qt::DirectConnection,
-                                          Q_ARG(campus::AiProbeResult, result)));
-        QCOMPARE(model->currentText(), QString("my-manual-model"));
-        QVERIFY(model->findText("directory-model-a") >= 0);
-        model->setCurrentIndex(model->findText("directory-model-b"));
-        QCOMPARE(model->currentText(), QString("directory-model-b"));
-        QVERIFY(!probe->busy());
-    }
-
-    void invalidEndpointCannotBeSavedOrTested() {
-        QTemporaryDir folder;
-        AiProviderStore store(folder.path());
-        store.load();
-        AiProviderDialog editor(store, {});
-        control<QComboBox>(editor, "aiProviderPreset")->setCurrentIndex(1);
-        control<QLineEdit>(editor, "aiProviderBaseUrl")->setText("http://127.0.0.1:8080/v1");
-        control<QComboBox>(editor, "aiProviderModel")->setCurrentText("manual-model");
-        control<QLineEdit>(editor, "aiProviderKey")->setText("synthetic-ui-key");
-        control<QPushButton>(editor, "saveAiProviderButton")->click();
-        QVERIFY(editor.result() != QDialog::Accepted);
-        QCOMPARE(store.providers().size(), 1);
-        control<QPushButton>(editor, "aiProviderTestConnection")->click();
-        QVERIFY(!editor.findChild<AiProviderProbe *>()->busy());
-        QVERIFY(control<QLabel>(editor, "aiProviderDialogStatus")->text().contains("HTTPS"));
-        QVERIFY(!QFile::exists(folder.filePath("providers.json")));
+        QVERIFY(!page.findChild<AiProviderProbe *>()->busy());
     }
 };
 

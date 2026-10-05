@@ -659,12 +659,15 @@ class OnboardingTests final : public QObject {
             {"type", "web_search_tool_result"},
             {"content", QJsonArray{QJsonObject{{"type", "web_search_result"},
                                                {"url", "https://jwc.jlu.edu.cn/tzgg.htm"}}}}};
-        for (const auto &reason : {"max_tokens", "pause_turn", "tool_use", "stop_sequence",
-                                  "refusal", "model_context_window_exceeded", ""}) {
+        for (const auto &reason : {"refusal", "unknown", ""}) {
             const QJsonObject incomplete{{"stop_reason", reason},
                                          {"content", QJsonArray{goodBlock}}};
             QVERIFY_THROWS_EXCEPTION(std::runtime_error,
                                      DeepSeekSearch::candidates(incomplete, "jlu.edu.cn", {}));
+        }
+        for (const auto *reason : {"max_tokens", "pause_turn", "tool_use", "stop_sequence", "model_context_window_exceeded"}) {
+            const QJsonObject partial{{"stop_reason", reason}, {"content", QJsonArray{goodBlock}}};
+            QCOMPARE(DeepSeekSearch::candidates(partial, "jlu.edu.cn", {}).size(), 1);
         }
         auto malformed = QJsonObject{{"stop_reason", "end_turn"}, {"content", "not an array"}};
         QVERIFY_THROWS_EXCEPTION(std::runtime_error,
@@ -698,8 +701,7 @@ class OnboardingTests final : public QObject {
             {"content", QJsonObject{{"type", "web_search_tool_result_error"},
                                      {"error_code", "max_uses_exceeded"}}}};
         malformed["content"] = QJsonArray{manyBlock, failedTool};
-        QVERIFY_THROWS_EXCEPTION(std::runtime_error,
-                                 DeepSeekSearch::candidates(malformed, "jlu.edu.cn", {}));
+        QCOMPARE(DeepSeekSearch::candidates(malformed, "jlu.edu.cn", {}).size(), 8);
         const QJsonObject emptySearch{
             {"stop_reason", "end_turn"},
             {"content", QJsonArray{QJsonObject{{"type", "web_search_tool_result"},

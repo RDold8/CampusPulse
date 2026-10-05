@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CampusPulse VERSION 0.1.2 LANGUAGES C CXX)
+project(CampusPulse VERSION 0.1.3 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -60,7 +60,7 @@ add_library(campus_adapters src/adapters/SchoolPackage.cpp src/adapters/HtmlAdap
 target_sources(campus_adapters PRIVATE src/adapters/PublicUniversityNetwork.cpp
     src/adapters/UnknownUniversityDiscovery.cpp src/adapters/AiProviderConfig.cpp src/adapters/AiProviderProbe.cpp
     src/adapters/AiSearchTemplate.cpp)
-target_link_libraries(campus_adapters PUBLIC campus_application Qt6::Network PRIVATE lexbor_static ical)
+target_link_libraries(campus_adapters PUBLIC campus_application Qt6::Network PRIVATE Qt6::Sql lexbor_static ical)
 if(WIN32)
     # The small SDK loader uses the separately installed Evergreen runtime.
     # No browser profile or personal browser cookies are shared with CampusPulse.
@@ -104,13 +104,16 @@ if(WIN32)
     target_link_libraries(campus_public_browser_live_probe PRIVATE campus_adapters Qt6::Core)
 endif()
 add_executable(campus_ai_provider_tests tests/AiProviderTests.cpp)
-target_link_libraries(campus_ai_provider_tests PRIVATE campus_adapters Qt6::Test)
+target_link_libraries(campus_ai_provider_tests PRIVATE campus_adapters Qt6::Test Qt6::Sql)
 add_test(NAME ai_provider_contracts COMMAND campus_ai_provider_tests -o -,txt)
 add_executable(campus_ai_search_tests tests/AiSearchTests.cpp)
 target_link_libraries(campus_ai_search_tests PRIVATE campus_adapters Qt6::Test)
 add_test(NAME ai_search_contracts COMMAND campus_ai_search_tests -o -,txt)
+add_executable(campus_deepseek_search_tests tests/DeepSeekSearchTests.cpp)
+target_link_libraries(campus_deepseek_search_tests PRIVATE campus_adapters Qt6::Test)
+add_test(NAME deepseek_search_contracts COMMAND campus_deepseek_search_tests -o -,txt)
 add_executable(campus_ai_provider_desktop_tests tests/AiProviderDesktopTests.cpp)
-target_link_libraries(campus_ai_provider_desktop_tests PRIVATE campus_desktop campus_storage Qt6::Test)
+target_link_libraries(campus_ai_provider_desktop_tests PRIVATE campus_desktop campus_storage Qt6::Test Qt6::Sql)
 target_compile_definitions(campus_ai_provider_desktop_tests PRIVATE
     CONFIG_FILE="${CMAKE_SOURCE_DIR}/configs/schools/neepu.example.json"
     SCHOOL_CONFIG_DIR="${CMAKE_SOURCE_DIR}/configs/schools")
@@ -119,6 +122,8 @@ add_executable(campus_ai_provider_native_probe tests/AiProviderNativeProbe.cpp)
 target_link_libraries(campus_ai_provider_native_probe PRIVATE campus_desktop campus_storage)
 add_executable(campus_ai_provider_live_probe tests/AiProviderLiveProbe.cpp)
 target_link_libraries(campus_ai_provider_live_probe PRIVATE campus_adapters Qt6::Core)
+add_executable(campus_ai_provider_storage_probe tests/AiProviderStorageProbe.cpp)
+target_link_libraries(campus_ai_provider_storage_probe PRIVATE campus_adapters Qt6::Core)
 add_executable(campus_tests tests/PrototypeTests.cpp)
 target_link_libraries(campus_tests PRIVATE campus_adapters campus_storage campus_presentation Qt6::Test)
 target_compile_definitions(campus_tests PRIVATE FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/neepu" CONFIG_FILE="${CMAKE_SOURCE_DIR}/configs/schools/neepu.example.json")

@@ -1,7 +1,7 @@
 ; Compile with tools/build-installer.ps1. PackageDir must be a clean, deployed release.
 ; Keep this AppId stable across versions so Setup upgrades the same per-user application.
 #ifndef AppVersion
-  #define AppVersion "0.1.2"
+  #define AppVersion "0.1.3"
 #endif
 #ifndef ProjectRoot
   #define ProjectRoot AddBackslash(SourcePath) + ".."

@@ -5,8 +5,12 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QRegularExpression>
-#include <QSaveFile>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
 #include <QSet>
+#include <QScopeGuard>
+#include <QUuid>
 #include <stdexcept>
 #ifdef Q_OS_WIN
 #define WIN32_LEAN_AND_MEAN
@@ -68,14 +72,56 @@ void requireFields(const QJsonObject &object, const QSet<QString> &allowed,
         if (!allowed.contains(entry.key()))
             fail(reason);
 }
-void writeObject(const QString &path, const QJsonObject &object) {
-    if (!QDir().mkpath(QFileInfo(path).absolutePath()))
-        fail("无法创建本机 AI 配置目录");
-    QSaveFile file(path);
-    const auto bytes = QJsonDocument(object).toJson();
-    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
-        fail("本机 AI 配置保存失败：" + QFileInfo(path).fileName());
-    QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+class ProfileDatabase final {
+  public:
+    QSqlDatabase db;
+    explicit ProfileDatabase(const QString &path, bool readOnly = false)
+        : name_("campus-ai-" + QUuid::createUuid().toString(QUuid::WithoutBraces)) {
+        db = QSqlDatabase::addDatabase("QSQLITE", name_);
+        db.setDatabaseName(path);
+        db.setConnectOptions(readOnly ? "QSQLITE_OPEN_READONLY;QSQLITE_BUSY_TIMEOUT=3000"
+                                     : "QSQLITE_BUSY_TIMEOUT=3000");
+        if (!db.open()) {
+            const auto error = db.lastError().text();
+            close();
+            fail("本机 AI 存储打开失败：" + path + "；" + error);
+        }
+    }
+    ~ProfileDatabase() { close(); }
+  private:
+    QString name_;
+    void close() {
+        db.close();
+        db = {};
+        QSqlDatabase::removeDatabase(name_);
+    }
+};
+QMap<QString, QJsonObject> readDatabaseDocuments(const QString &path) {
+    if (!QFileInfo::exists(path)) return {};
+    ProfileDatabase connection(path, true);
+    QSqlQuery query(connection.db);
+    if (!query.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='documents'"))
+        fail("本机 AI 存储结构读取失败：" + path + "；" + query.lastError().text());
+    if (!query.next()) return {}; // A successful preflight has no committed documents.
+    if (!query.exec("SELECT name,payload FROM documents"))
+        fail("本机 AI 存储读取失败：" + path + "；" + query.lastError().text());
+    QMap<QString, QJsonObject> result;
+    while (query.next()) {
+        const auto name = query.value(0).toString();
+        const auto bytes = query.value(1).toByteArray();
+        if ((name != "providers.json" && name != "credentials.dpapi.json") ||
+            bytes.size() > 512 * 1024)
+            fail("本机 AI 存储文档名称或大小无效");
+        QJsonParseError error;
+        const auto document = QJsonDocument::fromJson(bytes, &error);
+        if (error.error != QJsonParseError::NoError || !document.isObject())
+            fail("本机 AI 存储文档无效：" + name);
+        result.insert(name, document.object());
+    }
+    if (!result.isEmpty() && (!result.contains("providers.json") ||
+                             !result.contains("credentials.dpapi.json")))
+        fail("本机 AI 存储缺少配置或凭据文档");
+    return result;
 }
 QByteArray protect(const QString &key, const QString &binding) {
 #ifdef Q_OS_WIN
@@ -255,20 +301,59 @@ AiProviderConfig AiProviderConfig::fromJson(const QJsonObject &object) {
     return result;
 }
 AiProviderConfig AiProviderConfig::deepSeekPreset() {
-    return {"deepseek-official", "DeepSeek 官方", "https://api.deepseek.com/anthropic/v1",
+    return {"deepseek-official", "DeepSeek 官方", "https://api.deepseek.com",
             "deepseek-flash", AiApiProtocol::DeepSeekNative};
+}
+AiProviderConfig AiProviderConfig::automaticProfile(AiProviderConfig config) {
+    config.baseUrl = config.baseUrl.trimmed();
+    if (config.id.isEmpty())
+        config.id = "provider-" + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    if (!endpointError(config.baseUrl).isEmpty())
+        return config; // validation reports the original bad address, without a request.
+    auto url = QUrl(config.baseUrl);
+    auto path = url.path();
+    while (path.endsWith('/')) path.chop(1);
+    url.setPath(path);
+    if (config.isOfficialDeepSeek()) {
+        config.baseUrl = "https://api.deepseek.com";
+        config.protocol = AiApiProtocol::DeepSeekNative;
+        config.fullUrl = false;
+        if (config.name.isEmpty()) config.name = "DeepSeek 官方";
+        if (config.model.isEmpty()) config.model = "deepseek-flash";
+        return config;
+    }
+    config.protocol = (path.endsWith("/messages") || path.endsWith("/anthropic") ||
+                       path.endsWith("/anthropic/v1"))
+        ? AiApiProtocol::DeepSeekNative : AiApiProtocol::OpenAiCompatible;
+    config.fullUrl = config.fullUrl || path.endsWith("/messages") || path.endsWith("/chat/completions");
+    // OpenAI-compatible gateways commonly expose /v1. Explicit relay paths are
+    // retained, so a user-supplied endpoint is never sent to a different host.
+    if (path.isEmpty() && !config.nativeSearch()) url.setPath("/v1");
+    config.baseUrl = url.toString(QUrl::FullyEncoded);
+    if (config.name.isEmpty()) config.name = url.host();
+    return config;
 }
 QUrl AiProviderConfig::requestEndpoint(const AiProviderConfig &provider) {
     if (!endpointError(provider.baseUrl).isEmpty())
         return {};
-    if (provider.fullUrl)
-        return QUrl(provider.baseUrl, QUrl::StrictMode);
     auto base = provider.baseUrl;
     while (base.endsWith('/'))
         base.chop(1);
+    const auto parsed = QUrl(base);
+    // Refuse the exact mixed-protocol route reported by users. Basic setup
+    // normalizes it first; advanced setup must still never emit a bad URL.
+    if ((!provider.nativeSearch() && (parsed.path().contains("/anthropic") ||
+                                     parsed.path().endsWith("/messages"))) ||
+        (provider.nativeSearch() && parsed.path().endsWith("/chat/completions")))
+        return {};
+    if (provider.fullUrl)
+        return QUrl(base, QUrl::StrictMode);
+    if (provider.isOfficialDeepSeek() && provider.nativeSearch())
+        return QUrl("https://api.deepseek.com/anthropic/v1/messages");
+    if (base.endsWith("/messages") || base.endsWith("/chat/completions"))
+        return QUrl(base);
     if (provider.nativeSearch())
         return QUrl(base + (base.endsWith("/v1") ? "/messages" : "/v1/messages"));
-    const auto parsed = QUrl(base);
     const bool knownOfficialRoot = parsed.path().isEmpty() &&
         (parsed.host() == "api.deepseek.com" || parsed.host() == "api.openai.com");
     return QUrl(base + (knownOfficialRoot ? "/v1/chat/completions" : "/chat/completions"));
@@ -331,12 +416,14 @@ void AiProviderStore::load() {
     QList<AiProviderConfig> profiles;
     QString active;
     QMap<QString, QByteArray> secrets;
+    const auto documents = readDatabaseDocuments(QDir(directory_).filePath("ai-providers.sqlite"));
     const auto profilePath = QDir(directory_).filePath("providers.json");
-    if (!QFileInfo::exists(profilePath)) {
+    if (documents.isEmpty() && !QFileInfo::exists(profilePath)) {
         profiles.append(AiProviderConfig::deepSeekPreset());
         active = profiles.first().id;
     } else {
-        const auto document = readObject(profilePath);
+        const auto document = documents.isEmpty() ? readObject(profilePath)
+                                                  : documents.value("providers.json");
         requireFields(document, {"version", "active_id", "providers"},
                       "AI 供应商文件含不支持的字段；明文 Key 不能保存在此文件");
         if (document.value("version") != QJsonValue(1) ||
@@ -359,8 +446,9 @@ void AiProviderStore::load() {
             fail("当前启用的 AI 供应商不存在");
     }
     const auto secretPath = QDir(directory_).filePath("credentials.dpapi.json");
-    if (QFileInfo::exists(secretPath)) {
-        const auto document = readObject(secretPath);
+    if (!documents.isEmpty() || QFileInfo::exists(secretPath)) {
+        const auto document = documents.isEmpty() ? readObject(secretPath)
+                                                  : documents.value("credentials.dpapi.json");
         requireFields(document, {"version", "protection", "credentials"},
                       "本机 AI 凭据文件含不支持的字段");
         if (document.value("version") != QJsonValue(1) ||
@@ -402,21 +490,45 @@ QList<AiProviderConfig> AiProviderStore::providers() const {
 QString AiProviderStore::activeId() const {
     return activeId_;
 }
-void AiProviderStore::saveProfiles(const QList<AiProviderConfig> &providers,
-                                  const QString &activeId) const {
+void AiProviderStore::saveState(const QList<AiProviderConfig> &providers,
+                               const QString &activeId,
+                               const QMap<QString, QByteArray> &secrets, bool probeOnly) const {
     QJsonArray entries;
     for (const auto &provider : providers)
         entries.append(provider.toJson());
-    writeObject(QDir(directory_).filePath("providers.json"),
-                {{"version", 1}, {"active_id", activeId}, {"providers", entries}});
-}
-void AiProviderStore::saveSecrets(const QMap<QString, QByteArray> &secrets) const {
-    QJsonObject entries;
+    const QJsonObject metadata{{"version", 1}, {"active_id", activeId}, {"providers", entries}};
+    QJsonObject credentials;
     for (auto entry = secrets.begin(); entry != secrets.end(); ++entry)
-        entries.insert(entry.key(), QString::fromLatin1(entry.value().toBase64()));
-    writeObject(QDir(directory_).filePath("credentials.dpapi.json"),
-                {{"version", 1}, {"protection", "windows-dpapi-current-user"},
-                 {"credentials", entries}});
+        credentials.insert(entry.key(), QString::fromLatin1(entry.value().toBase64()));
+    const QJsonObject encrypted{{"version", 1}, {"protection", "windows-dpapi-current-user"},
+                               {"credentials", credentials}};
+    if (!QDir().mkpath(directory_))
+        fail("本机 AI 存储目录创建失败：" + directory_);
+    const auto path = QDir(directory_).filePath("ai-providers.sqlite");
+    ProfileDatabase connection(path);
+    QSqlQuery query(connection.db);
+    if (!query.exec("PRAGMA synchronous=FULL") || !connection.db.transaction())
+        fail("本机 AI 存储事务启动失败：" + path + "；" + connection.db.lastError().text() +
+             query.lastError().text());
+    const auto rollback = qScopeGuard([&] { connection.db.rollback(); });
+    if (!query.exec("CREATE TABLE IF NOT EXISTS documents (name TEXT PRIMARY KEY, payload BLOB NOT NULL)"))
+        fail("本机 AI 存储结构创建失败：" + path + "；" + query.lastError().text());
+    for (const auto &document : {qMakePair(QString("providers.json"), metadata),
+                                 qMakePair(QString("credentials.dpapi.json"), encrypted)}) {
+        query.prepare("INSERT INTO documents(name,payload) VALUES(?,?) "
+                      "ON CONFLICT(name) DO UPDATE SET payload=excluded.payload");
+        query.addBindValue(document.first);
+        query.addBindValue(QJsonDocument(document.second).toJson(QJsonDocument::Compact));
+        if (!query.exec())
+            fail("本机 AI 存储写入失败（" + document.first + "）：" + path + "；" +
+                 query.lastError().text());
+    }
+    if (!probeOnly && !connection.db.commit())
+        fail("本机 AI 存储提交失败：" + path + "；" + connection.db.lastError().text());
+    // The guard explicitly rolls back preflight; after commit it is a harmless no-op.
+}
+void AiProviderStore::checkWritable() const {
+    saveState(providers_, activeId_, protectedKeys_, true);
 }
 void AiProviderStore::upsert(const AiProviderConfig &provider) {
     const auto error = AiProviderConfig::validationError(provider);
@@ -437,16 +549,12 @@ void AiProviderStore::upsert(const AiProviderConfig &provider) {
             fail("最多保存 100 套 AI 供应商配置");
         profiles.append(provider);
     }
-    if (credentialScopeChanged) {
-        auto secrets = protectedKeys_;
-        if (secrets.remove(provider.id)) {
-            saveSecrets(secrets);
-            protectedKeys_ = secrets;
-        }
-        sessionCredentials[sessionScope_].remove(provider.id);
-    }
-    saveProfiles(profiles, activeId_);
+    auto secrets = protectedKeys_;
+    if (credentialScopeChanged) secrets.remove(provider.id);
+    saveState(profiles, activeId_, secrets);
     providers_ = profiles;
+    protectedKeys_ = secrets;
+    if (credentialScopeChanged) sessionCredentials[sessionScope_].remove(provider.id);
 }
 void AiProviderStore::remove(const QString &id) {
     if (!contains(id))
@@ -458,21 +566,18 @@ void AiProviderStore::remove(const QString &id) {
         else
             ++entry;
     const auto active = activeId_ == id ? QString{} : activeId_;
-    // Delete the credential first. If a later metadata write fails it remains safely absent.
     auto secrets = protectedKeys_;
-    if (secrets.remove(id)) {
-        saveSecrets(secrets);
-        protectedKeys_ = secrets;
-    }
-    sessionCredentials[sessionScope_].remove(id);
-    saveProfiles(profiles, active);
+    secrets.remove(id);
+    saveState(profiles, active, secrets);
+    protectedKeys_ = secrets;
     providers_ = profiles;
     activeId_ = active;
+    sessionCredentials[sessionScope_].remove(id);
 }
 void AiProviderStore::setActive(const QString &id) {
     if (!id.isEmpty() && !contains(id))
         fail("供应商不存在");
-    saveProfiles(providers_, id);
+    saveState(providers_, id, protectedKeys_);
     activeId_ = id;
 }
 QString AiProviderStore::key(const QString &id) const {
@@ -504,13 +609,43 @@ void AiProviderStore::setKey(const QString &id, const QString &value, bool remem
     else
         secrets.remove(id);
     if (secrets != protectedKeys_) {
-        saveSecrets(secrets);
+        saveState(providers_, activeId_, secrets);
         protectedKeys_ = secrets;
     }
     if (value.isEmpty())
         sessionCredentials[sessionScope_].remove(id);
     else
         sessionCredentials[sessionScope_].insert(id, {value, binding});
+}
+void AiProviderStore::saveProvider(const AiProviderConfig &provider, const QString &value,
+                                  bool remember, bool activate) {
+    const auto error = AiProviderConfig::validationError(provider);
+    if (!error.isEmpty()) fail(error);
+    if (value.size() > 4096 || value.contains(QRegularExpression("[^\\x21-\\x7e]")))
+        fail("API Key 不能含空白或控制字符，最多 4096 个字符");
+    auto profiles = providers_;
+    bool replaced = false;
+    for (auto &entry : profiles)
+        if (entry.id == provider.id) {
+            entry = provider;
+            replaced = true;
+            break;
+        }
+    if (!replaced) {
+        if (profiles.size() >= 100) fail("最多保存 100 套 AI 供应商配置");
+        profiles.append(provider);
+    }
+    const auto binding = credentialBinding(provider);
+    auto secrets = protectedKeys_;
+    if (remember && !value.isEmpty()) secrets.insert(provider.id, protect(value, binding));
+    else secrets.remove(provider.id);
+    const auto active = activate ? provider.id : activeId_;
+    saveState(profiles, active, secrets);
+    providers_ = profiles;
+    protectedKeys_ = secrets;
+    activeId_ = active;
+    if (value.isEmpty()) sessionCredentials[sessionScope_].remove(provider.id);
+    else sessionCredentials[sessionScope_].insert(provider.id, {value, binding});
 }
 bool AiProviderStore::keyIsRemembered(const QString &id) const {
     return contains(id) && protectedKeys_.contains(id);

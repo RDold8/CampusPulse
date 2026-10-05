@@ -109,15 +109,15 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
     connect(universities, &UniversityPage::homepageDiscoveryRequested, this,
             &MainWindow::universityHomepageRequested);
     const auto updateUniversityBusy = [universities, &coordinator, resourceDiscovery] {
-        universities->setBusy(coordinator.busy() || (resourceDiscovery && resourceDiscovery->busy()));
+        universities->setRefreshing(coordinator.busy() || (resourceDiscovery && resourceDiscovery->busy()));
     };
     connect(&coordinator, &RefreshCoordinator::started, universities,
-            [universities] { universities->setBusy(true); });
+            [universities] { universities->setRefreshing(true); });
     connect(&coordinator, &RefreshCoordinator::finished, universities,
             [updateUniversityBusy](int, int) { updateUniversityBusy(); });
     if (resourceDiscovery) {
         connect(resourceDiscovery, &ResourceDiscovery::started, universities,
-                [universities] { universities->setBusy(true); });
+                [universities] { universities->setRefreshing(true); });
         connect(resourceDiscovery, &ResourceDiscovery::finished, universities,
                 [updateUniversityBusy](int, int, int) { updateUniversityBusy(); });
         connect(resourceDiscovery, &ResourceDiscovery::failed, universities,

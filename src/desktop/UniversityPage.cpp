@@ -5,6 +5,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QListWidget>
+#include <QProgressBar>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <stdexcept>
@@ -51,48 +52,86 @@ UniversityPage::UniversityPage(const UniversityRegistry &registry, const QString
     feedback_->setTextFormat(Qt::PlainText);
     feedback_->setWordWrap(true);
     feedback_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    feedback_->setAccessibleName("学校接入状态");
+    feedback_->setAccessibleDescription(feedback_->text());
     layout->addWidget(feedback_);
+    progress_ = new QProgressBar;
+    progress_->setObjectName("universityProgress");
+    progress_->setAccessibleName("学校接入进度");
+    progress_->setRange(0, 100);
+    progress_->setValue(0);
+    progress_->setTextVisible(false);
+    progress_->setFixedHeight(16);
+    progress_->hide();
+    layout->addWidget(progress_);
     auto *directoryLabel = new QLabel("社区配置与本地识别的大学");
     layout->addWidget(directoryLabel);
-    auto *directory = new QListWidget;
-    directory->setObjectName("universityDirectory");
+    directory_ = new QListWidget;
+    directory_->setObjectName("universityDirectory");
     for (const auto &university : registry_.list()) {
         const QString homepage = university.homepage.toString();
         auto *item = new QListWidgetItem(university.name +
                                              (university.id == currentSchoolId ? "（当前）" : "") +
                                              (university.automaticallyIdentified ? " · 自动识别，待核验" : " · 社区配置") +
                                              "\n" + homepage,
-                                         directory);
+                                         directory_);
         item->setData(Qt::UserRole, homepage);
         item->setToolTip(university.id);
         if (university.id == currentSchoolId) {
             url_->setText(homepage);
-            directory->setCurrentItem(item);
+            directory_->setCurrentItem(item);
         }
     }
-    layout->addWidget(directory, 1);
+    layout->addWidget(directory_, 1);
     auto *note = new QLabel("选择目录中的条目会填入官网地址；点击“接入 / 切换大学”继续。"
                             "当前学校的通知缓存和本机来源偏好会保留。");
     note->setWordWrap(true);
     note->setTextFormat(Qt::PlainText);
     layout->addWidget(note);
 
-    connect(directory, &QListWidget::itemClicked, this,
+    connect(directory_, &QListWidget::itemClicked, this,
             [this](QListWidgetItem *item) { url_->setText(item->data(Qt::UserRole).toString()); });
     connect(load_, &QPushButton::clicked, this, &UniversityPage::loadUniversity);
     connect(url_, &QLineEdit::returnPressed, this, &UniversityPage::loadUniversity);
 }
 
 void UniversityPage::setBusy(bool busy) {
+    onboardingBusy_ = busy;
+    applyBusy();
+}
+void UniversityPage::setRefreshing(bool refreshing) {
+    refreshing_ = refreshing;
+    applyBusy();
+}
+void UniversityPage::applyBusy() {
+    const bool busy = onboardingBusy_ || refreshing_;
+    const bool changed = busy_ != busy;
+    busy_ = busy;
     url_->setEnabled(!busy);
     load_->setEnabled(!busy);
-    if (busy)
-        feedback_->setText("正在更新官网列表；本轮完成后可加载或切换大学。");
-    else
-        feedback_->setText("可输入大学官网首页，或从当前社区目录选择大学。");
+    directory_->setEnabled(!busy);
+    load_->setText(busy ? "正在处理……" : "接入 / 切换大学");
+    if (busy) {
+        progress_->setRange(0, 0);
+        progress_->show();
+        if (changed)
+            setFeedback("正在检查学校公开信息，请稍候……");
+    } else {
+        // Leave indeterminate mode as well as hiding the widget so the native
+        // style's animation cannot continue after a run finishes or fails.
+        progress_->setRange(0, 100);
+        progress_->setValue(0);
+        progress_->hide();
+        progress_->setAccessibleDescription({});
+        if (changed)
+            setFeedback("可输入大学官网首页，或从当前社区目录选择大学。");
+    }
 }
 void UniversityPage::setFeedback(const QString &message) {
     feedback_->setText(message);
+    feedback_->setAccessibleDescription(message);
+    if (busy_)
+        progress_->setAccessibleDescription(message);
 }
 
 void UniversityPage::loadUniversity() {
@@ -100,16 +139,16 @@ void UniversityPage::loadUniversity() {
         return;
     try {
         const auto university = registry_.resolve(url_->text());
-        feedback_->setText("已匹配：" + university.name + "。正在加载该校配置……");
+        setFeedback("已匹配：" + university.name + "。正在加载该校配置……");
         emit universitySelected(university.configFile);
     } catch (const std::exception &error) {
         try {
             const auto home = UnknownUniversityDiscovery::normalizedHomepage(url_->text());
-            feedback_->setText("正在检查新大学的公开官网与学校身份……");
+            setFeedback("正在检查新大学的公开官网与学校身份……");
             emit homepageDiscoveryRequested(home.toString());
         } catch (const std::exception &unknownError) {
-            feedback_->setText(QString::fromUtf8(error.what()) + "\n" +
-                               QString::fromUtf8(unknownError.what()));
+            setFeedback(QString::fromUtf8(error.what()) + "\n" +
+                        QString::fromUtf8(unknownError.what()));
         }
     }
 }

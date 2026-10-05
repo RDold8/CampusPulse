@@ -61,6 +61,20 @@ bool AiProviderProbe::busy() const {
 void AiProviderProbe::cancel() {
     if (!busy_)
         return;
+    if (automaticProbe_) {
+        auto *child = automaticProbe_.data();
+        automaticProbe_ = nullptr;
+        disconnect(child, nullptr, this, nullptr);
+        child->cancel();
+        child->deleteLater();
+        busy_ = false;
+        AiProbeResult result;
+        result.operation = AiProbeOperation::AutoConnect;
+        result.elapsedMs = elapsed_.elapsed();
+        result.message = "已取消连接；服务器已处理的请求仍可能计费";
+        emit finished(result);
+        return;
+    }
     ++generation_;
     deadline_->stop();
     if (lookupId_ != -1)
@@ -80,9 +94,12 @@ QUrl AiProviderProbe::endpoint(const AiProviderConfig &provider, AiProbeOperatio
                                                 : AiProviderConfig::requestEndpoint(provider);
 }
 QJsonObject AiProviderProbe::connectionBody(const AiProviderConfig &provider) {
-    return {{"model", provider.model}, {"max_tokens", 128}, {"stream", false},
+    QJsonObject body{{"model", provider.model}, {"max_tokens", 128}, {"stream", false},
             {"messages", QJsonArray{QJsonObject{{"role", "user"},
                                                {"content", "Reply with OK only."}}}}};
+    if (provider.isOfficialDeepSeek())
+        body.insert("thinking", QJsonObject{{"type", "disabled"}});
+    return body;
 }
 AiProbeResult AiProviderProbe::evaluate(AiApiProtocol protocol, AiProbeOperation operation,
                                       int status, const QByteArray &bytes, qint64 elapsedMs,
@@ -198,6 +215,85 @@ void AiProviderProbe::probe(const AiProviderConfig &provider, const QString &key
 void AiProviderProbe::fetchModels(const AiProviderConfig &provider, const QString &key) {
     start(provider, key, AiProbeOperation::Models);
 }
+QString AiProviderProbe::chooseModel(const QStringList &models, const QString &preferred) {
+    const auto textModel = [](const QString &id) {
+        return validModel(id) && !id.contains(QRegularExpression(
+            "embed|rerank|whisper|tts|dall-e|image|moderation|audio|transcri|speech",
+            QRegularExpression::CaseInsensitiveOption));
+    };
+    if (models.contains(preferred) && textModel(preferred))
+        return preferred;
+    for (const auto *name : {"deepseek-flash", "deepseek-v4-flash", "deepseek-chat",
+                             "gpt-4.1-mini", "gpt-4o-mini", "deepseek-v4-pro"})
+        if (models.contains(QLatin1String(name)))
+            return QLatin1String(name);
+    for (const auto &id : models)
+        if (textModel(id) && (id.contains("flash", Qt::CaseInsensitive) ||
+                              id.contains("mini", Qt::CaseInsensitive))) return id;
+    for (const auto &id : models)
+        if (textModel(id)) return id;
+    return {};
+}
+void AiProviderProbe::connectProvider(const AiProviderConfig &input, const QString &key) {
+    if (busy_) return;
+    auto provider = AiProviderConfig::automaticProfile(input);
+    const auto error = AiProviderConfig::validationError(provider);
+    if (!error.isEmpty() || key.isEmpty() || key.size() > 4096 ||
+        key.contains(QRegularExpression("[^\\x21-\\x7e]"))) {
+        AiProbeResult result;
+        result.operation = AiProbeOperation::AutoConnect;
+        result.provider = provider;
+        result.message = error.isEmpty() ? "请填写不含空白的 API Key；没有发起网络请求" : error;
+        emit finished(result);
+        return;
+    }
+    busy_ = true;
+    elapsed_.start();
+    auto *child = new AiProviderProbe(this);
+    automaticProbe_ = child;
+    connect(child, &AiProviderProbe::finished, this,
+        [this, child, provider, key, models = QStringList{}](AiProbeResult result) mutable {
+            if (automaticProbe_ != child) return;
+            if (result.operation == AiProbeOperation::Models) {
+                if (result.success) {
+                    models = result.modelIds;
+                    provider.model = chooseModel(models, provider.model);
+                    if (provider.model.isEmpty()) {
+                        result.success = false;
+                        result.message = "没有找到可用于文本检索的模型，请在高级设置中选择模型";
+                    }
+                }
+                // Some relays omit /models. An explicit model (or the official
+                // DeepSeek default) can still be verified by a real text call.
+                const bool explicitFallback = !result.success &&
+                    (result.httpStatus == 404 || result.httpStatus == 405) &&
+                    !provider.model.isEmpty();
+                if (result.success || explicitFallback) {
+                    emit progress("正在验证模型连接……");
+                    if (!busy_ || automaticProbe_ != child) return;
+                    child->probe(provider, key);
+                    return;
+                }
+            }
+            result.operation = AiProbeOperation::AutoConnect;
+            result.provider = provider;
+            result.modelIds = models;
+            result.elapsedMs = elapsed_.elapsed();
+            if (result.success) result.message = "连接成功，已自动选择模型：" + provider.model +
+                "。现在可以一键搜索学校公开栏目";
+            redact(result, key);
+            automaticProbe_ = nullptr;
+            busy_ = false;
+            child->deleteLater();
+            emit finished(result);
+        });
+    const bool explicitCall = AiProviderConfig::modelsEndpoint(provider).isEmpty() &&
+                              !provider.model.isEmpty();
+    emit progress(explicitCall ? "正在验证模型连接……" : "正在读取可用模型……");
+    if (!busy_ || automaticProbe_ != child) return;
+    if (explicitCall) child->probe(provider, key);
+    else child->fetchModels(provider, key);
+}
 void AiProviderProbe::start(const AiProviderConfig &provider, const QString &key,
                             AiProbeOperation operation) {
     if (busy_)
@@ -223,7 +319,9 @@ void AiProviderProbe::start(const AiProviderConfig &provider, const QString &key
     }
     const auto target = endpoint(provider, operation);
     if (target.isEmpty()) {
-        rejected.message = "此完整请求地址没有已知模型目录路由，请手动填写模型 ID；没有发送请求";
+        rejected.message = operation == AiProbeOperation::Models
+            ? "此完整请求地址没有已知模型目录路由，请手动填写模型 ID；没有发送请求"
+            : "地址与 API 格式不一致，请使用自动连接修正；没有发送请求";
         emit finished(rejected);
         return;
     }

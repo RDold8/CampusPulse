@@ -1,9 +1,15 @@
 #include "adapters/AiProviderConfig.h"
 #include "adapters/AiProviderProbe.h"
 #include <QFile>
+#include <QDir>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
+#include <QUuid>
 #include <QtTest>
 #include <stdexcept>
 
@@ -13,16 +19,182 @@ AiProviderConfig compatible(const QString &id = "custom") {
     return {id, "测试兼容服务", "https://api.example.com/v1", "example-model",
             AiApiProtocol::OpenAiCompatible};
 }
-QByteArray readFile(const QString &path) {
+class FixtureDatabase final {
+  public:
+    FixtureDatabase(const QString &path, bool readOnly = false)
+        : connection_(QUuid::createUuid().toString(QUuid::WithoutBraces)),
+          database_(QSqlDatabase::addDatabase("QSQLITE", connection_)) {
+        database_.setDatabaseName(path);
+        if (readOnly) database_.setConnectOptions("QSQLITE_OPEN_READONLY");
+        if (!database_.open()) {
+            database_ = {};
+            QSqlDatabase::removeDatabase(connection_);
+            throw std::runtime_error("无法打开合成 SQLite 测试库");
+        }
+    }
+    ~FixtureDatabase() {
+        database_.close();
+        database_ = {};
+        QSqlDatabase::removeDatabase(connection_);
+    }
+    QSqlDatabase &database() { return database_; }
+  private:
+    QString connection_;
+    QSqlDatabase database_;
+};
+QByteArray readRawFile(const QString &path) {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly))
         return {};
     return file.readAll();
 }
+QByteArray readFile(const QString &path) {
+    const QFileInfo info(path);
+    const auto databasePath = info.dir().filePath("ai-providers.sqlite");
+    if (QFileInfo(databasePath).isFile()) {
+        FixtureDatabase fixture(databasePath, true);
+        QSqlQuery tables(fixture.database());
+        if (!tables.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='documents'"))
+            throw std::runtime_error("合成 SQLite 测试库结构无法查询");
+        if (tables.next()) {
+            QSqlQuery query(fixture.database());
+            query.prepare("SELECT payload FROM documents WHERE name=?");
+            query.addBindValue(info.fileName());
+            if (!query.exec()) throw std::runtime_error("合成 SQLite 文档无法读取");
+            if (query.next()) return query.value(0).toByteArray();
+        }
+    }
+    return readRawFile(path);
+}
+bool writeLegacyFile(const QString &path, const QByteArray &bytes) {
+    if (bytes.isEmpty()) return false;
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
+    const bool written = file.write(bytes) == bytes.size();
+    file.close();
+    return written;
+}
+bool writeSqlDocument(const QString &directory, const QString &name, const QByteArray &bytes) {
+    FixtureDatabase fixture(QDir(directory).filePath("ai-providers.sqlite"));
+    QSqlQuery query(fixture.database());
+    query.prepare("UPDATE documents SET payload=? WHERE name=?");
+    query.addBindValue(bytes);
+    query.addBindValue(name);
+    return query.exec() && query.numRowsAffected() == 1;
+}
+QByteArray providerState(const AiProviderStore &store) {
+    QJsonArray providers;
+    for (const auto &provider : store.providers()) providers.append(provider.toJson());
+    return QJsonDocument(QJsonObject{{"providers", providers}, {"active_id", store.activeId()}})
+        .toJson(QJsonDocument::Compact);
+}
+bool execSql(const QString &directory, const QString &statement) {
+    FixtureDatabase fixture(QDir(directory).filePath("ai-providers.sqlite"));
+    QSqlQuery query(fixture.database());
+    return query.exec(statement);
+}
 }
 class AiProviderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void addressOnlySetupRepairsMixedProtocols_data() {
+        QTest::addColumn<QString>("input");
+        QTest::addColumn<QString>("request");
+        QTest::addColumn<QString>("models");
+        for (const auto *suffix : {"", "/v1", "/anthropic", "/anthropic/v1",
+                                  "/anthropic/v1/messages", "/chat/completions", "/v1/chat/completions"})
+            QTest::newRow(suffix) << "https://api.deepseek.com" + QString(suffix)
+                << QString("https://api.deepseek.com/anthropic/v1/messages")
+                << QString("https://api.deepseek.com/models");
+        QTest::newRow("custom-root") << QString("https://relay.example.com")
+            << QString("https://relay.example.com/v1/chat/completions")
+            << QString("https://relay.example.com/v1/models");
+        QTest::newRow("custom-full-chat") << QString("https://relay.example.com/v1/chat/completions/")
+            << QString("https://relay.example.com/v1/chat/completions")
+            << QString("https://relay.example.com/v1/models");
+        QTest::newRow("custom-messages") << QString("https://relay.example.com/anthropic/v1/messages")
+            << QString("https://relay.example.com/anthropic/v1/messages")
+            << QString("https://relay.example.com/anthropic/v1/models");
+    }
+    void addressOnlySetupRepairsMixedProtocols() {
+        QFETCH(QString, input);
+        QFETCH(QString, request);
+        QFETCH(QString, models);
+        AiProviderConfig inputProfile;
+        inputProfile.baseUrl = input;
+        inputProfile.protocol = AiApiProtocol::OpenAiCompatible; // reproduced screenshot state
+        const auto config = AiProviderConfig::automaticProfile(inputProfile);
+        QVERIFY(AiProviderConfig::validationError(config).isEmpty());
+        QCOMPARE(AiProviderConfig::requestEndpoint(config).toString(), request);
+        QCOMPARE(AiProviderConfig::modelsEndpoint(config).toString(), models);
+        QCOMPARE(AiProviderConfig::automaticProfile(config).toJson(), config.toJson());
+        if (config.isOfficialDeepSeek()) QCOMPARE(config.model, QString("deepseek-flash"));
+    }
+    void mismatchedAdvancedProtocolsCannotEmitRequests() {
+        auto config = compatible();
+        config.baseUrl = "https://api.deepseek.com/anthropic/v1";
+        QVERIFY(AiProviderConfig::requestEndpoint(config).isEmpty());
+        config.baseUrl = "https://relay.example.com/v1/chat/completions";
+        config.protocol = AiApiProtocol::DeepSeekNative;
+        config.fullUrl = true;
+        QVERIFY(AiProviderConfig::requestEndpoint(config).isEmpty());
+    }
+    void automaticModelSelectionAvoidsNonTextModels() {
+        QCOMPARE(AiProviderProbe::chooseModel({"deepseek-v4-pro", "deepseek-flash"}), QString("deepseek-flash"));
+        QCOMPARE(AiProviderProbe::chooseModel({"text-embedding-3-small", "gpt-4o-mini"}), QString("gpt-4o-mini"));
+        QVERIFY(AiProviderProbe::chooseModel({"embedding-model", "image-gen", "tts-1"}).isEmpty());
+        QCOMPARE(AiProviderProbe::chooseModel({"relay-model", "fast-mini"}, "relay-model"), QString("relay-model"));
+        QCOMPARE(AiProviderProbe::chooseModel({"deepseek-flash"}, "missing-model"), QString("deepseek-flash"));
+    }
+    void automaticConnectionRejectsBadKeyWithoutNetwork() {
+        AiProviderProbe probe;
+        QSignalSpy finished(&probe, &AiProviderProbe::finished);
+        AiProviderConfig minimal;
+        minimal.baseUrl = "https://api.deepseek.com/anthropic/v1";
+        probe.connectProvider(minimal, "bad\nkey");
+        QCOMPARE(finished.count(), 1);
+        const auto result = finished.takeFirst().at(0).value<AiProbeResult>();
+        QCOMPARE(result.operation, AiProbeOperation::AutoConnect);
+        QVERIFY(!result.success);
+        QVERIFY(!probe.busy());
+        QCOMPARE(result.httpStatus, 0);
+        QCOMPARE(result.provider.baseUrl, QString("https://api.deepseek.com"));
+    }
+    void cancellationInProgressCallbackCannotStartOrResumeAnOldRequest() {
+        AiProviderProbe probe;
+        QSignalSpy finished(&probe, &AiProviderProbe::finished);
+        bool cancelled = false;
+        connect(&probe, &AiProviderProbe::progress, &probe, [&](const QString &) {
+            if (cancelled) return;
+            cancelled = true;
+            probe.cancel();
+            // Re-entry must not let the old stack frame issue its abandoned request.
+            probe.connectProvider(AiProviderConfig::deepSeekPreset(), "");
+        });
+        probe.connectProvider(AiProviderConfig::deepSeekPreset(), "synthetic-test-key");
+        QCOMPARE(finished.count(), 2);
+        QVERIFY(!probe.busy());
+        for (const auto &entry : finished) {
+            const auto result = entry.at(0).value<AiProbeResult>();
+            QCOMPARE(result.operation, AiProbeOperation::AutoConnect);
+            QVERIFY(!result.success);
+            QCOMPARE(result.httpStatus, 0);
+        }
+    }
+    void explicitModelWithNonstandardFullUrlSkipsUnavailableDirectory() {
+        auto config = compatible();
+        config.baseUrl = "https://relay.example.com/custom-call";
+        config.fullUrl = true;
+        AiProviderProbe probe;
+        QString phase;
+        connect(&probe, &AiProviderProbe::progress, &probe, [&](const QString &message) {
+            phase = message;
+            probe.cancel(); // Stop before DNS; assert the selected operation.
+        });
+        probe.connectProvider(config, "synthetic-test-key");
+        QVERIFY(phase.contains("验证模型"));
+        QVERIFY(!probe.busy());
+    }
     void presetsAndProfileJsonHaveExplicitCapabilities() {
         const auto preset = AiProviderConfig::deepSeekPreset();
         QVERIFY(preset.nativeSearch());
@@ -274,6 +446,167 @@ class AiProviderTests final : public QObject {
         QFETCH(bool, allowed);
         QCOMPARE(AiProviderConfig::isPublicAddress(QHostAddress(address)), allowed);
     }
+    void defaultLoadIsReadOnlyAndWritableCheckRollsBackDocuments() {
+        QTemporaryDir directory;
+        AiProviderStore store(directory.path());
+        store.load();
+        const auto original = providerState(store);
+        QVERIFY(!QFile::exists(directory.filePath("ai-providers.sqlite")));
+        QVERIFY(!QFile::exists(directory.filePath("providers.json")));
+        QVERIFY(!QFile::exists(directory.filePath("credentials.dpapi.json")));
+        store.checkWritable();
+        QVERIFY(QFileInfo(directory.filePath("ai-providers.sqlite")).isFile());
+        QVERIFY(readFile(directory.filePath("providers.json")).isEmpty());
+        QVERIFY(readFile(directory.filePath("credentials.dpapi.json")).isEmpty());
+        QCOMPARE(providerState(store), original);
+        AiProviderStore reopened(directory.path());
+        reopened.load();
+        QCOMPARE(providerState(reopened), original);
+    }
+    void saveProviderPersistsBothDocumentsAndOnlyEncryptedCredentials() {
+        if (!AiProviderStore::persistentSecretsSupported())
+            QSKIP("Windows DPAPI is unavailable on this OS");
+        QTemporaryDir directory;
+        AiProviderStore store(directory.path());
+        store.load();
+        const QString secret = "synthetic-transaction-encrypted-key";
+        store.saveProvider(compatible(), secret, true, true);
+        QCOMPARE(store.activeId(), QString("custom"));
+        QCOMPARE(store.providers().size(), 2);
+        QVERIFY(store.keyIsRemembered("custom"));
+        QCOMPARE(store.key("custom"), secret);
+        const auto metadata = readFile(directory.filePath("providers.json"));
+        const auto credentials = readFile(directory.filePath("credentials.dpapi.json"));
+        QVERIFY(!metadata.isEmpty());
+        QVERIFY(!credentials.isEmpty());
+        QVERIFY(!QFile::exists(directory.filePath("providers.json")));
+        QVERIFY(!QFile::exists(directory.filePath("credentials.dpapi.json")));
+        QVERIFY(!metadata.contains(secret.toUtf8()));
+        QVERIFY(!credentials.contains(secret.toUtf8()));
+        QVERIFY(!QJsonDocument::fromJson(credentials).object().value("credentials")
+                     .toObject().value("custom").toString().isEmpty());
+        FixtureDatabase fixture(directory.filePath("ai-providers.sqlite"), true);
+        QSqlQuery query(fixture.database());
+        QVERIFY(query.exec("SELECT name, typeof(payload) FROM documents ORDER BY name"));
+        QStringList names;
+        while (query.next()) {
+            names.append(query.value(0).toString());
+            QCOMPARE(query.value(1).toString(), QString("blob"));
+        }
+        QCOMPARE(names, QStringList({"credentials.dpapi.json", "providers.json"}));
+        for (const auto &file : QDir(directory.path()).entryList({"ai-providers.sqlite*"}, QDir::Files))
+            QVERIFY(!readRawFile(directory.filePath(file)).contains(secret.toUtf8()));
+    }
+    void secondDocumentFailureRollsBackProfileKeyAndActivationTogether() {
+        if (!AiProviderStore::persistentSecretsSupported())
+            QSKIP("Windows DPAPI is unavailable on this OS");
+        QTemporaryDir directory;
+        AiProviderStore store(directory.path());
+        store.load();
+        const QString oldKey = "synthetic-original-transaction-key";
+        const QString newKey = "synthetic-replacement-transaction-key";
+        auto original = compatible();
+        store.saveProvider(original, oldKey, true, false);
+        const auto state = providerState(store);
+        const auto profiles = readFile(directory.filePath("providers.json"));
+        const auto secrets = readFile(directory.filePath("credentials.dpapi.json"));
+        QVERIFY(!profiles.isEmpty());
+        QVERIFY(!secrets.isEmpty());
+        QVERIFY(execSql(directory.path(), "CREATE TABLE synthetic_save_writes(name TEXT PRIMARY KEY)"));
+        // AFTER triggers record distinct documents. Aborting the second one
+        // leaves the first changed inside the transaction unless the store
+        // explicitly rolls the entire save back.
+        const QString body = " BEGIN INSERT OR IGNORE INTO synthetic_save_writes(name) VALUES(NEW.name); "
+            "SELECT CASE WHEN (SELECT COUNT(*) FROM synthetic_save_writes)>=2 "
+            "THEN RAISE(ABORT, 'synthetic second document failure') END; END";
+        QVERIFY(execSql(directory.path(), "CREATE TRIGGER synthetic_fail_insert AFTER INSERT ON documents" + body));
+        QVERIFY(execSql(directory.path(), "CREATE TRIGGER synthetic_fail_update AFTER UPDATE ON documents" + body));
+        auto changed = original;
+        changed.baseUrl = "https://replacement.example.com/v1";
+        changed.model = "replacement-model";
+        QVERIFY_THROWS_EXCEPTION(std::runtime_error,
+            store.saveProvider(changed, newKey, true, true));
+        QCOMPARE(providerState(store), state);
+        QCOMPARE(store.key(original.id), oldKey);
+        QVERIFY(store.keyIsRemembered(original.id));
+        QCOMPARE(readFile(directory.filePath("providers.json")), profiles);
+        QCOMPARE(readFile(directory.filePath("credentials.dpapi.json")), secrets);
+        {
+            FixtureDatabase fixture(directory.filePath("ai-providers.sqlite"), true);
+            QSqlQuery query(fixture.database());
+            QVERIFY(query.exec("SELECT COUNT(*) FROM synthetic_save_writes"));
+            QVERIFY(query.next());
+            QCOMPARE(query.value(0).toInt(), 0);
+        }
+        AiProviderStore reopened(directory.path());
+        reopened.load();
+        QCOMPARE(providerState(reopened), state);
+        QCOMPARE(reopened.key(original.id), oldKey);
+        QVERIFY(execSql(directory.path(), "DROP TRIGGER synthetic_fail_insert"));
+        QVERIFY(execSql(directory.path(), "DROP TRIGGER synthetic_fail_update"));
+        QVERIFY(execSql(directory.path(), "DROP TABLE synthetic_save_writes"));
+        store.saveProvider(changed, newKey, true, true);
+        QCOMPARE(store.activeId(), original.id);
+        QCOMPARE(store.key(original.id), newKey);
+        QVERIFY(readFile(directory.filePath("providers.json")) != profiles);
+        QVERIFY(readFile(directory.filePath("credentials.dpapi.json")) != secrets);
+    }
+    void legacyDocumentsMigrateOnSuccessfulWriteAndRemainUnchanged() {
+        if (!AiProviderStore::persistentSecretsSupported())
+            QSKIP("Windows DPAPI is unavailable on this OS");
+        QTemporaryDir source;
+        QTemporaryDir legacy;
+        AiProviderStore seed(source.path());
+        seed.load();
+        seed.saveProvider(compatible(), "synthetic-legacy-migration-key", true, true);
+        const auto metadata = readFile(source.filePath("providers.json"));
+        const auto credentials = readFile(source.filePath("credentials.dpapi.json"));
+        QVERIFY(!metadata.isEmpty());
+        QVERIFY(!credentials.isEmpty());
+        QVERIFY(writeLegacyFile(legacy.filePath("providers.json"), metadata));
+        QVERIFY(writeLegacyFile(legacy.filePath("credentials.dpapi.json"), credentials));
+        AiProviderStore imported(legacy.path());
+        imported.load();
+        QVERIFY(!QFile::exists(legacy.filePath("ai-providers.sqlite")));
+        QCOMPARE(providerState(imported), providerState(seed));
+        QCOMPARE(imported.key("custom"), QString("synthetic-legacy-migration-key"));
+        imported.checkWritable();
+        // An empty database created by the preflight must still read legacy
+        // documents until the first successful state write migrates them.
+        AiProviderStore preflightReopened(legacy.path());
+        preflightReopened.load();
+        QCOMPARE(providerState(preflightReopened), providerState(seed));
+        auto changed = compatible();
+        changed.model = "migrated-model";
+        imported.saveProvider(changed, "synthetic-session-after-migration", false, true);
+        QCOMPARE(readRawFile(legacy.filePath("providers.json")), metadata);
+        QCOMPARE(readRawFile(legacy.filePath("credentials.dpapi.json")), credentials);
+        QVERIFY(readFile(legacy.filePath("providers.json")) != metadata);
+        QVERIFY(!imported.keyIsRemembered("custom"));
+        imported.setKey("custom", {}, false);
+        AiProviderStore migrated(legacy.path());
+        migrated.load();
+        QCOMPARE(migrated.activeId(), QString("custom"));
+        QCOMPARE(migrated.providers().last().model, QString("migrated-model"));
+        QVERIFY(migrated.key("custom").isEmpty());
+        QVERIFY(!migrated.keyIsRemembered("custom"));
+        // The retained encrypted legacy key must not be resurrected.
+        QCOMPARE(readRawFile(legacy.filePath("credentials.dpapi.json")), credentials);
+    }
+    void sqliteDocumentsOverrideRetainedLegacyFiles() {
+        QTemporaryDir directory;
+        AiProviderStore store(directory.path());
+        store.load();
+        store.saveProvider(compatible(), {}, false, true);
+        const auto state = providerState(store);
+        QVERIFY(!readFile(directory.filePath("providers.json")).isEmpty());
+        QVERIFY(writeLegacyFile(directory.filePath("providers.json"), "{invalid legacy metadata"));
+        QVERIFY(writeLegacyFile(directory.filePath("credentials.dpapi.json"), "{invalid legacy credentials"));
+        AiProviderStore reopened(directory.path());
+        reopened.load();
+        QCOMPARE(providerState(reopened), state);
+        QVERIFY(reopened.key("custom").isEmpty());
+    }
     void profilesPersistAndDeleteActiveDisablesIt() {
         QTemporaryDir directory;
         AiProviderStore store(directory.path());
@@ -281,6 +614,9 @@ class AiProviderTests final : public QObject {
         QCOMPARE(store.providers().size(), 1);
         store.upsert(compatible());
         store.setActive("custom");
+        QVERIFY(QFileInfo(directory.filePath("ai-providers.sqlite")).isFile());
+        QVERIFY(!QFile::exists(directory.filePath("providers.json")));
+        QVERIFY(!QFile::exists(directory.filePath("credentials.dpapi.json")));
         AiProviderStore reopened(directory.path());
         reopened.load();
         QCOMPARE(reopened.providers().size(), 2);
@@ -301,7 +637,12 @@ class AiProviderTests final : public QObject {
         const QString secret = "synthetic-session-secret-987";
         store.setKey("custom", secret, false);
         QVERIFY(!store.keyIsRemembered("custom"));
-        QVERIFY(!readFile(first.filePath("providers.json")).contains(secret.toUtf8()));
+        const auto metadata = readFile(first.filePath("providers.json"));
+        QVERIFY(!metadata.isEmpty());
+        QVERIFY(QFileInfo(first.filePath("ai-providers.sqlite")).isFile());
+        QVERIFY(!QFile::exists(first.filePath("providers.json")));
+        QVERIFY(!metadata.contains(secret.toUtf8()));
+        QVERIFY(!readRawFile(first.filePath("ai-providers.sqlite")).contains(secret.toUtf8()));
         QVERIFY(!QFile::exists(first.filePath("credentials.dpapi.json")));
         AiProviderStore recreated(first.path());
         recreated.load();
@@ -393,11 +734,18 @@ class AiProviderTests final : public QObject {
         store.setKey("custom", secret, true);
         QVERIFY(store.keyIsRemembered("custom"));
         const auto encrypted = readFile(first.filePath("credentials.dpapi.json"));
+        const auto metadata = readFile(first.filePath("providers.json"));
+        QVERIFY(!encrypted.isEmpty());
+        QVERIFY(!metadata.isEmpty());
+        QVERIFY(!QJsonDocument::fromJson(encrypted).object().value("credentials")
+                     .toObject().value("custom").toString().isEmpty());
         QVERIFY(!encrypted.contains(secret.toUtf8()));
-        QVERIFY(!readFile(first.filePath("providers.json")).contains(secret.toUtf8()));
-        QVERIFY(QFile::copy(first.filePath("providers.json"), second.filePath("providers.json")));
-        QVERIFY(QFile::copy(first.filePath("credentials.dpapi.json"),
-                           second.filePath("credentials.dpapi.json")));
+        QVERIFY(!metadata.contains(secret.toUtf8()));
+        QVERIFY(!readRawFile(first.filePath("ai-providers.sqlite")).contains(secret.toUtf8()));
+        // Recreate a synthetic legacy export to exercise migration and real
+        // current-user decrypt in a directory without a shared session key.
+        QVERIFY(writeLegacyFile(second.filePath("providers.json"), metadata));
+        QVERIFY(writeLegacyFile(second.filePath("credentials.dpapi.json"), encrypted));
         // Another directory has no shared session key; this exercises real current-user decrypt.
         AiProviderStore decrypted(second.path());
         decrypted.load();
@@ -422,10 +770,7 @@ class AiProviderTests final : public QObject {
         QCOMPARE(store.providers().size(), 1);
         QVERIFY(!QFile::exists(directory.filePath("providers.json")));
         store.upsert(compatible());
-        QFile file(directory.filePath("providers.json"));
-        QVERIFY(file.open(QIODevice::WriteOnly));
-        file.write("{invalid");
-        file.close();
+        QVERIFY(writeSqlDocument(directory.path(), "providers.json", "{invalid"));
         QVERIFY_THROWS_EXCEPTION(std::runtime_error, store.load());
         QCOMPARE(store.providers().size(), 2);
     }
@@ -438,41 +783,56 @@ class AiProviderTests final : public QObject {
         store.load();
         store.upsert(compatible());
         store.setKey("custom", "synthetic-bound-secret", true);
-        QVERIFY(QFile::copy(source.filePath("credentials.dpapi.json"),
-                           tampered.filePath("credentials.dpapi.json")));
-        auto object = QJsonDocument::fromJson(readFile(source.filePath("providers.json"))).object();
+        const auto credentials = readFile(source.filePath("credentials.dpapi.json"));
+        const auto metadata = readFile(source.filePath("providers.json"));
+        QVERIFY(!credentials.isEmpty());
+        QVERIFY(!metadata.isEmpty());
+        QVERIFY(writeLegacyFile(tampered.filePath("credentials.dpapi.json"), credentials));
+        auto object = QJsonDocument::fromJson(metadata).object();
         auto profiles = object.value("providers").toArray();
+        QCOMPARE(profiles.size(), 2);
         auto changed = profiles[1].toObject();
+        QCOMPARE(changed.value("id").toString(), QString("custom"));
         changed.insert("base_url", "https://different.example.com/v1");
         profiles[1] = changed;
         object.insert("providers", profiles);
-        QFile metadata(tampered.filePath("providers.json"));
-        QVERIFY(metadata.open(QIODevice::WriteOnly));
-        metadata.write(QJsonDocument(object).toJson());
-        metadata.close();
+        QVERIFY(writeLegacyFile(tampered.filePath("providers.json"), QJsonDocument(object).toJson()));
         AiProviderStore reopened(tampered.path());
         reopened.load();
         QVERIFY_THROWS_EXCEPTION(std::runtime_error, reopened.key("custom"));
     }
     void refusedFilesystemWritesDoNotPretendToSaveNewProfiles() {
         QTemporaryDir directory;
-        const auto blocker = directory.filePath("occupied");
-        QFile file(blocker);
-        QVERIFY(file.open(QIODevice::WriteOnly));
-        file.write("file, not directory");
-        file.close();
-        AiProviderStore store(blocker);
+        AiProviderStore store(directory.path());
         store.load();
-        QVERIFY_THROWS_EXCEPTION(std::runtime_error, store.upsert(compatible()));
-        QCOMPARE(store.providers().size(), 1);
-        QCOMPARE(store.activeId(), QString("deepseek-official"));
-        store.setKey("deepseek-official", "synthetic-memory-key", false);
+        store.saveProvider(compatible(), "synthetic-memory-key", false, true);
+        const auto original = providerState(store);
+        const auto profiles = readFile(directory.filePath("providers.json"));
+        QVERIFY(!profiles.isEmpty());
+        const auto database = directory.filePath("ai-providers.sqlite");
+        const auto preserved = directory.filePath("synthetic-preserved.sqlite");
+        QVERIFY(QFile::rename(database, preserved));
+        QVERIFY(QDir().mkdir(database));
+        QVERIFY_THROWS_EXCEPTION(std::runtime_error, store.checkWritable());
+        QVERIFY_THROWS_EXCEPTION(std::runtime_error, store.upsert(compatible("new-provider")));
+        auto changed = compatible();
+        changed.baseUrl = "https://replacement.example.com/v1";
+        QVERIFY_THROWS_EXCEPTION(std::runtime_error,
+            store.saveProvider(changed, "synthetic-replacement-key", AiProviderStore::persistentSecretsSupported(), true));
+        QCOMPARE(providerState(store), original);
+        QCOMPARE(store.key("custom"), QString("synthetic-memory-key"));
         if (AiProviderStore::persistentSecretsSupported()) {
             QVERIFY_THROWS_EXCEPTION(std::runtime_error,
-                store.setKey("deepseek-official", "synthetic-new-key", true));
-            QCOMPARE(store.key("deepseek-official"), QString("synthetic-memory-key"));
-            QVERIFY(!store.keyIsRemembered("deepseek-official"));
+                store.setKey("custom", "synthetic-new-key", true));
+            QCOMPARE(store.key("custom"), QString("synthetic-memory-key"));
+            QVERIFY(!store.keyIsRemembered("custom"));
         }
+        QVERIFY(QDir().rmdir(database));
+        QVERIFY(QFile::rename(preserved, database));
+        QCOMPARE(readFile(directory.filePath("providers.json")), profiles);
+        AiProviderStore reopened(directory.path());
+        reopened.load();
+        QCOMPARE(providerState(reopened), original);
     }
     void connectionAndModelsAreDifferentOperations() {
         const auto native = AiProviderConfig::deepSeekPreset();

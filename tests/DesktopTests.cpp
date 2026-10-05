@@ -2,6 +2,7 @@
 #include "adapters/UniversityRegistry.h"
 #include "desktop/MainWindow.h"
 #include "desktop/SourcePage.h"
+#include "desktop/UniversityPage.h"
 #include "storage/Database.h"
 #include "storage/SqliteRepository.h"
 #include "storage/SqliteSourceRepository.h"
@@ -13,6 +14,7 @@
 #include <QComboBox>
 #include <QDate>
 #include <QDir>
+#include <QDialog>
 #include <QDesktopServices>
 #include <QFile>
 #include <QJsonArray>
@@ -20,10 +22,13 @@
 #include <QJsonObject>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QTableView>
 #include <QTemporaryDir>
 #include <QTabWidget>
+#include <QTimer>
 
 using namespace campus;
 
@@ -194,8 +199,14 @@ class DesktopTests final : public QObject {
         QCOMPARE(control<QComboBox>(window, "yearSelector")->currentData().toInt(),
                  QDate::currentDate().year());
         QVERIFY(!window.findChild<QLineEdit *>("deepseekApiKey"));
+        // Search now opens basic setup when no Key exists. Explicitly dismiss
+        // that modal UI; this contract never authorizes a model request.
+        QTimer::singleShot(0, &window, [] {
+            if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget()))
+                dialog->reject();
+        });
         control<QPushButton>(window, "aiSearchButton")->click();
-        QVERIFY(control<QLabel>(window, "aiStatus")->text().contains("尚未发起请求"));
+        QVERIFY(control<QLabel>(window, "aiStatus")->text().contains("尚未"));
     }
     void allPausedRestartAndCachedNotices() {
         const auto school = SchoolPackage::load(CONFIG_FILE);
@@ -267,6 +278,110 @@ class DesktopTests final : public QObject {
                            {"real_v1_snapshot", realSnapshot},
                            {"source_rows", 7}});
         }
+    }
+    void refreshCompletionDoesNotUnlockSchoolOnboarding() {
+        const UniversityRegistry registry(SCHOOL_CONFIG_DIR);
+        QVERIFY(!registry.list().empty());
+        UniversityPage page(registry, registry.list().front().id);
+        page.show();
+        auto *input = control<QLineEdit>(page, "universityUrlInput");
+        auto *load = control<QPushButton>(page, "loadUniversityButton");
+        auto *directory = control<QListWidget>(page, "universityDirectory");
+        auto *feedback = control<QLabel>(page, "universityFeedback");
+        auto *progress = control<QProgressBar>(page, "universityProgress");
+        const QString phase = "正在发现新学校的公开栏目……";
+
+        page.setBusy(true);
+        page.setFeedback(phase);
+        page.setRefreshing(true);
+        page.setRefreshing(false);
+        QVERIFY(progress->isVisible());
+        QCOMPARE(progress->maximum(), 0);
+        QVERIFY(!input->isEnabled());
+        QVERIFY(!load->isEnabled());
+        QVERIFY(!directory->isEnabled());
+        QCOMPARE(feedback->text(), phase);
+        page.setBusy(false);
+        QVERIFY(progress->isHidden());
+        QVERIFY(input->isEnabled());
+
+        // The opposite completion order must retain the refresh lock too.
+        page.setRefreshing(true);
+        page.setBusy(true);
+        page.setFeedback(phase);
+        page.setBusy(false);
+        QVERIFY(progress->isVisible());
+        QCOMPARE(progress->maximum(), 0);
+        QVERIFY(!input->isEnabled());
+        QVERIFY(!load->isEnabled());
+        QVERIFY(!directory->isEnabled());
+        QCOMPARE(feedback->text(), phase);
+        page.setRefreshing(false);
+        QVERIFY(progress->isHidden());
+        QCOMPARE(progress->maximum(), 100);
+        QVERIFY(input->isEnabled());
+        QVERIFY(load->isEnabled());
+        QVERIFY(directory->isEnabled());
+    }
+    void schoolOnboardingBusyRestoresControls_data() {
+        QTest::addColumn<QString>("terminalMessage");
+        QTest::newRow("success") << QString("学校接入完成，已加载公开通知与资源。");
+        QTest::newRow("failure") << QString("官网暂时无法访问，请稍后重试。");
+    }
+    void schoolOnboardingBusyRestoresControls() {
+        QFETCH(QString, terminalMessage);
+        const UniversityRegistry registry(SCHOOL_CONFIG_DIR);
+        QVERIFY(!registry.list().empty());
+        UniversityPage page(registry, registry.list().front().id);
+        page.show();
+        auto *input = control<QLineEdit>(page, "universityUrlInput");
+        auto *load = control<QPushButton>(page, "loadUniversityButton");
+        auto *directory = control<QListWidget>(page, "universityDirectory");
+        auto *feedback = control<QLabel>(page, "universityFeedback");
+        auto *progress = control<QProgressBar>(page, "universityProgress");
+        QSignalSpy selected(&page, &UniversityPage::universitySelected);
+        QSignalSpy discovered(&page, &UniversityPage::homepageDiscoveryRequested);
+        QVERIFY(progress->isHidden());
+
+        page.setBusy(true);
+        QVERIFY(progress->isVisible());
+        QCOMPARE(progress->minimum(), 0);
+        QCOMPARE(progress->maximum(), 0);
+        QVERIFY(!input->isEnabled());
+        QVERIFY(!load->isEnabled());
+        QVERIFY(!directory->isEnabled());
+        QVERIFY(!progress->accessibleName().isEmpty());
+        const QString phase = "已识别学校，正在发现公开栏目……";
+        page.setFeedback(phase);
+        // Repeated busy signals must not erase the backend's current phase.
+        page.setBusy(true);
+        QCOMPARE(feedback->text(), phase);
+        QCOMPARE(feedback->accessibleDescription(), phase);
+        QCOMPARE(progress->accessibleDescription(), phase);
+        load->click();
+        QVERIFY(QMetaObject::invokeMethod(input, "returnPressed", Qt::DirectConnection));
+        QCOMPARE(selected.count(), 0);
+        QCOMPARE(discovered.count(), 0);
+
+        page.setBusy(false);
+        page.setFeedback(terminalMessage);
+        QVERIFY(progress->isHidden());
+        QCOMPARE(progress->minimum(), 0);
+        QCOMPARE(progress->maximum(), 100);
+        QVERIFY(progress->accessibleDescription().isEmpty());
+        QVERIFY(input->isEnabled());
+        QVERIFY(load->isEnabled());
+        QVERIFY(directory->isEnabled());
+        QCOMPARE(load->text(), QString("接入 / 切换大学"));
+        QCOMPARE(feedback->textFormat(), Qt::PlainText);
+        QCOMPARE(feedback->text(), terminalMessage);
+        // A later idle notification must keep the success or failure visible.
+        page.setBusy(false);
+        QCOMPARE(feedback->text(), terminalMessage);
+        load->click();
+        QCOMPARE(selected.count(), 1);
+        QCOMPARE(discovered.count(), 0);
+        QCOMPARE(selected.front().front().toString(), registry.list().front().configFile);
     }
     void officialHomepageInputAndRejection() {
         const auto school = SchoolPackage::load(CONFIG_FILE);

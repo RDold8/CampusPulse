@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
     QApplication app(argc, argv);
     app.setOrganizationName("CampusPulse");
     app.setApplicationName("CampusPulse");
-    app.setApplicationVersion("0.1.2");
+    app.setApplicationVersion("0.1.3");
     const auto defaultConfig =
         QCoreApplication::applicationDirPath() + "/configs/schools/neepu.example.json";
     QNetworkProxyFactory::setUseSystemConfiguration(true);
@@ -428,12 +428,13 @@ int main(int argc, char **argv) {
                                  [&, identity](const QString &seed, const QString &name) {
                     onboardingBusy = false;
                     auto *page = session->window.findChild<UniversityPage *>("universityPage");
-                    page->setBusy(false);
+                    // Keep the animation running through identity -> column discovery.
                     try {
                         registry.addLocalDiscoveredPackage(seed);
                         page->setFeedback("已自动识别：" + name + "（待核验）。正在发现公开栏目……");
                         emit session->window.universitySelected(seed);
                     } catch (const std::exception &error) {
+                        page->setBusy(false);
                         page->setFeedback(QString::fromUtf8(error.what()));
                     }
                     identity->deleteLater();
@@ -443,14 +444,23 @@ int main(int argc, char **argv) {
             QObject::connect(
                 &current.window, &MainWindow::universitySelected, &app,
                 [&](const QString &configFile) {
-                    // Replace pages only after the originating UI signal has returned.
+                    if (onboardingBusy)
+                        return;
+                    if (session->network.busy() || session->resourceDiscovery.busy()) {
+                        auto *page = session->window.findChild<UniversityPage *>("universityPage");
+                        page->setBusy(false);
+                        page->setFeedback("当前采集仍在运行，请在完成后重新接入学校。");
+                        return;
+                    }
+                    onboardingBusy = true;
+                    session->window.findChild<UniversityPage *>("universityPage")->setBusy(true);
+                    // Lock the originating page before queuing its replacement.
                     QTimer::singleShot(0, &app, [&, configFile] {
-                        if (session->network.busy() || session->resourceDiscovery.busy() || onboardingBusy)
-                            return;
                         try {
                             const auto school = SchoolPackage::load(configFile);
                             if (school.discoveryEntries.empty()) {
                                 switchSchool(configFile);
+                                onboardingBusy = false;
                                 return;
                             }
                             const auto cachedConfig =
@@ -481,6 +491,7 @@ int main(int argc, char **argv) {
                                         cached->automaticallyIdentified != school.automaticallyIdentified)
                                         throw std::runtime_error("自动接入缓存的官网域或自动身份标记不一致，请重新扫描");
                                     switchSchool(cachedConfig);
+                                    onboardingBusy = false;
                                     return;
                                 }
                             }
@@ -501,7 +512,6 @@ int main(int argc, char **argv) {
                             QObject::connect(
                                 scan, &SchoolOnboarding::finished, &app,
                                 [&, scan](const QString &generated, int, int) {
-                                    onboardingBusy = false;
                                     const auto verified = scan->verifiedNotices();
                                     QTimer::singleShot(0, &app, [&, generated, scan, verified] {
                                         try {
@@ -518,11 +528,16 @@ int main(int argc, char **argv) {
                                             QMessageBox::warning(&session->window, "自动接入失败",
                                                                  QString::fromUtf8(e.what()));
                                         }
+                                        onboardingBusy = false;
                                         scan->deleteLater();
                                     });
                                 });
                             scan->start();
                         } catch (const std::exception &e) {
+                            onboardingBusy = false;
+                            auto *page = session->window.findChild<UniversityPage *>("universityPage");
+                            page->setBusy(false);
+                            page->setFeedback(QString::fromUtf8(e.what()));
                             QMessageBox::warning(&session->window, "学校加载失败",
                                                  QString::fromUtf8(e.what()));
                         }

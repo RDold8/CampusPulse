@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
     cli.addOption({"evidence", "Result JSON (no credentials)", "path"});
     cli.addOption({"model", "Official model", "id", "deepseek-flash"});
     cli.addOption({"search-only", "Explicit search diagnostic, skip models and connection"});
+    cli.addOption({"auto-connect", "Exercise the production address-only automatic connection"});
     cli.process(app);
     if (!cli.isSet("config") || !cli.isSet("evidence")) return 1;
     const auto key = QString::fromUtf8(qgetenv("DEEPSEEK_API_KEY"));
@@ -53,6 +54,12 @@ int main(int argc, char **argv) {
                 if (!result.success) { finish(false); return; }
                 QTimer::singleShot(0, &app, [&] { probe.probe(profile, key); });
             } else {
+                if (result.operation == AiProbeOperation::AutoConnect) {
+                    profile = result.provider;
+                    record["auto_selected_model"] = profile.model;
+                    record["models"] = QJsonArray::fromStringList(result.modelIds);
+                    proof["automatic_connection"] = true;
+                }
                 proof["connection"] = record;
                 if (!result.success) { finish(false); return; }
                 QSet<QString> existing;
@@ -102,7 +109,8 @@ int main(int argc, char **argv) {
                 for (const auto &source : school.catalog)
                     existing.insert(QString::fromStdString(source.entryUrl));
                 search.search(profile, key, school.name, root, existing);
-            } else probe.fetchModels(profile, key);
+            } else if (cli.isSet("auto-connect")) probe.connectProvider(profile, key);
+            else probe.fetchModels(profile, key);
         });
         return app.exec();
     } catch (const std::exception &) { return 4; }

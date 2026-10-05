@@ -1,6 +1,8 @@
 #include "adapters/DeepSeekSearch.h"
 #include "adapters/AiSearchTemplate.h"
 #include "adapters/SchoolOnboarding.h"
+#include "adapters/HtmlAdapter.h"
+#include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -11,10 +13,14 @@
 #include <QNetworkProxy>
 #include <memory>
 #include <stdexcept>
+#include <algorithm>
 namespace campus {
 namespace {
 QString savedSessionKey;
 constexpr qint64 responseLimit = 2 * 1024 * 1024;
+constexpr int crawlPageLimit = 6;
+constexpr int observedLinkLimit = 80;
+constexpr int evidenceByteLimit = 20 * 1024;
 struct ResponseBuffer {
     QByteArray bytes;
     bool tooLarge = false;
@@ -45,10 +51,171 @@ bool safeCandidate(const QString &value, const QString &root, QUrl &url) {
     return url.authority(QUrl::FullyEncoded) == url.host() &&
            SchoolOnboarding::withinUniversity(url, root);
 }
+bool publicColumn(const QString &value, const QString &root, QUrl &url) {
+    if (value.size() > 512 || !safeCandidate(value, root, url) || HtmlAdapter::isArticleUrl(url))
+        return false;
+    static const QRegularExpression excluded(
+        "(?:login|signin|logout|oauth|sso|passport|/details(?:/|$))|"
+        "\\.(?:pdf|docx?|xlsx?|pptx?|zip|rar|7z|exe|jpg|png|mp4)(?:$|[?#])|"
+        "[?&](?:token|password|pwd|secret|key|ticket|session|auth|code)=",
+        QRegularExpression::CaseInsensitiveOption);
+    return !excluded.match(url.toString(QUrl::FullyEncoded)).hasMatch();
 }
-DeepSeekSearch::DeepSeekSearch(QObject *parent) : QObject(parent) {
-    network_.setTransferTimeout(60000);
-    network_.setProxy(QNetworkProxy::NoProxy);
+bool nativeWebSearch(const AiProviderConfig &provider) {
+    return provider.isOfficialDeepSeek() && provider.nativeSearch();
+}
+int linkScore(const QString &title, const QUrl &url, const QString &templateId) {
+    const QString text = title + " " + url.host() + " " + url.path();
+    int score = 0;
+    for (const auto &word : {"教务", "学生", "研究生", "图书馆", "团委", "就业", "财务",
+                            "学院", "jwc", "xgc", "yjs", "lib.", "career", "finance"})
+        if (text.contains(QString::fromUtf8(word), Qt::CaseInsensitive))
+            score += 12;
+    const QMap<QString, QStringList> focus{
+        {"retake-payment", {"教务", "考务", "重修", "补考", "缴费", "财务", "jwc", "finance"}},
+        {"scholarships", {"资助", "奖学金", "助学", "学生", "xgc", "xsc"}},
+        {"competitions", {"竞赛", "创新", "创业", "实践", "团委"}},
+        {"campus-activities", {"活动", "讲座", "团委", "志愿", "体育"}},
+        {"study-resources", {"图书馆", "资源", "课程", "科研", "实验", "lib.", "研究生"}},
+        {"teaching", {"教务", "培养", "学籍", "教学", "研究生", "jwc", "yjs"}},
+        {"careers", {"就业", "招聘", "实习", "职业", "career", "job"}}};
+    for (const auto &word : focus.value(templateId))
+        if (text.contains(word, Qt::CaseInsensitive))
+            score += 25;
+    if (SchoolOnboarding::isDiscoveryLabel(title)) score += 12;
+    if (url.path().isEmpty() || url.path() == "/") score += 15;
+    return score;
+}
+QJsonArray boundedEvidence(const QJsonArray &observed, const QString &root) {
+    QJsonArray result;
+    QSet<QString> seen;
+    int bytes = 0;
+    for (const auto &entry : observed) {
+        const auto item = entry.toObject();
+        QUrl url, origin;
+        if (!publicColumn(item.value("url").toString(), root, url) ||
+            !safeCandidate(item.value("observed_on").toString(), root, origin) ||
+            !QRegularExpression("^[a-f0-9]{64}$").match(item.value("html_sha256").toString()).hasMatch())
+            continue;
+        const auto normalized = url.toString(QUrl::FullyEncoded);
+        if (seen.contains(normalized)) continue;
+        QJsonObject evidence{{"url", normalized}, {"title", item.value("title").toString().left(120)},
+            {"observed_on", origin.toString(QUrl::FullyEncoded)},
+            {"html_sha256", item.value("html_sha256")}};
+        const int size = QJsonDocument(evidence).toJson(QJsonDocument::Compact).size();
+        if (size > evidenceByteLimit - bytes) continue;
+        bytes += size;
+        seen.insert(normalized);
+        result.append(evidence);
+        if (result.size() >= observedLinkLimit) break;
+    }
+    return result;
+}
+class GroundedDiscovery final : public QObject {
+  public:
+    using Complete = std::function<void(QJsonArray, QJsonObject)>;
+    GroundedDiscovery(QString root, QString templateId, QUrl homepage,
+                      DeepSeekSearch::PageFetcher fetch, QObject *owner,
+                      std::function<void(QString)> progress, Complete complete)
+        : QObject(owner), root_(std::move(root)), template_(std::move(templateId)),
+          fetch_(std::move(fetch)), progress_(std::move(progress)), complete_(std::move(complete)) {
+        enqueue(homepage, 10000, 0);
+        const auto fallback = QUrl("https://" + (homepage.host() == root_ ? "www." + root_ : root_) + "/");
+        enqueue(fallback, -1000, 0);
+    }
+    void start() { next(); }
+  private:
+    struct Page { QUrl url; int score; int depth; };
+    QString root_, template_;
+    DeepSeekSearch::PageFetcher fetch_;
+    std::function<void(QString)> progress_;
+    Complete complete_;
+    std::vector<Page> queue_;
+    QSet<QString> queued_;
+    QMap<QString, int> hosts_;
+    QMap<QString, QJsonObject> observed_;
+    QJsonArray failures_;
+    int attempted_ = 0, read_ = 0;
+    void enqueue(const QUrl &url, int score, int depth) {
+        const auto key = url.toString(QUrl::FullyEncoded);
+        if (depth > 2 || queued_.contains(key) || !PublicUniversityNetwork::withinUniversity(url, root_))
+            return;
+        if (queue_.size() >= observedLinkLimit) return;
+        queued_.insert(key);
+        queue_.push_back({url, score, depth});
+    }
+    void next() {
+        if (queue_.empty() || attempted_ >= crawlPageLimit) {
+            std::vector<QJsonObject> sorted;
+            for (const auto &item : observed_) sorted.push_back(item);
+            std::stable_sort(sorted.begin(), sorted.end(), [](const auto &a, const auto &b) {
+                return a.value("score").toInt() > b.value("score").toInt();
+            });
+            QJsonArray links;
+            for (const auto &item : sorted) links.append(item);
+            QJsonObject stats{{"crawl_requests", attempted_}, {"pages_read", read_},
+                {"observed_links", observed_.size()}, {"crawl_page_limit", crawlPageLimit},
+                {"crawl_limited", !queue_.empty() || !failures_.isEmpty()}, {"crawl_failures", failures_}};
+            complete_(boundedEvidence(links, root_), stats);
+            deleteLater();
+            return;
+        }
+        const auto score = [this](const Page &p) { return p.score - 15 * hosts_.value(p.url.host()); };
+        const auto selected = std::max_element(queue_.begin(), queue_.end(),
+            [&](const Page &a, const Page &b) { return score(a) < score(b); });
+        const auto page = *selected;
+        queue_.erase(selected);
+        ++attempted_;
+        ++hosts_[page.url.host()];
+        progress_(QString("读取学校官网 %1/%2 · %3").arg(attempted_).arg(crawlPageLimit).arg(page.url.host()));
+        fetch_(page.url, root_, this, [this, page](UniversityPageResponse response) {
+            if (!response.redirect.isEmpty()) {
+                QUrl target;
+                if (publicColumn(response.redirect.toString(QUrl::FullyEncoded), root_, target))
+                    enqueue(target, 9000, page.depth);
+                else failures_.append(QJsonObject{{"host", page.url.host()}, {"reason", "跳转超出允许的公开校网页"}});
+            } else if (!response.error.isEmpty() || response.status != 200 || response.bytes.isEmpty() ||
+                       !response.bytes.contains('<') ||
+                       QRegularExpression("type\\s*=\\s*[\"']?password", QRegularExpression::CaseInsensitiveOption)
+                           .match(QString::fromUtf8(response.bytes.left(65536))).hasMatch()) {
+                // Keep error classes visible without reflecting arbitrary remote HTML or credentials.
+                QString reason = "官网非HTML或需要登录";
+                if (!response.error.isEmpty()) {
+                    if (response.error.contains("内网") || response.error.contains("回环") || response.error.contains("保留"))
+                        reason = "官网DNS公网安全校验未通过";
+                    else if (response.error.contains("超时")) reason = "官网DNS或HTTPS请求超时";
+                    else if (response.error.contains("DNS", Qt::CaseInsensitive) || response.error.contains("解析"))
+                        reason = "官网公网DNS解析失败";
+                    else reason = "官网HTTPS或公开HTML请求失败";
+                } else if (response.status != 200) reason = "官网HTTP状态不成功";
+                failures_.append(QJsonObject{{"host", page.url.host()}, {"status", response.status}, {"reason", reason}});
+            } else {
+                ++read_;
+                const auto links = DeepSeekSearch::discoveredLinks(response.bytes, page.url, root_, template_);
+                for (const auto &entry : links) {
+                    const auto item = entry.toObject();
+                    const auto key = item.value("url").toString();
+                    if (!observed_.contains(key)) observed_.insert(key, item);
+                    enqueue(QUrl(key), item.value("score").toInt(), page.depth + 1);
+                }
+                while (observed_.size() > observedLinkLimit) {
+                    auto worst = observed_.begin();
+                    for (auto i = observed_.begin(); i != observed_.end(); ++i)
+                        if (i->value("score").toInt() < worst->value("score").toInt()) worst = i;
+                    observed_.erase(worst);
+                }
+            }
+            QTimer::singleShot(300, this, [this] { next(); });
+        });
+    }
+};
+}
+DeepSeekSearch::DeepSeekSearch(QObject *parent, PageFetcher pageFetcher)
+    : QObject(parent), pageFetcher_(std::move(pageFetcher)) {
+    if (!pageFetcher_) pageFetcher_ = [](const QUrl &url, const QString &root, QObject *owner,
+                                       PublicUniversityNetwork::Callback callback) {
+        PublicUniversityNetwork::get(url, root, owner, std::move(callback), 1024 * 1024, 12000);
+    };
 }
 QString DeepSeekSearch::sessionKey() {
     return savedSessionKey.isEmpty() ? QString::fromUtf8(qgetenv("DEEPSEEK_API_KEY"))
@@ -76,9 +243,11 @@ QJsonArray DeepSeekSearch::candidates(const QJsonObject &response, const QString
                                       const QSet<QString> &existing) {
     QJsonArray result;
     QSet<QString> seen = existing;
-    if (response.value("stop_reason").toString() != "end_turn") {
-        const auto reason = response.value("stop_reason").toString();
-        const auto known = QStringList{"max_tokens", "pause_turn", "tool_use", "refusal", "stop_sequence"};
+    const auto reason = response.value("stop_reason").toString();
+    const QStringList partialReasons{"max_tokens", "pause_turn", "tool_use", "stop_sequence",
+                                     "model_context_window_exceeded"};
+    if (reason != "end_turn" && !partialReasons.contains(reason)) {
+        const auto known = QStringList{"refusal"};
         throw std::runtime_error(QString("搜索接口响应未完整结束（%1），检索候选未采用")
             .arg(known.contains(reason) ? reason : "unknown").toStdString());
     }
@@ -94,9 +263,13 @@ QJsonArray DeepSeekSearch::candidates(const QJsonObject &response, const QString
         if (block.value("type") != "web_search_tool_result")
             continue;
         hasSearch = true;
-        if (!block.value("content").isArray())
-            throw std::runtime_error("搜索工具返回错误，未获得搜索结果");
-        for (const auto &item : block.value("content").toArray()) {
+        const auto content = block.value("content");
+        QJsonArray items;
+        if (content.isArray()) items = content.toArray();
+        else if (content.isObject() && content.toObject().value("type") == "web_search_tool_result_error")
+            items.append(content);
+        else throw std::runtime_error("搜索工具返回错误，未获得搜索结果");
+        for (const auto &item : items) {
             if (item.isObject() && item.toObject().value("type") == "web_search_tool_result_error" &&
                 item.toObject().value("error_code") == "max_uses_exceeded") {
                 budgetLimited = true;
@@ -130,21 +303,116 @@ QJsonArray DeepSeekSearch::candidates(const QJsonObject &response, const QString
             if (result.size() < 8)
                 result.append(QJsonObject{{"url", normalized},
                                           {"title", hit.value("title").toString()},
-                                          {"status", "candidate"}});
+                                          {"status", "candidate"}, {"provenance", "native_web_search"}});
         }
     }
     if (!hasSearch)
         throw std::runtime_error("搜索接口没有返回结构化搜索结果；不能把模型回答当作已检索");
     if (budgetLimited && actualResults == 0)
         throw std::runtime_error("搜索工具预算已达上限，未返回实际搜索结果");
+    if (reason != "end_turn" && actualResults == 0)
+        throw std::runtime_error("搜索响应未完整结束且没有实际搜索结果，未采用候选");
     return result;
 }
 void DeepSeekSearch::search(const QString &key, const QString &model, const QString &school,
                             const QString &root, const QSet<QString> &existing,
-                            const QString &templateId) {
+                            const QString &templateId, const QUrl &homepage) {
     auto provider = AiProviderConfig::deepSeekPreset();
     provider.model = model;
-    search(provider, key, school, root, existing, templateId);
+    search(provider, key, school, root, existing, templateId, homepage);
+}
+QJsonArray DeepSeekSearch::discoveredLinks(const QByteArray &html, const QUrl &page,
+                                          const QString &root, const QString &templateId) {
+    AiSearchTemplate::byId(templateId);
+    if (html.size() > 1024 * 1024 || !PublicUniversityNetwork::withinUniversity(page, root)) return {};
+    const auto hash = QString::fromLatin1(QCryptographicHash::hash(html, QCryptographicHash::Sha256).toHex());
+    std::vector<QJsonObject> entries;
+    QSet<QString> seen;
+    for (const auto &link : HtmlAdapter{}.links(html, page)) {
+        QUrl url;
+        if (!publicColumn(link.url.toString(QUrl::FullyEncoded), root, url)) continue;
+        const auto value = url.toString(QUrl::FullyEncoded);
+        if (seen.contains(value)) continue;
+        seen.insert(value);
+        entries.push_back({{"url", value}, {"title", link.title.left(120)},
+            {"observed_on", page.toString(QUrl::FullyEncoded)}, {"html_sha256", hash},
+            {"score", linkScore(link.title, url, templateId)}});
+    }
+    std::stable_sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) {
+        return a.value("score").toInt() > b.value("score").toInt();
+    });
+    QJsonArray result;
+    for (const auto &entry : entries) {
+        result.append(entry);
+        if (result.size() >= observedLinkLimit) break;
+    }
+    return result;
+}
+QJsonObject DeepSeekSearch::groundedRequestBody(const QString &model, const QString &school,
+                                               const QString &root, const QSet<QString> &existing,
+                                               const QJsonArray &observed, const QString &templateId) {
+    auto body = suggestionRequestBody(model, school, root, existing, templateId);
+    const auto selected = AiSearchTemplate::byId(templateId);
+    const auto evidence = boundedEvidence(observed, root);
+    if (evidence.isEmpty()) throw std::runtime_error("没有实际校网页链接证据，未发起AI请求");
+    QStringList known = existing.values();
+    known.sort();
+    const auto prompt = QString("学校：%1；官网域：%2；已有栏目：%3。客户端已实际读取学校公开官网，"
+        "下列资料是网页上观察到的链接，不表示栏目已验证可用或覆盖完整。分类：%4。%5"
+        "你没有联网检索工具；只基于所给网页证据筛选，不能补写、猜测、改写或拼接URL。"
+        "仅输出JSON对象 {\"candidates\":[{\"url\":\"资料中的原始URL\",\"title\":\"栏目名\"}]}，"
+        "至多8条；不确定返回空数组。%6\n网页链接资料：%7")
+        .arg(school.left(160), root, known.mid(0, 32).join("，").left(4096), selected.name, selected.focus,
+             columnSafetyInstructions(), QString::fromUtf8(QJsonDocument(evidence).toJson(QJsonDocument::Compact)));
+    body["messages"] = QJsonArray{QJsonObject{{"role", "user"}, {"content", prompt}}};
+    return body;
+}
+QJsonArray DeepSeekSearch::groundedCandidates(const QJsonObject &response, const QString &root,
+                                             const QSet<QString> &existing, const QJsonArray &observed) {
+    auto normalizedResponse = response;
+    if (!response.contains("choices")) {
+        if (response.value("stop_reason") != "end_turn" || !response.value("content").isArray())
+            throw std::runtime_error("官网证据筛选响应未完整结束，未采用候选");
+        QString text;
+        for (const auto &entry : response.value("content").toArray()) {
+            const auto block = entry.toObject();
+            if (!entry.isObject() || !block.value("type").isString())
+                throw std::runtime_error("官网证据筛选响应内容块无效");
+            if (block.value("type") == "text") {
+                if (!block.value("text").isString()) throw std::runtime_error("官网证据筛选缺少文本");
+                text += block.value("text").toString();
+            } else if (block.value("type") != "thinking")
+                throw std::runtime_error("官网证据筛选返回了意外工具内容");
+        }
+        normalizedResponse = {{"choices", QJsonArray{QJsonObject{{"finish_reason", "stop"},
+            {"message", QJsonObject{{"content", text}}}}}}};
+    }
+    QMap<QString, QJsonObject> allowed;
+    for (const auto &entry : boundedEvidence(observed, root))
+        allowed.insert(entry.toObject().value("url").toString(), entry.toObject());
+    // Validate response structure before accessing choices.first(); malformed
+    // wire responses must fail visibly rather than assert in Qt containers.
+    const auto selected = suggestionCandidates(normalizedResponse, root, existing);
+    const auto rawText = normalizedResponse.value("choices").toArray().first().toObject()
+                             .value("message").toObject().value("content").toString();
+    const auto rawCandidates = QJsonDocument::fromJson(rawText.toUtf8()).object().value("candidates").toArray();
+    for (const auto &entry : rawCandidates)
+        if (!allowed.contains(entry.toObject().value("url").toString()))
+            throw std::runtime_error("模型返回了官网未观察到的原始URL，整轮未采用候选");
+    QJsonArray result;
+    for (const auto &entry : selected) {
+        auto item = entry.toObject();
+        const auto url = item.value("url").toString();
+        if (!allowed.contains(url))
+            throw std::runtime_error("模型返回了官网未观察到的URL，整轮未采用候选");
+        const auto evidence = allowed.value(url);
+        item["title"] = evidence.value("title");
+        item["provenance"] = "official_site_crawl_ai_selection";
+        item["observed_on"] = evidence.value("observed_on");
+        item["html_sha256"] = evidence.value("html_sha256");
+        result.append(item);
+    }
+    return result;
 }
 QJsonObject DeepSeekSearch::suggestionRequestBody(const QString &model, const QString &school,
                                                 const QString &root, const QSet<QString> &existing,
@@ -197,7 +465,7 @@ QJsonArray DeepSeekSearch::suggestionCandidates(const QJsonObject &response, con
 }
 void DeepSeekSearch::search(const AiProviderConfig &provider, const QString &key, const QString &school,
                             const QString &root, const QSet<QString> &existing,
-                            const QString &templateId) {
+                            const QString &templateId, const QUrl &homepage) {
     if (busy_)
         return;
     try {
@@ -206,7 +474,7 @@ void DeepSeekSearch::search(const AiProviderConfig &provider, const QString &key
         emit failed(QString::fromUtf8(e.what()) + "；尚未发起AI请求。");
         return;
     }
-    if (root.isEmpty()) {
+    if (root.isEmpty() || !PublicUniversityNetwork::withinUniversity(QUrl("https://" + root + "/"), root)) {
         emit failed("学校官网域未确定；尚未发起AI请求。");
         return;
     }
@@ -220,21 +488,73 @@ void DeepSeekSearch::search(const AiProviderConfig &provider, const QString &key
         return;
     }
     busy_ = true;
+    if (!nativeWebSearch(provider)) {
+        QUrl start;
+        if (!publicColumn((homepage.isEmpty() ? QUrl("https://" + root + "/") : homepage)
+                              .toString(QUrl::FullyEncoded), root, start)) {
+            busy_ = false;
+            emit failed("官网首页超出本校公开HTTPS范围；未发起AI请求。");
+            return;
+        }
+        auto *crawl = new GroundedDiscovery(root, templateId, start, pageFetcher_, this,
+            [this](const QString &message) { emit progress(message); },
+            [this, provider, key, school, root, existing, templateId](QJsonArray observed, QJsonObject stats) {
+                QJsonArray clean;
+                for (const auto &entry : observed) {
+                    auto item = entry.toObject();
+                    if (item.value("url").toString().contains(key) ||
+                        item.value("observed_on").toString().contains(key)) continue;
+                    auto title = item.value("title").toString();
+                    title.replace(key, "[已隐藏]");
+                    item["title"] = title;
+                    clean.append(item);
+                }
+                stats["observed_links"] = clean.size();
+                stats["model_calls"] = 0;
+                stats["candidate_origin"] = "official_site_crawl_ai_selection";
+                emit diagnostic(stats);
+                if (stats.value("pages_read").toInt() == 0 || clean.isEmpty()) {
+                    busy_ = false;
+                    const auto errors = stats.value("crawl_failures").toArray();
+                    const QString cause = errors.isEmpty() ? "未发现可用公开栏目链接" :
+                        errors.first().toObject().value("reason").toString();
+                    emit failed(QString("未取得可供AI筛选的真实校网页链接（读取%1页，尝试%2/%3次）：%4；"
+                                        "未调用模型，不自动重试。")
+                        .arg(stats.value("pages_read").toInt()).arg(stats.value("crawl_requests").toInt())
+                        .arg(crawlPageLimit).arg(cause));
+                    return;
+                }
+                emit progress(QString("已读取%1页、发现%2条公开链接，正在让AI基于网页证据筛选……")
+                    .arg(stats.value("pages_read").toInt()).arg(clean.size()));
+                resolveAndSend(provider, key, school, root, existing, templateId, clean, stats);
+            });
+        crawl->start();
+        return;
+    }
+    emit progress("正在调用官方原生搜索工具，最多2次检索……");
+    resolveAndSend(provider, key, school, root, existing, templateId);
+}
+void DeepSeekSearch::resolveAndSend(const AiProviderConfig &provider, const QString &key,
+                                   const QString &school, const QString &root,
+                                   const QSet<QString> &existing, const QString &templateId,
+                                   const QJsonArray &observed, const QJsonObject &crawl) {
     const QUrl target = AiProviderConfig::requestEndpoint(provider);
     auto *lookupTimeout = new QTimer(this);
     lookupTimeout->setSingleShot(true);
     auto pending = std::make_shared<bool>(true);
-    connect(lookupTimeout, &QTimer::timeout, this, [this, pending, lookupTimeout] {
+    auto lookupId = std::make_shared<int>(-1);
+    connect(lookupTimeout, &QTimer::timeout, this, [this, pending, lookupTimeout, lookupId] {
         if (*pending) {
             *pending = false;
+            if (*lookupId >= 0) QHostInfo::abortHostLookup(*lookupId);
             busy_ = false;
             emit failed("API域名解析超过15秒；未发送Key，不自动重试。");
         }
         lookupTimeout->deleteLater();
     });
     lookupTimeout->start(15000);
-    QHostInfo::lookupHost(target.host(), this,
-        [this, provider, key, school, root, existing, target, pending, lookupTimeout, templateId](const QHostInfo &info) {
+    *lookupId = QHostInfo::lookupHost(target.host(), this,
+        [this, provider, key, school, root, existing, target, pending, lookupTimeout, templateId, observed, crawl](const QHostInfo &info) {
         if (!*pending) return;
         *pending = false;
         lookupTimeout->stop();
@@ -255,12 +575,12 @@ void DeepSeekSearch::search(const AiProviderConfig &provider, const QString &key
         }
         auto pinned = target;
         pinned.setHost(address.toString());
-        send(provider, key, school, root, existing, pinned, templateId);
+        send(provider, key, school, root, existing, pinned, templateId, observed, crawl);
     });
 }
 void DeepSeekSearch::send(const AiProviderConfig &provider, const QString &key, const QString &school,
                           const QString &root, const QSet<QString> &existing, const QUrl &pinned,
-                          const QString &templateId) {
+                          const QString &templateId, const QJsonArray &observed, const QJsonObject &crawl) {
     QNetworkRequest request(pinned);
     request.setPeerVerifyName(QUrl(provider.baseUrl).host());
     request.setRawHeader("Host", QUrl(provider.baseUrl).host().toLatin1());
@@ -275,13 +595,18 @@ void DeepSeekSearch::send(const AiProviderConfig &provider, const QString &key, 
     const auto headers = AiProviderConfig::credentialHeaders(provider, key);
     for (auto header = headers.cbegin(); header != headers.cend(); ++header)
         request.setRawHeader(header.key(), header.value());
-    const auto body = provider.nativeSearch() ? requestBody(provider.model, school, root, templateId)
-                                             : suggestionRequestBody(provider.model, school, root, existing, templateId);
+    const bool native = nativeWebSearch(provider);
+    const auto body = native ? requestBody(provider.model, school, root, templateId)
+                            : groundedRequestBody(provider.model, school, root, existing, observed, templateId);
+    QJsonObject started = crawl;
+    started["model_calls"] = 1;
+    started["candidate_origin"] = native ? "native_web_search" : "official_site_crawl_ai_selection";
     auto *transport = new QNetworkAccessManager(this);
     transport->setProxy(QNetworkProxy::NoProxy);
     transport->setTransferTimeout(60000);
     auto *reply = transport->post(
         request, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    emit diagnostic(started);
     reply->setReadBufferSize(responseLimit + 1);
     const auto buffer = std::make_shared<ResponseBuffer>();
     const auto drain = [reply, buffer] {
@@ -303,7 +628,7 @@ void DeepSeekSearch::send(const AiProviderConfig &provider, const QString &key, 
     deadline->start(60000);
     connect(reply, &QIODevice::readyRead, this, drain);
     connect(reply, &QNetworkReply::finished, this,
-            [this, reply, root, existing, buffer, drain, deadline, provider, key, transport, templateId] {
+            [this, reply, root, existing, buffer, drain, deadline, provider, key, transport, templateId, observed, crawl, native] {
         deadline->stop();
         drain();
         busy_ = false;
@@ -330,13 +655,35 @@ void DeepSeekSearch::send(const AiProviderConfig &provider, const QString &key, 
                     if (value.isDouble() && value.toDouble() >= 0)
                         usage[QLatin1String(field)] = value;
                 }
-                usage["mode"] = provider.nativeSearch() ? "native_search" : "model_suggestions";
+                usage["mode"] = native ? "native_search" : "official_site_crawl_ai_selection";
+                usage["candidate_origin"] = native ? "native_web_search" : "official_site_crawl_ai_selection";
+                usage["model_calls"] = 1;
+                if (!native) {
+                    for (const auto *field : {"pages_read", "crawl_requests", "observed_links", "crawl_limited"})
+                        usage[QLatin1String(field)] = crawl.value(QLatin1String(field));
+                }
                 usage["template_id"] = templateId;
                 QJsonObject metadata{{"usage", usage}, {"response_received", true}, {"template_id", templateId}};
-                if (provider.nativeSearch()) {
+                if (native) {
                     const auto reason = document.object().value("stop_reason").toString();
-                    const QStringList reasons{"end_turn", "max_tokens", "pause_turn", "tool_use", "refusal", "stop_sequence"};
+                    const QStringList reasons{"end_turn", "max_tokens", "pause_turn", "tool_use", "refusal", "stop_sequence", "model_context_window_exceeded"};
                     metadata["stop_reason"] = reasons.contains(reason) ? reason : "unknown";
+                    if (reason != "end_turn" && reasons.contains(reason) && reason != "refusal") {
+                        usage["search_limited"] = true;
+                    }
+                    // Diagnostic sampling limits must not hide a budget error
+                    // occurring after the sampled block/item window.
+                    for (const auto &entry : document.object().value("content").toArray()) {
+                        const auto block = entry.toObject();
+                        if (block.value("type") != "web_search_tool_result") continue;
+                        auto values = block.value("content").toArray();
+                        if (block.value("content").isObject()) values.append(block.value("content"));
+                        for (const auto &value : values) {
+                            const auto item = value.toObject();
+                            if (item.value("type") == "web_search_tool_result_error" &&
+                                item.value("error_code") == "max_uses_exceeded") usage["search_limited"] = true;
+                        }
+                    }
                     QJsonArray blocks;
                     for (const auto &entry : document.object().value("content").toArray()) {
                         if (blocks.size() >= 16) break;
@@ -347,7 +694,9 @@ void DeepSeekSearch::send(const AiProviderConfig &provider, const QString &key, 
                         if (type == "web_search_tool_result") {
                             description["content_is_array"] = block.value("content").isArray();
                             QJsonArray items;
-                            for (const auto &result : block.value("content").toArray()) {
+                            auto toolItems = block.value("content").toArray();
+                            if (block.value("content").isObject()) toolItems.append(block.value("content"));
+                            for (const auto &result : toolItems) {
                                 if (items.size() >= 32) break;
                                 const auto object = result.toObject();
                                 const auto kind = object.value("type").toString();
@@ -369,11 +718,12 @@ void DeepSeekSearch::send(const AiProviderConfig &provider, const QString &key, 
                 metadata["usage"] = usage;
                 emit diagnostic(metadata);
                 if (!provider.nativeSearch()) {
-                    usage["input_tokens"] = usage.value("prompt_tokens");
-                    usage["output_tokens"] = usage.value("completion_tokens");
+                    if (usage.contains("prompt_tokens")) usage["input_tokens"] = usage.value("prompt_tokens");
+                    if (usage.contains("completion_tokens")) usage["output_tokens"] = usage.value("completion_tokens");
                 }
-                const auto hits = provider.nativeSearch() ? candidates(document.object(), root, existing)
-                                                          : suggestionCandidates(document.object(), root, existing);
+                const auto hits = native ? candidates(document.object(), root, existing)
+                                         : groundedCandidates(document.object(), root, existing, observed);
+                if (native && usage.value("search_limited").toBool()) usage["partial_success"] = true;
                 QJsonArray filtered;
                 for (const auto &hit : hits) {
                     auto item = hit.toObject();

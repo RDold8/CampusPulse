@@ -31,7 +31,7 @@ class AiSourcesPage final : public QWidget {
     DeepSeekSearch search_;
     QComboBox *model_, *searchTemplate_;
     QLabel *status_, *active_, *selected_, *capability_, *templateDescription_;
-    QPushButton *run_, *add_, *edit_, *remove_, *activate_, *disable_, *save_, *fetch_;
+    QPushButton *run_, *configure_, *add_, *edit_, *remove_, *activate_, *disable_, *save_, *fetch_;
     QCheckBox *automatic_;
     QListWidget *results_, *providerList_;
     QHash<QString, QStringList> modelDirectories_;
@@ -46,7 +46,7 @@ class AiSourcesPage final : public QWidget {
     void reloadProviders(QString selectedId = {});
     void loadSelected();
     void updateEnabled();
-    void editProvider(bool add);
+    bool editProvider(bool add);
     void saveSelected();
     void activateSelected();
     void removeSelected();

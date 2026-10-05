@@ -2,12 +2,13 @@
 #include "adapters/AiProviderConfig.h"
 #include "adapters/AiProviderProbe.h"
 #include <QDialog>
+#include <QStringList>
+#include <optional>
 
 class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
-class QPlainTextEdit;
 class QPushButton;
 class QToolButton;
 
@@ -19,23 +20,30 @@ class AiProviderDialog final : public QDialog {
     AiProviderDialog(AiProviderStore &store, AiProviderConfig initial,
                      QWidget *parent = nullptr);
     const AiProviderConfig &savedProvider() const { return saved_; }
+    const QStringList &modelIds() const { return modelIds_; }
+    bool connectionVerified() const { return connectionVerified_; }
 
   private:
     AiProviderStore &store_;
     AiProviderConfig initial_, saved_;
     AiProviderProbe probe_;
-    QComboBox *preset_, *protocol_, *model_, *auth_;
-    QLineEdit *name_, *notes_, *website_, *baseUrl_, *key_;
-    QCheckBox *remember_, *fullUrl_;
-    QToolButton *reveal_;
-    QLabel *status_, *capability_, *endpoint_;
-    QPlainTextEdit *preview_;
-    QPushButton *fetch_, *test_, *save_;
+    QComboBox *model_;
+    QLineEdit *name_, *baseUrl_, *key_;
+    QCheckBox *remember_;
+    QToolButton *reveal_, *advanced_;
+    QLabel *status_;
+    QPushButton *fetch_, *save_, *saveOnly_;
+    QStringList modelIds_;
+    bool connecting_ = false;
+    bool connectionVerified_ = false;
+    std::optional<AiProviderConfig> connectedProvider_;
+    QByteArray connectedKeyDigest_;
+    bool hasCurrentConnection() const;
     AiProviderConfig formProvider() const;
-    void updateProtocol();
-    void applyPreset(int index);
-    void startProbe(bool models);
+    void fetchModels();
+    void connectAndSave();
     void setBusy(bool busy);
-    void save();
+    bool persist(const AiProviderConfig &provider, bool activate);
+    void saveOnly();
 };
 } // namespace campus

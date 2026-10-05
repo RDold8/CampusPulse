@@ -10,7 +10,7 @@
 class QNetworkReply;
 class QTimer;
 namespace campus {
-enum class AiProbeOperation { Connection, Models };
+enum class AiProbeOperation { Connection, Models, AutoConnect };
 struct AiProbeResult {
     AiProbeOperation operation = AiProbeOperation::Connection;
     bool success = false;
@@ -20,6 +20,7 @@ struct AiProbeResult {
     QString responseModel;
     QStringList modelIds;
     QJsonObject usage;
+    AiProviderConfig provider;
 };
 
 // Explicit button operations only; construction never performs network requests.
@@ -29,6 +30,8 @@ class AiProviderProbe final : public QObject {
     explicit AiProviderProbe(QObject *parent = nullptr);
     void probe(const AiProviderConfig &provider, const QString &key);
     void fetchModels(const AiProviderConfig &provider, const QString &key);
+    void connectProvider(const AiProviderConfig &provider, const QString &key);
+    static QString chooseModel(const QStringList &models, const QString &preferred = {});
     bool busy() const;
     void cancel();
     static QUrl endpoint(const AiProviderConfig &provider, AiProbeOperation operation);
@@ -40,6 +43,7 @@ class AiProviderProbe final : public QObject {
 
   signals:
     void finished(campus::AiProbeResult result);
+    void progress(QString message);
 
   private:
     QPointer<QNetworkReply> reply_;
@@ -49,6 +53,7 @@ class AiProviderProbe final : public QObject {
     QTimer *deadline_ = nullptr;
     QElapsedTimer elapsed_;
     AiProbeOperation operation_ = AiProbeOperation::Connection;
+    QPointer<AiProviderProbe> automaticProbe_;
     void start(const AiProviderConfig &provider, const QString &key, AiProbeOperation operation);
 };
 } // namespace campus

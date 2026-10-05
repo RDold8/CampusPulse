@@ -22,6 +22,7 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <stdexcept>
 
@@ -37,10 +38,18 @@ QString usageText(const QJsonObject &usage) {
                                                       : usage.value("prompt_tokens");
     const auto output = usage.contains("output_tokens") ? usage.value("output_tokens")
                                                         : usage.value("completion_tokens");
-    return QString("输入 token %1 · 输出 token %2")
+    const auto pages = usage.contains("pages_read")
+        ? QString("已读取官网 %1 页、发现 %2 个链接 · ")
+              .arg(usage.value("pages_read").toInt()).arg(usage.value("observed_links").toInt())
+        : QString{};
+    return pages + QString("输入 token %1 · 输出 token %2")
         .arg(input.isDouble() ? input.toVariant().toString() : "未返回",
              output.isDouble() ? output.toVariant().toString() : "未返回") +
-        (usage.value("search_limited").toBool() ? " · 搜索预算已达上限，采用已返回的部分实际结果" : "");
+        ((usage.value("search_limited").toBool() || usage.value("crawl_limited").toBool())
+             ? " · 本次达到检索上限，展示部分结果" : "");
+}
+bool nativeWebSearch(const AiProviderConfig &provider) {
+    return provider.isOfficialDeepSeek() && provider.nativeSearch();
 }
 } // namespace
 
@@ -60,15 +69,44 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
         root_.remove(0, 4);
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(24, 20, 24, 16);
-    auto *heading = new QLabel("AI 补充官网栏目");
+    auto *heading = new QLabel("AI 搜索学校信息");
     heading->setProperty("brandRole", "heading");
     layout->addWidget(heading);
     auto *intro = new QLabel(
-        "先运行规则爬虫，再用所选提供方补充公开栏目候选。普通采集不调用模型；"
-        "AI 请求可能消耗 token，仅使用学校名称、官网域与已有公开栏目。候选必须通过本校域名、列表和正文校验，"
-        "不能据此判断账号权限或资源全文是否可读。");
+        "配置接口地址与 Key 后，点击一键搜索。默认综合查找，也可以指定重修缴费、竞赛或学习资源。"
+        "AI 会消耗 token；找到的入口仍需官网校验。");
     intro->setWordWrap(true);
     layout->addWidget(intro);
+
+    auto *connectionRow = new QHBoxLayout;
+    active_ = new QLabel;
+    active_->setObjectName("aiActiveProvider");
+    active_->setTextFormat(Qt::PlainText);
+    active_->setWordWrap(true);
+    connectionRow->addWidget(active_, 1);
+    configure_ = new QPushButton("配置接口");
+    configure_->setObjectName("configureAiProviderButton");
+    connectionRow->addWidget(configure_);
+    layout->addLayout(connectionRow);
+    connect(configure_, &QPushButton::clicked, this, [this] {
+        editProvider(selectedProvider().id.isEmpty());
+    });
+
+    auto *advancedToggle = new QToolButton;
+    advancedToggle->setObjectName("aiSearchAdvancedToggle");
+    advancedToggle->setText("提供方与模型设置（可选）");
+    advancedToggle->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    advancedToggle->setArrowType(Qt::RightArrow);
+    advancedToggle->setCheckable(true);
+    auto *advancedPanel = new QWidget;
+    advancedPanel->setObjectName("aiSearchAdvancedPanel");
+    auto *advancedLayout = new QVBoxLayout(advancedPanel);
+    advancedLayout->setContentsMargins(0, 0, 0, 0);
+    advancedPanel->hide();
+    connect(advancedToggle, &QToolButton::toggled, this, [advancedToggle, advancedPanel](bool expanded) {
+        advancedToggle->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
+        advancedPanel->setVisible(expanded);
+    });
 
     auto *panels = new QHBoxLayout;
     auto *providerPanel = new QGroupBox("我的 AI 提供方");
@@ -100,11 +138,6 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
 
     auto *settingsPanel = new QGroupBox("模型选择");
     auto *settingsLayout = new QVBoxLayout(settingsPanel);
-    active_ = new QLabel;
-    active_->setObjectName("aiActiveProvider");
-    active_->setTextFormat(Qt::PlainText);
-    active_->setWordWrap(true);
-    settingsLayout->addWidget(active_);
     selected_ = new QLabel;
     selected_->setObjectName("aiSelectedProvider");
     selected_->setTextFormat(Qt::PlainText);
@@ -117,7 +150,7 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
     model_->setObjectName("deepseekModel");
     model_->setAccessibleName("选择所选提供方的模型，也可输入模型 ID");
     model_->lineEdit()->setMaxLength(160);
-    model_->lineEdit()->setPlaceholderText("选择模型，或输入服务支持的模型 ID");
+    model_->lineEdit()->setPlaceholderText("连接时自动选择；也可手动指定");
     form->addRow("模型", model_);
     settingsLayout->addLayout(form);
     capability_ = new QLabel;
@@ -135,9 +168,9 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
     settingsButtons->addWidget(fetch_);
     settingsLayout->addLayout(settingsButtons);
     panels->addWidget(settingsPanel, 3);
-    layout->addLayout(panels);
+    advancedLayout->addLayout(panels);
 
-    auto *templatePanel = new QGroupBox("搜索模板");
+    auto *templatePanel = new QGroupBox("搜索范围");
     auto *templateLayout = new QVBoxLayout(templatePanel);
     searchTemplate_ = new QComboBox;
     searchTemplate_->setObjectName("aiSearchTemplate");
@@ -165,15 +198,18 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
     automatic_->setChecked(QSettings().value("ai/enabled", false).toBool());
     connect(automatic_, &QCheckBox::toggled, this,
             [](bool checked) { QSettings().setValue("ai/enabled", checked); });
-    layout->addWidget(automatic_);
-    run_ = new QPushButton("补充栏目候选并校验接入");
+    advancedLayout->addWidget(automatic_);
+    run_ = new QPushButton("一键搜索");
     run_->setObjectName("aiSearchButton");
+    run_->setMinimumHeight(48);
     layout->addWidget(run_);
-    status_ = new QLabel("选择模型和搜索模板后可补充栏目。尚未发起请求；模型列表不证明搜索能力或官网覆盖。");
+    status_ = new QLabel("先配置接口，然后一键搜索。模型自动选择；尚未发起请求。");
     status_->setObjectName("aiStatus");
     status_->setWordWrap(true);
     status_->setTextFormat(Qt::PlainText);
     layout->addWidget(status_);
+    layout->addWidget(advancedToggle);
+    layout->addWidget(advancedPanel);
     results_ = new QListWidget;
     results_->setObjectName("aiCandidates");
     layout->addWidget(results_, 1);
@@ -218,6 +254,9 @@ AiSourcesPage::AiSourcesPage(const SchoolPackage &school, const UniversityRegist
         updateEnabled();
         status_->setText(reason);
     });
+    connect(&search_, &DeepSeekSearch::progress, this, [this](const QString &message) {
+        status_->setText(message);
+    });
     connect(&search_, &DeepSeekSearch::finished, this, &AiSourcesPage::validate);
     connect(&refresh, &RefreshCoordinator::started, this, [this] {
         refreshing_ = true;
@@ -261,7 +300,7 @@ AiProviderConfig AiSourcesPage::activeProvider() const {
 AiProviderConfig AiSourcesPage::selectedModelProvider() const {
     auto provider = selectedProvider();
     provider.model = model_->currentText().trimmed();
-    return provider;
+    return AiProviderConfig::automaticProfile(provider);
 }
 QString AiSourcesPage::providerKey(const AiProviderConfig &provider) const {
     if (provider.id.isEmpty())
@@ -290,7 +329,7 @@ void AiSourcesPage::reloadProviders(QString selectedId) {
     int selectedRow = -1;
     for (const auto &provider : providers_.providers()) {
         const bool active = provider.id == providers_.activeId();
-        const auto capability = provider.nativeSearch() ? "搜索工具模式" : "兼容接口 · 候选建议";
+        const auto capability = nativeWebSearch(provider) ? "官网检索" : "官网采集与 AI 筛选";
         auto *item = new QListWidgetItem(
             (active ? "● 当前启用  " : "○ ") + provider.name + "\n" +
             (provider.model.isEmpty() ? "模型待选择" : provider.model) + " · " + capability,
@@ -307,8 +346,7 @@ void AiSourcesPage::reloadProviders(QString selectedId) {
     const auto active = activeProvider();
     active_->setText(active.id.isEmpty() ? "当前启用：无（AI 已停用）"
                                         : "当前启用：" + active.name);
-    run_->setText(active.nativeSearch() ? "使用当前启用的提供方搜索并校验"
-                                      : "让当前启用模型提出栏目候选并校验");
+    run_->setText("一键搜索");
     loadSelected();
 }
 void AiSourcesPage::loadSelected() {
@@ -322,9 +360,7 @@ void AiSourcesPage::loadSelected() {
         if (model_->findText(id) < 0)
             model_->addItem(id);
     model_->setCurrentText(provider.model);
-    capability_->setText(provider.nativeSearch()
-        ? "工具搜索：接口与模型须支持搜索工具，连接成功不代表搜索可用。"
-        : "候选建议：兼容模型不代表联网搜索，提出的地址还要由爬虫实查。");
+    capability_->setText("连接成功说明接口与模型可回复；搜索时另行核实检索能力，入口仍需官网校验。");
     updateEnabled();
 }
 void AiSourcesPage::updateEnabled() {
@@ -333,6 +369,7 @@ void AiSourcesPage::updateEnabled() {
     const bool hasSelected = !selected.id.isEmpty();
     providerList_->setEnabled(idle);
     add_->setEnabled(idle);
+    configure_->setEnabled(idle);
     for (auto *button : {edit_, remove_, save_, fetch_})
         button->setEnabled(idle && hasSelected);
     activate_->setEnabled(idle && hasSelected && selected.id != providers_.activeId());
@@ -341,15 +378,22 @@ void AiSourcesPage::updateEnabled() {
     searchTemplate_->setEnabled(idle);
     automatic_->setEnabled(idle && !activeProvider().id.isEmpty());
     run_->setEnabled(idle && !activeProvider().id.isEmpty());
+    run_->setText(busy_ ? "正在搜索…" : "一键搜索");
 }
-void AiSourcesPage::editProvider(bool add) {
+bool AiSourcesPage::editProvider(bool add) {
     if (!storeReady_ || busy_ || refreshing_ || probe_.busy())
-        return;
+        return false;
     AiProviderDialog dialog(providers_, add ? AiProviderConfig{} : selectedProvider(), this);
     if (dialog.exec() == QDialog::Accepted) {
+        if (!dialog.modelIds().isEmpty())
+            modelDirectories_[dialog.savedProvider().id] = dialog.modelIds();
         reloadProviders(dialog.savedProvider().id);
-        status_->setText("配置已保存。需要时点击启用所选；保存不会发起 API 请求。");
+        status_->setText(dialog.connectionVerified()
+            ? "接口已连接，模型已自动选择。点击一键搜索即可继续；检索能力将在搜索时核实。"
+            : "配置已保存，尚未验证连接。点击配置接口完成连接后搜索。");
+        return dialog.connectionVerified();
     }
+    return false;
 }
 void AiSourcesPage::saveSelected() {
     const auto provider = selectedModelProvider();
@@ -416,14 +460,23 @@ void AiSourcesPage::run() {
     }
     if (provider.id == selectedProvider().id)
         provider = selectedModelProvider();
+    provider = AiProviderConfig::automaticProfile(provider);
+    if (root_.isEmpty()) {
+        status_->setText("当前学校缺少已核验的官方首页；尚未发起请求，请先接入大学官网。");
+        return;
+    }
     const auto key = activeKey();
+    if (key.isEmpty() || provider.model.isEmpty()) {
+        // Configuration is prompted only by this explicit search action.
+        // A completed connection continues this action; configuring separately never starts a search.
+        reloadProviders(provider.id);
+        if (editProvider(false))
+            QTimer::singleShot(0, this, &AiSourcesPage::run);
+        else
+            status_->setText("连接未完成；尚未发起搜索请求。填写地址和 Key 并连接后即可搜索。");
+        return;
+    }
     auto error = AiProviderConfig::validationError(provider);
-    if (error.isEmpty() && key.isEmpty())
-        error = "请在左侧编辑当前启用的提供方并填写密钥；尚未发起请求，不会消耗 token。";
-    if (error.isEmpty() && provider.model.isEmpty())
-        error = "请填写当前提供方的模型 ID；尚未发起请求。";
-    if (error.isEmpty() && root_.isEmpty())
-        error = "当前学校缺少已核验的官方首页，无法限定候选域名；尚未发起请求。";
     if (!error.isEmpty()) {
         status_->setText(error);
         return;
@@ -442,25 +495,26 @@ void AiSourcesPage::run() {
             url.setScheme("https");
         known.insert(url.toString(QUrl::FullyEncoded));
     }
-    status_->setText(provider.nativeSearch()
+    status_->setText(nativeWebSearch(provider)
         ? "正在通过当前启用的提供方调用搜索工具。候选仍需官网校验；不会自动重试。"
-        : "正在让兼容模型提出栏目候选。这不是联网搜索证据，后续由爬虫验证；不会自动重试。");
-    search_.search(provider, key, school_.name, root_, known, requestedTemplate_);
+        : "正在读取学校官网，再由 AI 从真实页面发现的链接中筛选。候选仍需官网校验。");
+    search_.search(provider, key, school_.name, root_, known, requestedTemplate_, school_.officialHomepage);
 }
 
 void AiSourcesPage::validate(QJsonArray candidates, QJsonObject usage) {
     const auto auditFolder =
         QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/ai-schools";
-    const QJsonObject audit{{"contract_version", requestedProvider_.nativeSearch()
-                                                        ? "search-v1" : "suggestion-v1"},
+    const auto origin = usage.value("candidate_origin").toString(
+        nativeWebSearch(requestedProvider_) ? "native_web_search" : "official_site_crawl_ai_selection");
+    const QJsonObject audit{{"contract_version", origin == "native_web_search"
+                                                        ? "search-v1" : "grounded-selection-v1"},
                             {"status", "candidate_only"},
-                            {"candidate_origin", requestedProvider_.nativeSearch()
-                                                        ? "native_web_search" : "compatible_model_suggestion"},
+                            {"candidate_origin", origin},
                             {"school_id", school_.id},
                             {"provider_id", requestedProvider_.id},
                             {"model", requestedModel_},
                             {"template_id", requestedTemplate_},
-                            {"model_calls", 1},
+                            {"model_calls", usage.value("model_calls").toInt(1)},
                             {"usage", usage},
                             {"candidates", candidates},
                             {"searched_at", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}};

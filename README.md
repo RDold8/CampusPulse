@@ -6,6 +6,8 @@
 
 **基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
+**当前工作区：0.1.3 本地桌面预览版。** 本版简化 AI 接口配置、修复本地保存失败，并显示学校接入动画；见 [0.1.3 更新说明](docs/release-0.1.3.md)与 [存储修复验收](docs/ai-storage-fix-validation.md)。本地安装包已更新，GitHub 公开下载仍为下方 0.1.2-r1。
+
 **Windows 0.1.2 更新预览版（2026-10-05）：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-setup.exe) · [下载便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-portable.zip) · [发布说明](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2-r1) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。本次更新改善目录外高校的栏目、通知和资源发现，补充北邮重修、补考等公开办事指南；见[更新说明](docs/release-0.1.2-r1.md)、[五校对比](docs/five-school-universal-validation.md)与[北邮教务指南验收](docs/bupt-generic-crawling-validation.md)。软件内版本号仍为 0.1.2，发布标签为 `v0.1.2-r1`。
 
 学校官网里有很多有用的内容：教务通知、考试安排、竞赛报名、奖助学金申请、校园活动、招聘信息，还有图书馆和学习资源入口。它们往往散落在不同部门的网站上，查找费时，也容易漏看。
@@ -29,7 +31,7 @@
 - **使用日历和提醒。** 已确认日期的待办进入内置日历，可以导出 ICS 文件供手机日历手动导入。桌面程序运行期间可以触发已启用的本地提醒。
 - **查找学校资源。** 在独立的“学校资源”页查看图书馆、课程与培养信息、竞赛、升学、就业等学习和办事入口，按类别与学习阶段筛选，并收藏常用链接。
 - **尝试接入目录外的大学。** 输入尚未收录的 `.edu.cn` 学校官网首页，程序识别首页名称，建立本机学校草案，再发现公开栏目；无需先手工编写学校配置。识别成功仍需栏目和正文校验，无法访问的页面会保留原因。
-- **管理自己的 AI 服务。** 保存多套服务名称、备注、官网、可自选请求地址、认证方式与模型；支持完整 URL、Anthropic Messages 和 OpenAI 兼容格式，显示最终请求地址，获取模型并测试连接。支持搜索工具的路由补充官网栏目；普通模型接口提供待核实建议。主页面只选择模型与分类搜索模板，连接地址和密钥在提供方编辑窗口中设置。
+- **填写地址和 Key，一键查找公开栏目。** AI 基础配置只需接口地址与密钥，软件自动读取模型、检查连接并启用；综合搜索及重修缴费、竞赛等分类模板可选。DeepSeek 官方执行真实网页搜索，其他兼容接口由软件先读学校官网，再让模型从真实链接中筛选；入口通过爬虫校验才接入。多提供方与模型调整放在折叠设置中。
 
 例如，你在软件里找到重修缴费通知，打开官方原文核对要求，建立“重修缴费”待办，确认时间并开启提醒，办理后再标记完成。报名、缴费和核对结果可以分别记录，避免完成其中一步后漏掉后续操作。
 
@@ -67,9 +69,9 @@
 
 ### AI 在这里做什么
 
-AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、重修补考与缴费、奖助学金申请、竞赛、活动、学习资源、教务和就业八种搜索模板，按所选类别使用不同提示词定向寻找栏目。我参考 CC Switch 的提供方列表、预设、编辑表单、模型选择和启用切换，重新用 Qt 实现这一入口。补充功能默认关闭，需要用户主动启用；候选链接仍要经过学校域名检查和真实官网采样，验证通过后才接入。调用会消耗 API token，界面记录实际返回的用量。Key 默认仅保留在当前进程，Windows 可选当前用户 DPAPI 加密保存，不写进学校配置或数据库。
+AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、重修补考与缴费、奖助学金申请、竞赛、活动、学习资源、教务和就业八种搜索模板，按所选类别使用不同提示词定向寻找栏目。我按 DeepSeek 官方接入说明，并参考 LobeHub 与 Cherry Studio 的接口分工，用 Qt 实现仅需地址和 Key 的基础连接。补充功能默认关闭，需要用户主动启用；候选链接仍要经过学校域名检查和真实官网采样，验证通过后才接入。调用会消耗 API token，界面记录实际返回的用量。Key 默认仅保留在当前进程，Windows 可选当前用户 DPAPI 加密保存；明文 Key 不写入数据库或学校配置。
 
-真实 DeepSeek 模型列表与短连接请求已返回成功，模型使用 `deepseek-flash`。原生搜索也收到真实工具结果，同时触发搜索次数上限；软件已增加保留真实部分结果和显示上限状态的处理，修复后的完整检索与来源补充链仍待网络恢复后复验。自定义兼容接口不内置网页搜索，普通模型回答只作为候选建议。另一个“资源说明 AI”方向目前完成了规范与离线测试，尚未接入桌面业务。
+此前版本的真实 DeepSeek 模型列表与短连接请求已返回成功，模型使用 `deepseek-flash`。原生搜索也收到真实工具结果，同时触发搜索次数上限；软件已增加保留真实部分结果和显示上限状态的处理，修复后的完整检索与来源补充链仍待网络恢复后复验。开发工作区已将自定义兼容接口改为真实官网采集加 AI 筛选，不接收网页中未出现的模型地址；这次重构尚未进入已发布的 r1 软件包。另一个“资源说明 AI”方向目前完成了规范与离线测试，尚未接入桌面业务。
 
 ### 目前的阶段和后续方向
 
@@ -106,6 +108,8 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 **Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
 
+**Current workspace: 0.1.3 local desktop preview.** This version simplifies AI setup, fixes local configuration persistence, and adds animated university-onboarding progress. See the [0.1.3 notes](docs/release-0.1.3.md) and [storage validation](docs/ai-storage-fix-validation.md). Local packages are updated; public GitHub downloads remain at 0.1.2-r1 below.
+
 **Windows 0.1.2 updated preview (2026-10-05):** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-portable.zip) · [Release notes](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2-r1) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. This update improves discovery of sections, notices, and resources outside the registry, including public retake and resit guides at BUPT. See the [update notes](docs/release-0.1.2-r1.md), [five-university comparison](docs/five-school-universal-validation.md), and [BUPT guide validation](docs/bupt-generic-crawling-validation.md). The application version remains 0.1.2; the release tag is `v0.1.2-r1`.
 
 University websites contain useful information: academic notices, exam schedules, competition registration, scholarships and financial aid, campus events, recruitment, and library or learning resources. These are often scattered across departmental websites, making them time-consuming to find and easy to miss.
@@ -129,7 +133,7 @@ I chose Northeast Electric Power University as the first example. My goal is a g
 - **Use a calendar and reminders.** Put tasks with confirmed dates in the built-in calendar and export ICS files for manual import into a phone calendar. Enabled local reminders can trigger while the desktop application is running.
 - **Discover university resources.** Find library services, curriculum information, competitions, further study, career resources, and other learning or practical links in a dedicated page. Filter by category or study stage and save favorites.
 - **Try a university outside the registry.** Enter an unconfigured `.edu.cn` university homepage. The application identifies its homepage name, saves a local draft, and discovers public sections without a manually written package. Lists and articles still require validation; inaccessible pages retain their failure reasons.
-- **Manage AI services.** Save several names, notes, websites, custom request routes, authentication modes, and models. Use full URLs or API bases with Anthropic Messages or OpenAI-compatible formats, inspect the resolved request URL, retrieve models, and test connections. Routes with search tools supplement discovery; ordinary model APIs supply unverified suggestions. The main page selects a model and category search template; connection addresses and keys stay in the provider editor.
+- **Enter an API address and key, then search.** Basic setup discovers models, verifies a short response, and activates the connection automatically. DeepSeek's official route performs native web search; other compatible routes use actual university pages collected by the app, then let AI select observed links. Sources are added only after independent crawling checks. Provider lists and manual models stay in optional settings.
 
 For example, you can find a retake payment notice, open the official article to check its requirements, create a payment task, confirm its date, enable a reminder, and mark it complete after paying. Registration, payment, and result verification can be recorded separately, so finishing one step does not hide the remaining actions.
 
@@ -167,9 +171,11 @@ Supporting universities across China is the design goal, with coverage extended 
 
 ### What AI does here
 
-AI supplements discovery by proposing official sections that the rule-based crawler may have missed. Eight category templates focus prompts on general discovery, retakes and payments, financial aid applications, competitions, campus activities, study resources, teaching administration, and careers. I used CC Switch's provider lists, presets, edit forms, model selection, and activation flow as references for an original Qt interface. Supplementation is disabled by default and requires user activation. Candidate links still undergo domain checks and actual website sampling. Calls consume API tokens and show returned usage. Keys stay in process memory by default, with optional current-user Windows DPAPI encryption; university packages and the database contain no key.
+Development-workspace update: AI setup now uses an address and key with automatic connection, plus official-page grounding for compatible routes. The school onboarding page includes an animated loading indicator. These changes are not yet in the published r1 assets.
 
-Real DeepSeek model-list and short connection requests succeeded using `deepseek-flash`. Native search returned real tool results alongside a search-use limit error. The application now retains valid partial results and shows that limit; the repaired search-to-source pipeline still needs another live check when networking is restored. Custom compatible interfaces have no built-in web search and produce suggestions only. A separate resource-description AI contract has offline tests but is not connected to the desktop workflow.
+AI supplements discovery by proposing official sections that the rule-based crawler may have missed. Eight category templates focus prompts on general discovery, retakes and payments, financial aid applications, competitions, campus activities, study resources, teaching administration, and careers. I followed DeepSeek's official API instructions and studied LobeHub and Cherry Studio's provider separation to build a simpler Qt connection form with an address and API key. Supplementation is disabled by default and requires user activation. Candidate links still undergo domain checks and actual website sampling. Calls consume API tokens and show returned usage. Keys stay in process memory by default, with optional current-user Windows DPAPI encryption; plaintext keys are never written to a database or university package.
+
+Earlier builds returned successful live DeepSeek model-list and short connection responses using `deepseek-flash`. Native search returned real tool results alongside a search-use limit error. The application now retains valid partial results and shows that limit; the repaired search-to-source pipeline still needs another live check when networking is restored. Compatible interfaces now select candidates from real official-page evidence collected by CampusPulse; final links still require crawler verification. A separate resource-description AI contract has offline tests but is not connected to the desktop workflow.
 
 ### Current stage and next steps
 

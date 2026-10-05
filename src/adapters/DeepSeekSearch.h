@@ -5,17 +5,21 @@
 #include <QNetworkAccessManager>
 #include <QSet>
 #include "adapters/AiProviderConfig.h"
+#include "adapters/PublicUniversityNetwork.h"
+#include <functional>
 namespace campus {
 class DeepSeekSearch final : public QObject {
     Q_OBJECT
   public:
-    explicit DeepSeekSearch(QObject *parent = nullptr);
+    using PageFetcher = std::function<void(const QUrl &, const QString &, QObject *,
+                                          PublicUniversityNetwork::Callback)>;
+    explicit DeepSeekSearch(QObject *parent = nullptr, PageFetcher pageFetcher = {});
     void search(const QString &key, const QString &model, const QString &school,
                 const QString &root, const QSet<QString> &existing,
-                const QString &templateId = "general");
+                const QString &templateId = "general", const QUrl &homepage = {});
     void search(const AiProviderConfig &provider, const QString &key, const QString &school,
                 const QString &root, const QSet<QString> &existing,
-                const QString &templateId = "general");
+                const QString &templateId = "general", const QUrl &homepage = {});
     static QJsonObject requestBody(const QString &model, const QString &school,
                                    const QString &root, const QString &templateId = "general");
     static QJsonArray candidates(const QJsonObject &response, const QString &root,
@@ -26,16 +30,30 @@ class DeepSeekSearch final : public QObject {
                                             const QString &templateId = "general");
     static QJsonArray suggestionCandidates(const QJsonObject &response, const QString &root,
                                           const QSet<QString> &existing);
+    static QJsonArray discoveredLinks(const QByteArray &html, const QUrl &page,
+                                     const QString &root, const QString &templateId = "general");
+    static QJsonObject groundedRequestBody(const QString &model, const QString &school,
+                                          const QString &root, const QSet<QString> &existing,
+                                          const QJsonArray &observed,
+                                          const QString &templateId = "general");
+    static QJsonArray groundedCandidates(const QJsonObject &response, const QString &root,
+                                        const QSet<QString> &existing, const QJsonArray &observed);
   signals:
+    void progress(QString message);
     void finished(QJsonArray candidates, QJsonObject usage);
     void failed(QString reason);
     void diagnostic(QJsonObject metadata);
 
   private:
-    QNetworkAccessManager network_;
+    PageFetcher pageFetcher_;
     bool busy_ = false;
     void send(const AiProviderConfig &provider, const QString &key, const QString &school,
               const QString &root, const QSet<QString> &existing, const QUrl &pinned,
-              const QString &templateId);
+              const QString &templateId, const QJsonArray &observed = {},
+              const QJsonObject &crawl = {});
+    void resolveAndSend(const AiProviderConfig &provider, const QString &key, const QString &school,
+                        const QString &root, const QSet<QString> &existing,
+                        const QString &templateId, const QJsonArray &observed = {},
+                        const QJsonObject &crawl = {});
 };
 } // namespace campus

@@ -29,6 +29,9 @@ struct AiProviderConfig {
     QJsonObject toJson() const;
     static AiProviderConfig fromJson(const QJsonObject &object);
     static AiProviderConfig deepSeekPreset();
+    // Basic setup accepts an address and key. Resolve known endpoint suffixes
+    // before selecting a wire protocol; never mix Messages and Chat paths.
+    static AiProviderConfig automaticProfile(AiProviderConfig config);
     static QString validationError(const AiProviderConfig &config);
     static QString endpointError(const QString &baseUrl);
     static bool isPublicAddress(const QHostAddress &address);
@@ -51,6 +54,11 @@ class AiProviderStore final {
     void setActive(const QString &id);
     QString key(const QString &id) const;
     void setKey(const QString &id, const QString &key, bool remember);
+    // Commit profile, credential and activation together; failures preserve the previous state.
+    void saveProvider(const AiProviderConfig &provider, const QString &key, bool remember,
+                      bool activate);
+    // Exercise a real transaction, then roll it back before any billable connection request.
+    void checkWritable() const;
     bool keyIsRemembered(const QString &id) const;
     static bool persistentSecretsSupported();
 
@@ -60,8 +68,8 @@ class AiProviderStore final {
     QList<AiProviderConfig> providers_;
     QString activeId_;
     QMap<QString, QByteArray> protectedKeys_;
-    void saveProfiles(const QList<AiProviderConfig> &providers, const QString &activeId) const;
-    void saveSecrets(const QMap<QString, QByteArray> &secrets) const;
+    void saveState(const QList<AiProviderConfig> &providers, const QString &activeId,
+                   const QMap<QString, QByteArray> &secrets, bool probeOnly = false) const;
     bool contains(const QString &id) const;
 };
 } // namespace campus

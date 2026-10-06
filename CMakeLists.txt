@@ -93,6 +93,10 @@ if(WIN32)
     target_link_libraries(campus_desktop PRIVATE ole32)
 endif()
 add_custom_command(TARGET CampusPulse POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E rm -f
+        $<TARGET_FILE_DIR:CampusPulse>/configs/schools/jlu.auto.json
+        $<TARGET_FILE_DIR:CampusPulse>/configs/schools/beihua.auto.json
+        $<TARGET_FILE_DIR:CampusPulse>/configs/schools/cust.auto.json
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/configs $<TARGET_FILE_DIR:CampusPulse>/configs)
 enable_testing()
 add_executable(campus_unknown_university_tests tests/UnknownUniversityTests.cpp)
@@ -227,7 +231,7 @@ add_test(NAME resource_contracts COMMAND campus_resource_tests -o -,txt)
 
 add_executable(campus_resource_discovery_tests tests/ResourceDiscoveryTests.cpp)
 target_link_libraries(campus_resource_discovery_tests PRIVATE campus_adapters campus_storage Qt6::Test)
-target_compile_definitions(campus_resource_discovery_tests PRIVATE SCHOOL_CONFIG_DIR="${CMAKE_SOURCE_DIR}/configs/schools" RESOURCE_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/resources" GENERAL_TEMPLATE_FIXTURES="${CMAKE_SOURCE_DIR}/tests/fixtures/general-templates" EVIDENCE_DIR="${CMAKE_SOURCE_DIR}/evidence")
+target_compile_definitions(campus_resource_discovery_tests PRIVATE SCHOOL_CONFIG_DIR="${CMAKE_SOURCE_DIR}/configs/schools" TEST_SCHOOL_SEEDS_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/university-seeds" RESOURCE_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/resources" GENERAL_TEMPLATE_FIXTURES="${CMAKE_SOURCE_DIR}/tests/fixtures/general-templates" EVIDENCE_DIR="${CMAKE_SOURCE_DIR}/evidence")
 add_test(NAME resource_discovery_contracts COMMAND campus_resource_discovery_tests -o -,txt)
 
 add_executable(campus_resource_desktop_tests tests/ResourceDesktopTests.cpp)

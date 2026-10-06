@@ -65,6 +65,13 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "{#PackageDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[InstallDelete]
+; Remove only the three retired bundled community packages on upgrade.
+; User-discovered universities and application data live outside {app}.
+Type: files; Name: "{app}\configs\schools\jlu.auto.json"
+Type: files; Name: "{app}\configs\schools\beihua.auto.json"
+Type: files; Name: "{app}\configs\schools\cust.auto.json"
+
 [Icons]
 Name: "{group}\CampusPulse"; Filename: "{app}\CampusPulse.exe"; WorkingDir: "{app}"
 Name: "{autodesktop}\CampusPulse"; Filename: "{app}\CampusPulse.exe"; WorkingDir: "{app}"; Tasks: desktopicon

@@ -56,14 +56,11 @@
 
 社区可以先提供经过核验的学校官网和部门入口，再逐步完善栏目配置与测试样本。遇到现有解析方式无法处理的网站，再扩展共享适配器。学校配置只描述数据，不执行任意脚本。
 
-目前目录包含以下四所学校，均只覆盖部分公开来源：
+软件随附的社区学校配置只保留东北电力大学，覆盖部分公开来源：
 
 | 学校 | 当前情况 |
 | --- | --- |
 | [东北电力大学](configs/schools/neepu.example.json) | 首个参考学校，已接入部分通知栏目，并作为学校资源的实网示例；就业网动态来源仍待适配。 |
-| [吉林大学](configs/schools/jlu.auto.json) | 已建立学校与部门入口配置，支持后台发现、验证并接入部分公开栏目。 |
-| [北华大学](configs/schools/beihua.auto.json) | 已建立学校配置，并对部分公开来源完成接入测试。 |
-| [长春理工大学](configs/schools/cust.auto.json) | 已建立学校配置，并对部分公开来源完成接入测试；需要学校账号的本科教务入口保留“需要登录”状态。 |
 
 面向全国高校是项目的设计目标，后续由社区逐步扩展。0.1.1 开始支持目录外学校的自动发现，首轮只接受 `.edu.cn` 根域或 `www` 官网首页，自动身份始终标为待核验草案。没有找到可用栏目时，会保留失败信息和原来的学校；遇到特殊域名、登录或动态网站，仍需要社区配置与共享适配器。目前不能保证找全某所学校的信息。
 
@@ -158,14 +155,11 @@ University websites differ, and information is spread across academic affairs of
 
 The community can start by providing verified homepage and department links, then improve source configurations and test fixtures. Websites that existing parsers cannot handle require an extension to a shared adapter. University configurations describe data and do not execute arbitrary scripts.
 
-The current registry includes four universities, each with partial public-source coverage:
+The application bundles one community university package, Northeast Electric Power University, with partial public-source coverage:
 
 | University | Current status |
 | --- | --- |
 | [Northeast Electric Power University](configs/schools/neepu.example.json) | The first reference university, with some notice sources connected and live resource-discovery checks; its dynamic employment source still needs adaptation. |
-| [Jilin University](configs/schools/jlu.auto.json) | University and departmental entry points are configured, with background discovery, validation, and onboarding of some public sections. |
-| [Beihua University](configs/schools/beihua.auto.json) | A university configuration is available, with onboarding checks for some public sources. |
-| [Changchun University of Science and Technology](configs/schools/cust.auto.json) | A university configuration is available, with onboarding checks for some public sources; undergraduate academic affairs requiring an account remain marked as requiring login. |
 
 Supporting universities across China is the design goal, with coverage extended gradually by the community. Version 0.1.1 starts automatic discovery outside the registry, initially limited to `.edu.cn` root or `www` homepages. Automatically identified universities remain unreviewed drafts. If no usable section is found, the application preserves the current university and reports the failure. Unusual domains, authentication, and dynamic sites still need community packages or shared adapters. Complete coverage is not guaranteed.
 

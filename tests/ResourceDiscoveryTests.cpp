@@ -462,7 +462,9 @@ class ResourceDiscoveryTests : public QObject {
     void optionalSchoolResourceSeedsUseOnlyOfficialHttps() {
         for (const auto *name :
              {"neepu.example.json", "cust.auto.json", "jlu.auto.json", "beihua.auto.json"}) {
-            const auto pack = SchoolPackage::load(QString(SCHOOL_CONFIG_DIR) + "/" + name);
+            const auto directory = QString(name) == "neepu.example.json"
+                ? QString(SCHOOL_CONFIG_DIR) : QString(TEST_SCHOOL_SEEDS_DIR);
+            const auto pack = SchoolPackage::load(directory + "/" + name);
             QVERIFY(!pack.officialHomepage.isEmpty());
             QVERIFY(!pack.resourceDiscoveryEntries.empty());
             QCOMPARE(pack.resourceDiscoveryLimit, 32);
@@ -536,7 +538,7 @@ class ResourceDiscoveryTests : public QObject {
         }));
     }
     void jluJavascriptLibraryRemainsUnverified() {
-        const auto pack = SchoolPackage::load(QString(SCHOOL_CONFIG_DIR) + "/jlu.auto.json");
+        const auto pack = SchoolPackage::load(QString(TEST_SCHOOL_SEEDS_DIR) + "/jlu.auto.json");
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         MemoryResources repository;

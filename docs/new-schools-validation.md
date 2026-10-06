@@ -2,7 +2,7 @@
 
 核验日期：2026-10-03（Asia/Shanghai）。本文件记录两校可信入口、真实页面样本和覆盖限制。学校包的 `categories` 是允许的分类集合，不代表六类信息已经全部采到；HTTP 200 也不代表页面已通过列表、正文校验。
 
-配置入口为 [`beihua.auto.json`](../configs/schools/beihua.auto.json) 和 [`cust.auto.json`](../configs/schools/cust.auto.json)。两校各提供 8 个经官网确认的部门/栏目起点；运行时仍使用同一套 C++/Qt/Lexbor 解析和校验，学校包未填写专属 CSS。自动发现最多请求 24 页，成功启用必须通过有效列表与首条正文检验。
+历史验收种子现保留为回归测试材料：[`beihua.auto.json`](../tests/fixtures/university-seeds/beihua.auto.json) 和 [`cust.auto.json`](../tests/fixtures/university-seeds/cust.auto.json)，不进入软件的社区配置目录或安装包。两校各提供 8 个经官网确认的部门/栏目起点；运行时仍使用同一套 C++/Qt/Lexbor 解析和校验，学校包未填写专属 CSS。自动发现最多请求 24 页，成功启用必须通过有效列表与首条正文检验。
 
 ## 可信身份及导航证据
 

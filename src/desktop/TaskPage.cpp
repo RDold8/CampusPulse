@@ -154,6 +154,11 @@ TaskPage::TaskPage(const SchoolPackage &school, TaskService &service,
     testReminder->setObjectName("testTaskReminderButton");
     testReminder->setToolTip("立即显示一次测试提醒，不创建待办、不修改你的数据。");
     filters->addWidget(testReminder);
+    auto *soundSettings = new QPushButton("提醒声音");
+    soundSettings->setObjectName("taskSoundSettingsButton");
+    soundSettings->setToolTip("选择提示音、调整音量或试听，不改变待办时间。");
+    connect(soundSettings, &QPushButton::clicked, this, &TaskPage::reminderSoundSettingsRequested);
+    filters->addWidget(soundSettings);
     layout->addLayout(filters);
     summary_ = new QLabel;
     summary_->setObjectName("taskSummary");

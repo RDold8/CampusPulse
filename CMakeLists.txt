@@ -84,13 +84,15 @@ add_library(campus_desktop src/desktop/MainWindow.cpp
     src/desktop/SubscriptionEditorDialog.cpp src/desktop/SubscriptionPage.cpp
     src/desktop/TaskDisplay.cpp src/desktop/TaskEditorDialog.cpp src/desktop/TaskPage.cpp src/desktop/AiSourcesPage.cpp src/desktop/CalendarPage.cpp src/desktop/ResourcePage.cpp src/desktop/BrandTheme.cpp src/desktop/DesktopWorkspace.cpp assets/campuspulse.qrc)
 target_sources(campus_desktop PRIVATE src/desktop/AiProviderDialog.cpp src/desktop/ReminderPopup.cpp)
+target_sources(campus_desktop PRIVATE src/desktop/ReminderAudio.cpp src/desktop/ReminderSound.cpp
+    src/desktop/ReminderSoundDialog.cpp)
 target_link_libraries(campus_desktop PUBLIC campus_adapters campus_presentation Qt6::Widgets)
 add_executable(CampusPulse WIN32 src/desktop/main.cpp)
 target_link_libraries(CampusPulse PRIVATE campus_desktop campus_storage)
 if(WIN32)
     target_sources(CampusPulse PRIVATE assets/campuspulse.rc)
     target_include_directories(CampusPulse PRIVATE ${CMAKE_SOURCE_DIR}/assets)
-    target_link_libraries(campus_desktop PRIVATE ole32)
+    target_link_libraries(campus_desktop PRIVATE ole32 winmm)
 endif()
 add_custom_command(TARGET CampusPulse POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E rm -f
@@ -222,6 +224,11 @@ add_test(NAME reminder_contracts COMMAND campus_reminder_tests -o -,txt)
 add_executable(campus_reminder_desktop_tests tests/ReminderDesktopTests.cpp)
 target_link_libraries(campus_reminder_desktop_tests PRIVATE campus_desktop campus_storage Qt6::Test)
 add_test(NAME reminder_desktop_contracts COMMAND campus_reminder_desktop_tests -o -,txt)
+add_executable(campus_reminder_audio_tests tests/ReminderAudioTests.cpp)
+target_link_libraries(campus_reminder_audio_tests PRIVATE campus_desktop Qt6::Test)
+add_test(NAME reminder_audio_contracts COMMAND campus_reminder_audio_tests -o -,txt)
+add_executable(campus_reminder_sound_native_probe tests/ReminderSoundNativeProbe.cpp)
+target_link_libraries(campus_reminder_sound_native_probe PRIVATE campus_desktop)
 add_executable(campus_reminder_native_probe tests/ReminderNativeProbe.cpp)
 target_link_libraries(campus_reminder_native_probe PRIVATE campus_desktop campus_storage)
 target_compile_definitions(campus_calendar_tests PRIVATE EVIDENCE_DIR="${CMAKE_SOURCE_DIR}/evidence")

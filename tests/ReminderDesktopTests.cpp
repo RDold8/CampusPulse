@@ -9,11 +9,13 @@
 #include <QApplication>
 #include <QDateTime>
 #include <QListWidget>
+#include <QLabel>
 #include <QPushButton>
 #include <QSignalSpy>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QTemporaryDir>
+#include <QSettings>
 #include <QtTest>
 #include <stdexcept>
 
@@ -87,6 +89,25 @@ struct Store {
 class ReminderDesktopTests final : public QObject {
     Q_OBJECT
   private slots:
+    void escapeDismissesBatchAndStopsAudioWithoutEditingTasks() {
+        Store store;
+        const auto task = store.create("[测试] Esc保留事项", QDateTime::currentDateTimeUtc().addSecs(90));
+        const auto before = store.tasks.list();
+        ReminderPopup popup;
+        popup.showTask(task);
+        popup.showTest();
+        QCOMPARE(popup.reminderCount(), 2);
+        QTest::keyClick(&popup, Qt::Key_Escape);
+        QVERIFY(!popup.isVisible());
+        QCOMPARE(popup.reminderCount(), 0);
+        QVERIFY(control<QLabel>(popup, "reminderAudioStatus")->text().contains("声音已停止"));
+        QCOMPARE(store.tasks.list(), before);
+        QCOMPARE(store.recordCount(), 0);
+        popup.showTest();
+        QCOMPARE(popup.reminderCount(), 1);
+        popup.close();
+    }
+
     void realTimerProducesVisibleNonModalPopupAndSubmittedRecord() {
         Store store;
         ReminderPopup popup;
@@ -226,6 +247,10 @@ int main(int argc, char **argv) {
     QApplication application(argc, argv);
     application.setOrganizationName("CampusPulseAcceptance");
     application.setApplicationName("ReminderDesktopTests");
+    QTemporaryDir settings;
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settings.path());
+    QSettings().setValue("reminders/soundTone", "mute");
     application.setQuitOnLastWindowClosed(false);
     BrandTheme::installApplication(application);
     ReminderDesktopTests tests;

@@ -32,6 +32,7 @@ class MainWindow final : public QMainWindow {
     void universitySelected(QString configFile);
     void universityHomepageRequested(QString homepage);
     void reminderTestRequested();
+    void reminderSoundSettingsRequested();
 
   protected:
     void closeEvent(QCloseEvent *event) override;

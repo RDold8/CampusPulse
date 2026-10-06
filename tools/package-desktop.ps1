@@ -31,6 +31,7 @@ Copy-Item -LiteralPath "$projectRoot\THIRD_PARTY_NOTICES.md" -Destination $desti
 Copy-Item -LiteralPath "$projectRoot\docs\desktop-prototype.md" -Destination "$destination\使用说明.md"
 Copy-Item -LiteralPath "$projectRoot\docs\subscriptions.md" -Destination "$destination\subscriptions.md"
 Copy-Item -LiteralPath "$projectRoot\docs\tasks.md" -Destination "$destination\tasks.md"
+Copy-Item -LiteralPath "$projectRoot\docs\reminder-sounds.md" -Destination "$destination\reminder-sounds.md"
 Copy-Item -LiteralPath "$projectRoot\docs\automatic-onboarding.md" -Destination "$destination\automatic-onboarding.md"
 Copy-Item -LiteralPath "$projectRoot\docs\ai-supplement.md" -Destination "$destination\ai-supplement.md"
 Copy-Item -LiteralPath "$projectRoot\docs\ai-provider-management.md" -Destination "$destination\ai-provider-management.md"

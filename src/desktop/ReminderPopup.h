@@ -1,5 +1,7 @@
 #pragma once
 #include "domain/PersonalTask.h"
+#include "desktop/ReminderAudio.h"
+#include "desktop/ReminderSound.h"
 #include <QDialog>
 #include <QSet>
 class QListWidget;
@@ -15,15 +17,23 @@ class ReminderPopup final : public QDialog {
     void showTest();
     void showFailure(const QString &reason);
     int reminderCount() const;
+    void stopSound();
+    void reloadAudioOptions();
   signals:
     void taskRequested(QString schoolId, QString taskId);
+    void soundSettingsRequested();
   protected:
-    void closeEvent(QCloseEvent *event) override;
+    void done(int result) override;
   private:
     QListWidget *items_;
     QLabel *heading_;
+    QLabel *audioStatus_;
+    ReminderSound sound_;
+    ReminderAudio audio_;
+    ReminderAudioOptions audioOptions_;
     QSet<QString> displayed_;
     QSet<QString> failures_;
     void present();
+    void ring();
 };
 } // namespace campus

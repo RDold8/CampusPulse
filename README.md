@@ -28,7 +28,7 @@
 - **更方便地查找信息。** 默认优先显示当前年份，支持按年份、来源、主题和关键词筛选。标题里有“重修”“补考”“缴费”时，会分别显示提示；同时出现时用 ` / ` 连接。
 - **保存自己的关注方向。** 把来源、主题和关键词保存为本地订阅，更新官网后查看符合规则的通知。
 - **跟进需要办理的事情。** 从通知建立闹钟待办卡片，填写事项并选择日期时刻即可保存，默认到时间提醒；卡片直接显示实际提醒时间，可修改时间或标记完成。原文变化后，相关待办会提示复核。
-- **使用日历和提醒。** 已确认日期的待办进入内置日历，可以导出 ICS 文件供手机日历手动导入。桌面程序运行期间可以触发已启用的本地提醒。
+- **使用日历和提醒。** 已确认日期的待办进入内置日历，可以导出 ICS 文件供手机日历手动导入。桌面程序运行期间可以触发已启用的本地提醒，带独立弹窗和三种可试听的提示音，可调整音量、静音或停止当前声音。
 - **查找学校资源。** 在独立的“学校资源”页查看图书馆、课程与培养信息、竞赛、升学、就业等学习和办事入口，按类别与学习阶段筛选，并收藏常用链接。
 - **尝试接入目录外的大学。** 输入尚未收录的 `.edu.cn` 学校官网首页，程序识别首页名称，建立本机学校草案，再发现公开栏目；无需先手工编写学校配置。识别成功仍需栏目和正文校验，无法访问的页面会保留原因。
 - **填写地址和 Key，一键查找公开栏目。** AI 基础配置只需接口地址与密钥，软件自动读取模型、检查连接并启用；综合搜索及重修缴费、竞赛等分类模板可选。DeepSeek 官方执行真实网页搜索，其他兼容接口由软件先读学校官网，再让模型从真实链接中筛选；入口通过爬虫校验才接入。多提供方与模型调整放在折叠设置中。
@@ -127,7 +127,7 @@ I chose Northeast Electric Power University as the first example. My goal is a g
 - **Find information more easily.** Show the current year by default and filter by year, source, topic, or keyword. Chinese titles mentioning retakes, resit exams, or payments receive individual labels, combined with ` / ` when several apply.
 - **Save your interests.** Store sources, topics, and keywords as local subscriptions, then review matching notices after updating from the websites.
 - **Track actions.** Create alarm-style task cards from notices, enter an action and a date/time, then save. New tasks default to an at-time reminder. Cards show the actual reminder time, offer quick editing and completion, and retain review flags when the original article changes.
-- **Use a calendar and reminders.** Put tasks with confirmed dates in the built-in calendar and export ICS files for manual import into a phone calendar. Enabled local reminders can trigger while the desktop application is running.
+- **Use a calendar and reminders.** Put tasks with confirmed dates in the built-in calendar and export ICS files for manual import into a phone calendar. Enabled local reminders can trigger while the desktop application is running, with a persistent popup and three previewable tones, adjustable volume, mute, and a stop-sound control.
 - **Discover university resources.** Find library services, curriculum information, competitions, further study, career resources, and other learning or practical links in a dedicated page. Filter by category or study stage and save favorites.
 - **Try a university outside the registry.** Enter an unconfigured `.edu.cn` university homepage. The application identifies its homepage name, saves a local draft, and discovers public sections without a manually written package. Lists and articles still require validation; inaccessible pages retain their failure reasons.
 - **Enter an API address and key, then search.** Basic setup discovers models, verifies a short response, and activates the connection automatically. DeepSeek's official route performs native web search; other compatible routes use actual university pages collected by the app, then let AI select observed links. Sources are added only after independent crawling checks. Provider lists and manual models stay in optional settings.

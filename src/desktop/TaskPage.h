@@ -25,6 +25,7 @@ class TaskPage final : public QWidget {
     void noticeRequested(QString id);
     void showNoticesRequested();
     void reminderTestRequested();
+    void reminderSoundSettingsRequested();
 
   private:
     SchoolPackage school_;

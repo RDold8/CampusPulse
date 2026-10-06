@@ -1,5 +1,7 @@
 # CampusPulse 0.1.3 本地桌面预览版
 
+2026-10-06 声音增补：待办页和托盘新增“提醒声音”，内置轻柔铃声、双响提示、闹钟提示与静音，可调音量并试听。到点立即播放，重复提示每12秒一次、最多1分钟；弹窗可停止声音，关闭最后一条提醒时停止。26/26组CTest通过，Windows原生音频探针验证三种声音完成和中途停止；扬声器实际可听效果由本机“试听”确认。详见[声音说明与验收](reminder-sounds.md)。
+
 2026-10-06 待办改进：默认闹钟卡片，填写事项并选择一个日期时刻即可保存，默认到时间提醒。原文确认、时间精度及自定义收进更多设置，旧任务保留原值。到点独立提醒窗口保留多条事项，等待手动关闭；页顶可以测试提醒。Windows托盘可用时关闭主窗口继续后台运行，托盘菜单可彻底退出。调度改为1秒检查，启动及短延迟只补发最近5分钟内尚未投递的有效提醒，修复当前分钟保存及稍晚启动直接跳过的情况。详见[闹钟待办验收](alarm-reminders-validation.md)。
 
 这次更新重做 AI 接入：填写接口地址与 API Key 后，程序自动处理官方或常见兼容地址、读取模型列表、选择模型并验证连接。名称和手动模型保持为可选高级设置。AI 搜索页保留综合、重修补考与缴费、奖助学金申请、竞赛、活动、学习资源、教务和就业八种范围；默认页面不展示路由或密钥。
@@ -19,6 +21,8 @@
 AI接入与存储原验收：CTest 23/23组通过；在原失败目录执行的生产存储探针通过，保存、重新加载、DPAPI密钥恢复与无明文检查均成功，未调用真实API。新增闹钟卡片和可见提醒验收另见上述记录。
 
 ## English
+
+The October 6 sound update adds three built-in tones, mute, adjustable volume, and a preview in the task page and tray menu. A due reminder plays immediately; optional repetition runs every 12 seconds for at most one minute. The popup can stop the current sound without completing a task. All 26 CTest groups pass, and a Windows audio probe confirms native playback completion and interruption. Physical speaker audibility remains a local preview check. See [sound behavior and validation](reminder-sounds.md).
 
 The October 6 task update adds alarm-style cards and a simple title, date/time and reminder selector. Saving confirms a personal plan; original-notice evidence and custom settings remain optional advanced controls. A persistent in-app popup retains multiple due tasks until dismissed. Where Windows tray support is available, closing the main window keeps reminders running; the tray menu provides an explicit exit. The scheduler checks every second and catches up only valid, undelivered reminders from the previous five minutes. Existing task values and completion states are preserved.
 

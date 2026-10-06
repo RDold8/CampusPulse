@@ -20,6 +20,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QTemporaryDir>
+#include <QSettings>
 #include <QTextStream>
 #include <QTimer>
 #include <stdexcept>
@@ -50,6 +51,9 @@ int main(int argc, char **argv) {
         QTemporaryDir temporary;
         if (!temporary.isValid())
             throw std::runtime_error("无法创建独立的测试数据库目录");
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, temporary.path());
+        QSettings().setValue("reminders/soundTone", "mute");
         const auto databasePath = temporary.filePath("reminder-native.sqlite");
         Database database(databasePath);
         SqliteRepository noticeRepository(database);

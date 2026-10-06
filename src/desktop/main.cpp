@@ -1,5 +1,6 @@
 #include "desktop/MainWindow.h"
 #include "desktop/ReminderPopup.h"
+#include "desktop/ReminderSoundDialog.h"
 #include "adapters/SchoolPackage.h"
 #include "adapters/RefreshCoordinator.h"
 #include "adapters/UniversityRegistry.h"
@@ -406,7 +407,16 @@ int main(int argc, char **argv) {
                 tray.showMessage("CampusPulse 测试提醒", "应用内提醒已弹出。这是一条测试系统通知。",
                                  BrandTheme::applicationIcon(), 15000);
         };
+        const auto soundSettings = [&] {
+            reminderPopup.stopSound();
+            // School selection can replace the session during this nested event
+            // loop. The popup has application scope and remains a stable parent.
+            ReminderSoundDialog dialog(&reminderPopup);
+            if (dialog.exec() == QDialog::Accepted) reminderPopup.reloadAudioOptions();
+        };
+        QObject::connect(&reminderPopup, &ReminderPopup::soundSettingsRequested, &app, soundSettings);
         trayMenu.addAction("测试提醒", testReminder);
+        trayMenu.addAction("提醒声音", soundSettings);
         trayMenu.addSeparator();
         trayMenu.addAction("退出 CampusPulse", &app, &QApplication::quit);
         tray.setContextMenu(&trayMenu);
@@ -444,6 +454,8 @@ int main(int argc, char **argv) {
         attachSelection = [&](DesktopSession &current) {
             current.window.setBackgroundReminders(trayAvailable);
             QObject::connect(&current.window, &MainWindow::reminderTestRequested, &app, testReminder);
+            QObject::connect(&current.window, &MainWindow::reminderSoundSettingsRequested, &app,
+                             soundSettings);
             QObject::connect(&current.window, &MainWindow::universityHomepageRequested, &app,
                              [&](const QString &homepage) {
                 if (session->network.busy() || session->resourceDiscovery.busy() || onboardingBusy)

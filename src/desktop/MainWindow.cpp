@@ -38,6 +38,8 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
     pages->addTab(subscriptionPage, "我的订阅");
     tasks_ = new TaskPage(school, tasks, coordinator);
     connect(tasks_, &TaskPage::reminderTestRequested, this, &MainWindow::reminderTestRequested);
+    connect(tasks_, &TaskPage::reminderSoundSettingsRequested, this,
+            &MainWindow::reminderSoundSettingsRequested);
     pages->addTab(tasks_, "我的待办");
     connect(notices_, &NoticePage::addTaskRequested, tasks_, [this, pages](const QString &id) {
         if (tasks_->createForNotice(id))

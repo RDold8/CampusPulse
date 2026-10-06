@@ -6,7 +6,7 @@ namespace campus {
 ReminderScheduler::ReminderScheduler(TaskRepository &tasks, ReminderRepository &records,
                                      Delivery delivery, QObject *parent)
     : QObject(parent), tasks_(tasks), records_(records), delivery_(std::move(delivery)) {
-    timer_.setInterval(15000);
+    timer_.setInterval(1000);
     connect(&timer_, &QTimer::timeout, this, [this] { poll(QDateTime::currentDateTimeUtc()); });
 }
 void ReminderScheduler::start() {
@@ -34,8 +34,6 @@ void ReminderScheduler::poll(const QDateTime &input) {
     const auto now = input.toUTC();
     if (!now.isValid())
         return;
-    const auto prior = previous_.isValid() ? previous_ : now.addSecs(-1);
-    previous_ = now;
     const auto stamp = [](const QDateTime &value) {
         return value.toString(Qt::ISODate).toStdString();
     };
@@ -44,7 +42,7 @@ void ReminderScheduler::poll(const QDateTime &input) {
             for (const auto &task : tasks_.list(school)) {
                 const auto fire = trigger(task);
                 const auto decision = ReminderService::decide(
-                    task, stamp(fire), stamp(now), stamp(prior), stamp(now.addSecs(-300)));
+                    task, stamp(fire), stamp(now), stamp(now.addSecs(-CatchUpSeconds)));
                 if (decision == ReminderDecision::Ignore)
                     continue;
                 ReminderRecord record{

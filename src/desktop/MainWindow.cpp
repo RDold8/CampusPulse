@@ -17,6 +17,7 @@
 #include <QTabWidget>
 #include <QStatusBar>
 #include <QSettings>
+#include <QCloseEvent>
 
 namespace campus {
 MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, SourceService &sources,
@@ -36,6 +37,7 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
     auto *subscriptionPage = new SubscriptionPage(school, subscriptions, coordinator);
     pages->addTab(subscriptionPage, "我的订阅");
     tasks_ = new TaskPage(school, tasks, coordinator);
+    connect(tasks_, &TaskPage::reminderTestRequested, this, &MainWindow::reminderTestRequested);
     pages->addTab(tasks_, "我的待办");
     connect(notices_, &NoticePage::addTaskRequested, tasks_, [this, pages](const QString &id) {
         if (tasks_->createForNotice(id))
@@ -147,6 +149,22 @@ void MainWindow::reload() {
 }
 void MainWindow::showReminder(const QString &title) {
     statusBar()->showMessage("待办提醒：" + title, 60000);
+}
+void MainWindow::showTask(const QString &taskId) {
+    tasks_->reload(taskId);
+    findChild<QTabWidget *>("mainTabs")->setCurrentWidget(tasks_);
+    showNormal();
+    raise();
+    activateWindow();
+}
+void MainWindow::setBackgroundReminders(bool enabled) { backgroundReminders_ = enabled; }
+void MainWindow::closeEvent(QCloseEvent *event) {
+    if (backgroundReminders_) {
+        hide();
+        event->ignore();
+        return;
+    }
+    QMainWindow::closeEvent(event);
 }
 bool MainWindow::selectContaining(const QString &keyword) {
     return notices_->selectContaining(keyword);

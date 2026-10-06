@@ -10,6 +10,7 @@ class ReminderScheduler final : public QObject {
     Q_OBJECT
   public:
     using Delivery = std::function<void(const PersonalTask &)>;
+    static constexpr int CatchUpSeconds = 300;
     ReminderScheduler(TaskRepository &, ReminderRepository &, Delivery, QObject *parent = nullptr);
     void start();
     void poll(const QDateTime &now);
@@ -23,6 +24,5 @@ class ReminderScheduler final : public QObject {
     ReminderRepository &records_;
     Delivery delivery_;
     QTimer timer_;
-    QDateTime previous_;
 };
 } // namespace campus

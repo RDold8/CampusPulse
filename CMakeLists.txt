@@ -83,7 +83,7 @@ add_library(campus_desktop src/desktop/MainWindow.cpp
     src/desktop/NoticePage.cpp src/desktop/SourcePage.cpp src/desktop/UniversityPage.cpp
     src/desktop/SubscriptionEditorDialog.cpp src/desktop/SubscriptionPage.cpp
     src/desktop/TaskDisplay.cpp src/desktop/TaskEditorDialog.cpp src/desktop/TaskPage.cpp src/desktop/AiSourcesPage.cpp src/desktop/CalendarPage.cpp src/desktop/ResourcePage.cpp src/desktop/BrandTheme.cpp src/desktop/DesktopWorkspace.cpp assets/campuspulse.qrc)
-target_sources(campus_desktop PRIVATE src/desktop/AiProviderDialog.cpp)
+target_sources(campus_desktop PRIVATE src/desktop/AiProviderDialog.cpp src/desktop/ReminderPopup.cpp)
 target_link_libraries(campus_desktop PUBLIC campus_adapters campus_presentation Qt6::Widgets)
 add_executable(CampusPulse WIN32 src/desktop/main.cpp)
 target_link_libraries(CampusPulse PRIVATE campus_desktop campus_storage)
@@ -181,11 +181,15 @@ target_compile_definitions(campus_task_desktop_tests PRIVATE
     CONFIG_FILE="${CMAKE_SOURCE_DIR}/configs/schools/neepu.example.json"
     SCHOOL_CONFIG_DIR="${CMAKE_SOURCE_DIR}/configs/schools" EVIDENCE_DIR="${CMAKE_SOURCE_DIR}/evidence")
 add_test(NAME task_desktop_contracts COMMAND campus_task_desktop_tests -o -,txt)
+add_executable(campus_task_card_tests tests/TaskCardTests.cpp)
+target_link_libraries(campus_task_card_tests PRIVATE campus_desktop campus_storage Qt6::Test)
+target_compile_definitions(campus_task_card_tests PRIVATE CONFIG_FILE="${CMAKE_SOURCE_DIR}/configs/schools/neepu.example.json")
+add_test(NAME task_card_contracts COMMAND campus_task_card_tests -o -,txt)
 add_executable(campus_onboarding_tests tests/OnboardingTests.cpp)
 target_link_libraries(campus_onboarding_tests PRIVATE campus_adapters campus_storage Qt6::Test)
 target_compile_definitions(campus_onboarding_tests PRIVATE JLU_FIXTURES="${CMAKE_SOURCE_DIR}/tests/fixtures/jlu"
     GENERAL_TEMPLATE_FIXTURES="${CMAKE_SOURCE_DIR}/tests/fixtures/general-templates"
-    SCHOOL_CONFIG_DIR="${CMAKE_SOURCE_DIR}/configs/schools")
+    TEST_SCHOOL_SEEDS_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/university-seeds")
 add_test(NAME onboarding_contracts COMMAND campus_onboarding_tests -o -,txt)
 
 add_executable(campus_html_template_tests tests/HtmlTemplateTests.cpp)
@@ -205,7 +209,7 @@ target_compile_definitions(campus_calendar_desktop_tests PRIVATE CONFIG_FILE="${
 add_test(NAME calendar_desktop_contracts COMMAND campus_calendar_desktop_tests -o -,txt)
 add_executable(campus_school_coverage_tests tests/SchoolCoverageTests.cpp)
 target_link_libraries(campus_school_coverage_tests PRIVATE campus_adapters Qt6::Test)
-target_compile_definitions(campus_school_coverage_tests PRIVATE SCHOOL_FIXTURES="${CMAKE_SOURCE_DIR}/tests/fixtures" SCHOOL_CONFIG_DIR="${CMAKE_SOURCE_DIR}/configs/schools" EVIDENCE_DIR="${CMAKE_SOURCE_DIR}/evidence")
+target_compile_definitions(campus_school_coverage_tests PRIVATE SCHOOL_FIXTURES="${CMAKE_SOURCE_DIR}/tests/fixtures" TEST_SCHOOL_SEEDS_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/university-seeds" EVIDENCE_DIR="${CMAKE_SOURCE_DIR}/evidence")
 add_test(NAME school_coverage_contracts COMMAND campus_school_coverage_tests -o -,txt)
 
 add_executable(campus_theme_coverage_tests tests/ThemeCoverageTests.cpp)
@@ -215,6 +219,11 @@ add_test(NAME theme_coverage_contracts COMMAND campus_theme_coverage_tests -o -,
 add_executable(campus_reminder_tests tests/ReminderTests.cpp)
 target_link_libraries(campus_reminder_tests PRIVATE campus_adapters campus_storage Qt6::Test)
 add_test(NAME reminder_contracts COMMAND campus_reminder_tests -o -,txt)
+add_executable(campus_reminder_desktop_tests tests/ReminderDesktopTests.cpp)
+target_link_libraries(campus_reminder_desktop_tests PRIVATE campus_desktop campus_storage Qt6::Test)
+add_test(NAME reminder_desktop_contracts COMMAND campus_reminder_desktop_tests -o -,txt)
+add_executable(campus_reminder_native_probe tests/ReminderNativeProbe.cpp)
+target_link_libraries(campus_reminder_native_probe PRIVATE campus_desktop campus_storage)
 target_compile_definitions(campus_calendar_tests PRIVATE EVIDENCE_DIR="${CMAKE_SOURCE_DIR}/evidence")
 
 add_executable(campus_calendar_native_probe tests/CalendarNativeProbe.cpp)

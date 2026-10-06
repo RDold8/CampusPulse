@@ -26,14 +26,21 @@ class MainWindow final : public QMainWindow {
     void reload();
     bool selectContaining(const QString &keyword);
     void showReminder(const QString &title);
+    void showTask(const QString &taskId = {});
+    void setBackgroundReminders(bool enabled);
   signals:
     void universitySelected(QString configFile);
     void universityHomepageRequested(QString homepage);
+    void reminderTestRequested();
+
+  protected:
+    void closeEvent(QCloseEvent *event) override;
 
   private:
     NoticePage *notices_;
     TaskPage *tasks_;
     CalendarPage *calendar_;
     ResourcePage *resources_ = nullptr;
+    bool backgroundReminders_ = false;
 };
 } // namespace campus

@@ -12,7 +12,8 @@ void check(QSqlQuery &query) {
 } // namespace
 std::vector<std::string> SqliteReminderRepository::schools() const {
     QSqlQuery query(database_);
-    query.prepare("SELECT DISTINCT school_id FROM personal_task WHERE reminder_enabled=1");
+    query.prepare("SELECT DISTINCT school_id FROM personal_task WHERE reminder_enabled=1 "
+                  "AND status IN('not_started','in_progress')");
     check(query);
     std::vector<std::string> result;
     while (query.next())

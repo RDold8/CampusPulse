@@ -3,6 +3,7 @@
 #include "application/SubscriptionService.h"
 #include "application/TaskService.h"
 #include "desktop/MainWindow.h"
+#include "desktop/BrandTheme.h"
 #include "desktop/TaskEditorDialog.h"
 #include "storage/Database.h"
 #include "storage/SqliteRepository.h"
@@ -20,6 +21,10 @@
 #include <QLineEdit>
 #include <QNetworkProxy>
 #include <QPushButton>
+#include <QScrollArea>
+#include <QScrollBar>
+#include <QScopeGuard>
+#include <QSpinBox>
 #include <QTabWidget>
 #include <QTableView>
 #include <QTcpServer>
@@ -28,6 +33,10 @@
 #include <QTextBrowser>
 #include <QTextEdit>
 #include <QTimer>
+#include <QTimeEdit>
+#include <QToolButton>
+#include <QWheelEvent>
+#include <algorithm>
 
 using namespace campus;
 namespace {
@@ -154,8 +163,9 @@ class TaskDesktopTests final : public QObject {
                 auto *editor = activeEditor();
                 QVERIFY(editor);
                 QCOMPARE(control<QComboBox>(*editor, "taskTimePrecision")->currentData().toString(),
-                         QString("unknown"));
-                QVERIFY(!control<QCheckBox>(*editor, "taskReminderEnabled")->isEnabled());
+                         QString("datetime"));
+                QVERIFY(control<QCheckBox>(*editor, "taskReminderEnabled")->isChecked());
+                QVERIFY(control<QWidget>(*editor, "taskAdvancedOptions")->isHidden());
                 editor->reject();
             });
             control<QPushButton>(window, "addTaskButton")->click();
@@ -213,6 +223,7 @@ class TaskDesktopTests final : public QObject {
                 control<QLineEdit>(*editor, "taskTitle")->setText("【演示】重修报名，时间待核对");
                 auto *action = control<QComboBox>(*editor, "taskAction");
                 action->setCurrentIndex(action->findData("registration"));
+                control<QCheckBox>(*editor, "taskTimeScheduled")->setChecked(false);
                 control<QPushButton>(*editor, "saveTaskButton")->click();
             });
             control<QPushButton>(window, "addTaskButton")->click();
@@ -260,7 +271,7 @@ class TaskDesktopTests final : public QObject {
             QVERIFY(control<QLabel>(window, "detailTitle")->text().contains("重修报名与缴费"));
         }
     }
-    void exactTimeEditorConvertsSchoolZoneAndRequiresReconfirmation() {
+    void exactPersonalTimeSavesWithoutAnExtraConfirmation() {
         const auto school = SchoolPackage::load(CONFIG_FILE);
         QTemporaryDir dir;
         Session s(dir.filePath("datetime.sqlite"), school);
@@ -276,13 +287,160 @@ class TaskDesktopTests final : public QObject {
         time->setTime(QTime(16, 31, 15));
         QVERIFY(!confirm->isChecked());
         control<QPushButton>(editor, "saveTaskButton")->click();
-        QVERIFY(s.tasks.list().empty());
-        confirm->setChecked(true);
-        control<QPushButton>(editor, "saveTaskButton")->click();
         QCOMPARE(editor.result(), int(QDialog::Accepted));
         QCOMPARE(editor.saved().time.utcDateTime, std::string("2026-10-04T08:31:15Z"));
         QVERIFY(editor.saved().time.date.empty());
         QCOMPARE(editor.saved().time.confirmation, TimeConfirmation::Personal);
+    }
+    void compactAlarmPresetsAndExplicitUnscheduledChoice() {
+        const auto previousFont = qApp->font();
+        const auto previousStyle = qApp->styleSheet();
+        const auto restoreTheme = qScopeGuard([&] {
+            qApp->setFont(previousFont);
+            qApp->setStyleSheet(previousStyle);
+        });
+        auto themedFont = previousFont;
+        themedFont.setPointSizeF(std::max(themedFont.pointSizeF(), 10.5));
+        qApp->setFont(themedFont);
+        qApp->setStyleSheet(BrandTheme::styleSheet());
+        const auto school = SchoolPackage::load(CONFIG_FILE);
+        QTemporaryDir dir;
+        Session s(dir.filePath("compact.sqlite"), school);
+        s.seed();
+        TaskEditorDialog editor(school, s.tasks, s.tasks.draft("task-ui-demo"), "演示通知");
+        editor.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&editor));
+        QVERIFY(control<QWidget>(editor, "taskAdvancedOptions")->isHidden());
+        QVERIFY(!control<QComboBox>(editor, "taskTimePrecision")->isVisible());
+        QVERIFY(control<QDateTimeEdit>(editor, "taskDateTime")->isVisible());
+        QVERIFY(!control<QDateEdit>(editor, "taskDate")->isVisible());
+        QVERIFY(!control<QSpinBox>(editor, "taskReminderMinutes")->isVisible());
+        QVERIFY(editor.height() <= 350);
+        auto *scroll = editor.findChild<QScrollArea *>();
+        QVERIFY(scroll);
+        QCOMPARE(scroll->verticalScrollBar()->maximum(), 0);
+        for (const auto *name : {"taskTitle", "taskDateTime", "taskReminderPreset",
+                                 "taskReminderPreview", "taskMoreOptions"}) {
+            auto *widget = control<QWidget>(editor, name);
+            const auto position = widget->mapTo(scroll->viewport(), QPoint());
+            QVERIFY(scroll->viewport()->rect().contains(QRect(position, widget->size())));
+        }
+        if (QDir(EVIDENCE_DIR).exists())
+            QVERIFY(editor.grab().save(QString(EVIDENCE_DIR) + "/simple-reminder-editor-demo.png"));
+        editor.resize(810, 350);
+        control<QToolButton>(editor, "taskMoreOptions")->click();
+        QTRY_VERIFY(editor.height() >= 600);
+        QCOMPARE(editor.width(), 810);
+        control<QToolButton>(editor, "taskMoreOptions")->click();
+        QTRY_VERIFY(editor.height() <= 350);
+        QCOMPARE(editor.width(), 810);
+        QTRY_COMPARE(scroll->verticalScrollBar()->maximum(), 0);
+        auto *time = control<QDateTimeEdit>(editor, "taskDateTime");
+        QVERIFY(time->dateTime() > QDateTime::currentDateTimeUtc());
+        auto tomorrow = QDateTime::currentDateTimeUtc().addDays(1).toTimeZone(QTimeZone("Asia/Shanghai"));
+        tomorrow.setTime(QTime(tomorrow.time().hour(), tomorrow.time().minute(), 0));
+        time->setDateTime(tomorrow);
+        auto *preset = control<QComboBox>(editor, "taskReminderPreset");
+        preset->setCurrentIndex(preset->findData("10"));
+        QCOMPARE(control<QSpinBox>(editor, "taskReminderMinutes")->value(), 10);
+        const auto expected = tomorrow.addSecs(-600).toString("yyyy年MM月dd日 HH:mm");
+        QVERIFY(control<QLabel>(editor, "taskReminderPreview")->text().contains(expected));
+        QWheelEvent wheel(QPointF(10, 10), QPointF(10, 10), QPoint(), QPoint(0, 120),
+                          Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+        time->setCurrentSection(QDateTimeEdit::YearSection);
+        QApplication::sendEvent(time, &wheel);
+        QCOMPARE(time->dateTime(), tomorrow);
+        control<QPushButton>(editor, "saveTaskButton")->click();
+        QCOMPARE(editor.result(), int(QDialog::Accepted));
+        QVERIFY(editor.saved().reminder.enabled);
+        QCOMPARE(editor.saved().reminder.minutesBefore, 10);
+        QCOMPARE(editor.saved().time.confirmation, TimeConfirmation::Personal);
+        TaskEditorDialog unscheduled(school, s.tasks, s.tasks.draft("task-ui-demo"), "演示通知");
+        control<QCheckBox>(unscheduled, "taskTimeScheduled")->setChecked(false);
+        control<QPushButton>(unscheduled, "saveTaskButton")->click();
+        QCOMPARE(unscheduled.result(), int(QDialog::Accepted));
+        QCOMPARE(unscheduled.saved().time.precision, TimePrecision::Unknown);
+        QVERIFY(!unscheduled.saved().reminder.enabled);
+    }
+    void dateOnlyPresetsAndCustomPreferencesSurviveReopening() {
+        const auto school = SchoolPackage::load(CONFIG_FILE);
+        QTemporaryDir dir;
+        Session s(dir.filePath("date-custom.sqlite"), school);
+        s.seed();
+        TaskEditorDialog editor(school, s.tasks, s.tasks.draft("task-ui-demo"), "演示通知");
+        auto *precision = control<QComboBox>(editor, "taskTimePrecision");
+        precision->setCurrentIndex(precision->findData("date"));
+        const auto date = QDate::currentDate().addDays(4);
+        control<QDateEdit>(editor, "taskDate")->setDate(date);
+        auto *preset = control<QComboBox>(editor, "taskReminderPreset");
+        QVERIFY(preset->findData("10") < 0);
+        preset->setCurrentIndex(preset->findData("1"));
+        QCOMPARE(control<QSpinBox>(editor, "taskReminderDays")->value(), 1);
+        QCOMPARE(control<QTimeEdit>(editor, "taskReminderTime")->time(), QTime(9, 0));
+        QVERIFY(control<QLabel>(editor, "taskReminderPreview")
+                    ->text().contains(date.addDays(-1).toString("yyyy年MM月dd日") + " 09:00"));
+        preset->setCurrentIndex(preset->findData("custom"));
+        control<QSpinBox>(editor, "taskReminderDays")->setValue(2);
+        control<QTimeEdit>(editor, "taskReminderTime")->setTime(QTime(18, 20));
+        control<QPushButton>(editor, "saveTaskButton")->click();
+        QCOMPARE(editor.result(), int(QDialog::Accepted));
+        const auto original = editor.saved();
+        QCOMPARE(original.reminder.daysBefore, 2);
+        QCOMPARE(original.reminder.dateOnlyAt, std::string("18:20"));
+        QVERIFY(original.time.utcDateTime.empty());
+        TaskEditorDialog reopened(school, s.tasks, original, "演示通知");
+        QCOMPARE(control<QComboBox>(reopened, "taskReminderPreset")->currentData().toString(),
+                 QString("custom"));
+        control<QPushButton>(reopened, "saveTaskButton")->click();
+        QCOMPARE(reopened.result(), int(QDialog::Accepted));
+        QCOMPARE(reopened.saved(), original);
+        auto disabled = original;
+        disabled.reminder.enabled = false;
+        disabled = s.tasks.save(disabled);
+        TaskEditorDialog noReminder(school, s.tasks, disabled, "演示通知");
+        QCOMPARE(control<QComboBox>(noReminder, "taskReminderPreset")->currentData().toString(),
+                 QString("off"));
+        control<QPushButton>(noReminder, "saveTaskButton")->click();
+        QCOMPARE(noReminder.saved(), disabled);
+        auto exact = s.tasks.draft("task-ui-demo");
+        exact.time.precision = TimePrecision::DateTime;
+        exact.time.utcDateTime = "2027-01-01T08:00:15Z";
+        exact.time.confirmation = TimeConfirmation::Personal;
+        exact.reminder.enabled = true;
+        exact.reminder.minutesBefore = 17;
+        exact.reminder.daysBefore = 3; // Preserve unused precision preferences as well.
+        exact = s.tasks.save(exact, true);
+        TaskEditorDialog customExact(school, s.tasks, exact, "演示通知");
+        QCOMPARE(control<QComboBox>(customExact, "taskReminderPreset")->currentData().toString(),
+                 QString("custom"));
+        control<QPushButton>(customExact, "saveTaskButton")->click();
+        QCOMPARE(customExact.saved(), exact);
+    }
+    void originalTextTimeStillNeedsEvidenceAndExplicitConfirmation() {
+        const auto school = SchoolPackage::load(CONFIG_FILE);
+        QTemporaryDir dir;
+        Session s(dir.filePath("original-time.sqlite"), school);
+        s.seed();
+        TaskEditorDialog editor(school, s.tasks, s.tasks.draft("task-ui-demo"), "演示通知");
+        auto *source = control<QComboBox>(editor, "taskTimeSource");
+        source->setCurrentIndex(source->findData("original_text"));
+        control<QPushButton>(editor, "saveTaskButton")->click();
+        QVERIFY(s.tasks.list().empty());
+        QVERIFY(control<QToolButton>(editor, "taskMoreOptions")->isChecked());
+        control<QTextEdit>(editor, "taskTimeEvidence")->setPlainText("演示原文明确时刻，仅为测试样本");
+        control<QPushButton>(editor, "saveTaskButton")->click();
+        QVERIFY(s.tasks.list().empty());
+        control<QCheckBox>(editor, "taskTimeConfirmed")->setChecked(true);
+        control<QPushButton>(editor, "saveTaskButton")->click();
+        QCOMPARE(editor.result(), int(QDialog::Accepted));
+        QCOMPARE(editor.saved().time.confirmation, TimeConfirmation::OriginalText);
+        TaskEditorDialog editOriginal(school, s.tasks, editor.saved(), "演示通知");
+        auto *time = control<QDateTimeEdit>(editOriginal, "taskDateTime");
+        time->setDateTime(time->dateTime().addSecs(60));
+        QVERIFY(!control<QCheckBox>(editOriginal, "taskTimeConfirmed")->isChecked());
+        control<QPushButton>(editOriginal, "saveTaskButton")->click();
+        QCOMPARE(s.tasks.find(editor.saved().id), editor.saved());
+        QVERIFY(control<QToolButton>(editOriginal, "taskMoreOptions")->isChecked());
     }
     void refreshOriginalReviewFailureAndPausedSource() {
         DetailServer server;

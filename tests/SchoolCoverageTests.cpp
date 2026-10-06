@@ -43,7 +43,7 @@ class SchoolCoverageTests final : public QObject {
     QJsonArray observations_;
   private slots:
     void trustedSeedsAreMinimalAndScoped() {
-        UniversityRegistry registry(SCHOOL_CONFIG_DIR);
+        UniversityRegistry registry(TEST_SCHOOL_SEEDS_DIR);
         for (const auto &school : {QString("beihua"), QString("cust")}) {
             const auto homepage = "https://www." + school + ".edu.cn/";
             const auto entry = registry.resolve(homepage);

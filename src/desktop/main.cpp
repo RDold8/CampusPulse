@@ -1,4 +1,5 @@
 #include "desktop/MainWindow.h"
+#include "desktop/ReminderPopup.h"
 #include "adapters/SchoolPackage.h"
 #include "adapters/RefreshCoordinator.h"
 #include "adapters/UniversityRegistry.h"
@@ -26,6 +27,7 @@
 #include "adapters/ArtifactWriter.h"
 #include <QCryptographicHash>
 #include <QSystemTrayIcon>
+#include <QMenu>
 #include <QDateTime>
 #include <QFileInfo>
 #include <QLockFile>
@@ -382,6 +384,39 @@ int main(int argc, char **argv) {
             // All proof callbacks reference these locals; keep their scope alive through exec().
             return app.exec();
         }
+        ReminderPopup reminderPopup;
+        placeWindowOnDesktop(reminderPopup, cli.value("desktop-id"));
+        SqliteReminderRepository reminderRepository(database.connection());
+        QSystemTrayIcon tray(BrandTheme::applicationIcon());
+        const bool trayAvailable = !cli.isSet("no-system-notifications") &&
+                                  QSystemTrayIcon::isSystemTrayAvailable();
+        const bool nativeMessages = trayAvailable && QSystemTrayIcon::supportsMessages();
+        app.setQuitOnLastWindowClosed(!trayAvailable);
+        tray.setToolTip("CampusPulse · 后台待办提醒\n退出请使用托盘菜单");
+        QMenu trayMenu;
+        trayMenu.addAction("打开 CampusPulse", [&] {
+            session->window.showNormal();
+            session->window.raise();
+            session->window.activateWindow();
+        });
+        trayMenu.addAction("我的待办", [&] { session->window.showTask(); });
+        const auto testReminder = [&] {
+            reminderPopup.showTest();
+            if (nativeMessages)
+                tray.showMessage("CampusPulse 测试提醒", "应用内提醒已弹出。这是一条测试系统通知。",
+                                 BrandTheme::applicationIcon(), 15000);
+        };
+        trayMenu.addAction("测试提醒", testReminder);
+        trayMenu.addSeparator();
+        trayMenu.addAction("退出 CampusPulse", &app, &QApplication::quit);
+        tray.setContextMenu(&trayMenu);
+        QObject::connect(&tray, &QSystemTrayIcon::activated, &app,
+                         [&](QSystemTrayIcon::ActivationReason reason) {
+            if (reason == QSystemTrayIcon::DoubleClick) session->window.showTask();
+        });
+        QObject::connect(&tray, &QSystemTrayIcon::messageClicked, &app,
+                         [&] { reminderPopup.show(); reminderPopup.raise(); });
+        if (trayAvailable) tray.show();
         std::function<void(DesktopSession &)> attachSelection;
         std::function<void(const QString &)> switchSchool;
         bool onboardingBusy = false;
@@ -407,6 +442,8 @@ int main(int argc, char **argv) {
             QTimer::singleShot(100, &session->network, &RefreshCoordinator::refresh);
         };
         attachSelection = [&](DesktopSession &current) {
+            current.window.setBackgroundReminders(trayAvailable);
+            QObject::connect(&current.window, &MainWindow::reminderTestRequested, &app, testReminder);
             QObject::connect(&current.window, &MainWindow::universityHomepageRequested, &app,
                              [&](const QString &homepage) {
                 if (session->network.busy() || session->resourceDiscovery.busy() || onboardingBusy)
@@ -545,22 +582,31 @@ int main(int argc, char **argv) {
                 });
         };
         attachSelection(*session);
-        SqliteReminderRepository reminderRepository(database.connection());
-        QSystemTrayIcon tray(BrandTheme::applicationIcon());
-        tray.setToolTip("CampusPulse · 应用运行时检查待办提醒");
-        const bool nativeMessages = !cli.isSet("no-system-notifications") &&
-                                    QSystemTrayIcon::isSystemTrayAvailable() &&
-                                    QSystemTrayIcon::supportsMessages();
-        if (nativeMessages)
-            tray.show();
+        QObject::connect(&reminderPopup, &ReminderPopup::taskRequested, &app,
+                         [&](const QString &schoolId, const QString &taskId) {
+            if (session->school.id == schoolId) {
+                session->window.showTask(taskId);
+                return;
+            }
+            // Reading a reminder must not start a new school crawl or replace an
+            // active collection. Let the user switch through the existing school page.
+            session->window.showTask();
+            QMessageBox::information(&session->window, "另一所学校的待办",
+                                     "这条提醒属于另一所学校，请在大学页切换学校后查看。提醒仍保留在提醒窗口中。");
+        });
         ReminderScheduler reminders(
             taskRepository, reminderRepository, [&](const PersonalTask &task) {
+                QString schoolName;
+                for (const auto &school : registry.list())
+                    if (school.id.toStdString() == task.schoolId) schoolName = school.name;
+                reminderPopup.showTask(task, schoolName);
                 session->window.showReminder(QString::fromStdString(task.title));
                 if (nativeMessages)
                     tray.showMessage("CampusPulse 待办提醒", QString::fromStdString(task.title),
                                      BrandTheme::applicationIcon(), 15000);
             });
         QObject::connect(&reminders, &ReminderScheduler::failed, &app, [&](const QString &reason) {
+            reminderPopup.showFailure(reason);
             session->window.showReminder("提醒失败：" + reason);
         });
         reminders.start();

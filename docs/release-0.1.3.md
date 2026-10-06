@@ -1,5 +1,7 @@
 # CampusPulse 0.1.3 本地桌面预览版
 
+2026-10-06 待办改进：默认闹钟卡片，填写事项并选择一个日期时刻即可保存，默认到时间提醒。原文确认、时间精度及自定义收进更多设置，旧任务保留原值。到点独立提醒窗口保留多条事项，等待手动关闭；页顶可以测试提醒。Windows托盘可用时关闭主窗口继续后台运行，托盘菜单可彻底退出。调度改为1秒检查，启动及短延迟只补发最近5分钟内尚未投递的有效提醒，修复当前分钟保存及稍晚启动直接跳过的情况。详见[闹钟待办验收](alarm-reminders-validation.md)。
+
 这次更新重做 AI 接入：填写接口地址与 API Key 后，程序自动处理官方或常见兼容地址、读取模型列表、选择模型并验证连接。名称和手动模型保持为可选高级设置。AI 搜索页保留综合、重修补考与缴费、奖助学金申请、竞赛、活动、学习资源、教务和就业八种范围；默认页面不展示路由或密钥。
 
 官方 DeepSeek 按原生搜索响应处理；其他兼容接口先由软件收集真实官网链接，再让模型从这些证据中筛选。候选仍由学校域名、列表与正文检查决定能否接入。接入学校时显示加载动画与阶段文字，普通采集不调用模型。
@@ -14,9 +16,11 @@
 
 本版先交付本地安装包和便携包，公开 GitHub Release 尚未更新。北京化工大学已完成一次真实 DeepSeek 原生搜索与生产界面流程验收：返回4个栏目候选，新增1个通过列表和正文校验的“学生通知”来源；其他入口显示未通过状态，不代表学校全量覆盖。详见 [AI 待接入补充验收](ai-pending-validation.md)。已发布的 0.1.2-r1 与本版本是不同构建。
 
-验收：最终 CTest 23/23 组通过；在原失败目录执行的生产存储探针通过，保存、重新加载、DPAPI 密钥恢复与无明文检查均成功，未调用真实 API。
+AI接入与存储原验收：CTest 23/23组通过；在原失败目录执行的生产存储探针通过，保存、重新加载、DPAPI密钥恢复与无明文检查均成功，未调用真实API。新增闹钟卡片和可见提醒验收另见上述记录。
 
 ## English
+
+The October 6 task update adds alarm-style cards and a simple title, date/time and reminder selector. Saving confirms a personal plan; original-notice evidence and custom settings remain optional advanced controls. A persistent in-app popup retains multiple due tasks until dismissed. Where Windows tray support is available, closing the main window keeps reminders running; the tray menu provides an explicit exit. The scheduler checks every second and catches up only valid, undelivered reminders from the previous five minutes. Existing task values and completion states are preserved.
 
 CampusPulse 0.1.3 simplifies AI setup to an endpoint address and an API key, with automatic model discovery and a short connection check. Optional advanced settings retain names and manual model IDs. Search supports eight scopes, while endpoint and key fields stay out of the default search page.
 

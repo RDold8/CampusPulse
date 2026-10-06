@@ -27,7 +27,7 @@
 - **集中查看学校通知。** 整理已接入官网栏目的标题、发布日期、正文和原文链接，关注考试、竞赛、奖助学金、校园活动、教务通知和就业招聘。
 - **更方便地查找信息。** 默认优先显示当前年份，支持按年份、来源、主题和关键词筛选。标题里有“重修”“补考”“缴费”时，会分别显示提示；同时出现时用 ` / ` 连接。
 - **保存自己的关注方向。** 把来源、主题和关键词保存为本地订阅，更新官网后查看符合规则的通知。
-- **跟进需要办理的事情。** 从通知建立个人待办，分别记录报名、缴费、申请等操作，确认时间，标记办理状态。原文变化后，相关待办会提示复核。
+- **跟进需要办理的事情。** 从通知建立闹钟待办卡片，填写事项并选择日期时刻即可保存，默认到时间提醒；卡片直接显示实际提醒时间，可修改时间或标记完成。原文变化后，相关待办会提示复核。
 - **使用日历和提醒。** 已确认日期的待办进入内置日历，可以导出 ICS 文件供手机日历手动导入。桌面程序运行期间可以触发已启用的本地提醒。
 - **查找学校资源。** 在独立的“学校资源”页查看图书馆、课程与培养信息、竞赛、升学、就业等学习和办事入口，按类别与学习阶段筛选，并收藏常用链接。
 - **尝试接入目录外的大学。** 输入尚未收录的 `.edu.cn` 学校官网首页，程序识别首页名称，建立本机学校草案，再发现公开栏目；无需先手工编写学校配置。识别成功仍需栏目和正文校验，无法访问的页面会保留原因。
@@ -78,7 +78,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 - 各校公开来源只有部分覆盖，登录限制、动态页面和网页改版仍可能影响采集。公开浏览器验证需要已安装的 WebView2 Runtime；人工验证码仍可能阻断自动接入。
 - 需要账号的来源可以打开官方登录入口，但软件不复用浏览器登录状态，登录后不会自动开始采集。资源链接能打开，也不代表账号一定具备使用权限。
-- 本地提醒需要桌面程序保持运行。手机 ICS 导入和 Windows 系统通知送达仍需在目标环境实测；导出的 ICS 不会持续同步软件里的修改。
+- 本地提醒需要程序保持运行，Windows托盘可用时关闭主窗口可继续后台提醒。彻底退出、关机和睡眠期间不检查，重新运行只补发最近5分钟内尚未投递的有效提醒。应用内到点弹窗和系统通知是两个通道；手机ICS导入及系统横幅送达仍需目标环境验收，导出的ICS不会持续同步修改。
 - 移动 App、账号系统和跨设备同步尚未实现。
 
 接下来，我会继续完善学校来源与资源覆盖、采集可靠性和社区配置流程，完成 AI、手机导入与提醒的实际验证，再推进移动端和双端同步。
@@ -126,7 +126,7 @@ I chose Northeast Electric Power University as the first example. My goal is a g
 - **Browse university notices in one place.** Organize titles, publication dates, article text, and original links from connected sources, covering exams, competitions, scholarships and financial aid, campus events, academic affairs, and recruitment.
 - **Find information more easily.** Show the current year by default and filter by year, source, topic, or keyword. Chinese titles mentioning retakes, resit exams, or payments receive individual labels, combined with ` / ` when several apply.
 - **Save your interests.** Store sources, topics, and keywords as local subscriptions, then review matching notices after updating from the websites.
-- **Track actions.** Create personal tasks from notices, record registration, payment, or application steps separately, confirm dates, and track their status. Changes to the original article flag related tasks for review.
+- **Track actions.** Create alarm-style task cards from notices, enter an action and a date/time, then save. New tasks default to an at-time reminder. Cards show the actual reminder time, offer quick editing and completion, and retain review flags when the original article changes.
 - **Use a calendar and reminders.** Put tasks with confirmed dates in the built-in calendar and export ICS files for manual import into a phone calendar. Enabled local reminders can trigger while the desktop application is running.
 - **Discover university resources.** Find library services, curriculum information, competitions, further study, career resources, and other learning or practical links in a dedicated page. Filter by category or study stage and save favorites.
 - **Try a university outside the registry.** Enter an unconfigured `.edu.cn` university homepage. The application identifies its homepage name, saves a local draft, and discovers public sections without a manually written package. Lists and articles still require validation; inaccessible pages retain their failure reasons.
@@ -179,7 +179,7 @@ Current limitations:
 
 - University source coverage is partial. Login restrictions, dynamic pages, and website changes can affect collection. Public browser verification requires the separately installed WebView2 Runtime; manual CAPTCHAs can still prevent automatic onboarding.
 - The application can open official login pages, but it does not reuse browser sessions or begin crawling after login. A working resource link does not establish account eligibility.
-- Local reminders require the desktop application to remain running. Phone ICS import and Windows notification delivery still need verification in their target environments. Exported ICS files do not continuously synchronize later changes.
+- Local reminders require the application to keep running. Where the Windows tray is available, closing the main window keeps reminders running in the background. No checks run after explicit exit, shutdown or during sleep; reopening catches up only valid, undelivered reminders from the last five minutes. Persistent in-app popups and system notifications are separate channels. Phone ICS import and system-banner delivery still need target-environment verification; exported ICS files do not continuously synchronize changes.
 - The mobile app, account system, and cross-device synchronization are not implemented.
 
 Next, I want to improve university source and resource coverage, collection reliability, and community configuration workflows. I will also verify AI calls, phone calendar imports, and reminder delivery before continuing with the mobile app and synchronization.

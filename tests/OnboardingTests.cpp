@@ -549,7 +549,7 @@ class OnboardingTests final : public QObject {
     void loginDetectionKeepsOfficialOriginAndSourceId() {
         QTemporaryDir folder;
         QVERIFY(folder.isValid());
-        const UniversityRegistry registry(SCHOOL_CONFIG_DIR);
+        const UniversityRegistry registry(TEST_SCHOOL_SEEDS_DIR);
         SchoolOnboarding onboarding(registry.resolve("www.jlu.edu.cn").configFile, folder.path(),
                                     nullptr, 0);
         QVERIFY(QDir().mkpath(onboarding.directory_ + "/samples"));
@@ -602,7 +602,7 @@ class OnboardingTests final : public QObject {
     void httpFailuresAndPublicLoginHelpStayDistinct() {
         QTemporaryDir folder;
         QVERIFY(folder.isValid());
-        const UniversityRegistry registry(SCHOOL_CONFIG_DIR);
+        const UniversityRegistry registry(TEST_SCHOOL_SEEDS_DIR);
         const auto seed = registry.resolve("www.jlu.edu.cn").configFile;
         SchoolOnboarding failed(seed, folder.path(), nullptr, 0);
         for (const auto *error : {"HTTP 403 Forbidden", "HTTP 502 Bad Gateway"}) {
@@ -750,7 +750,7 @@ class OnboardingTests final : public QObject {
                  QString("https://jwc.jlu.edu.cn/tzgg.htm"));
     }
     void trustedDirectoryAndNavigationBoundaries() {
-        const UniversityRegistry registry(SCHOOL_CONFIG_DIR);
+        const UniversityRegistry registry(TEST_SCHOOL_SEEDS_DIR);
         QCOMPARE(registry.resolve("www.jlu.edu.cn").id, QString("cn-jlu"));
         const auto seed = SchoolPackage::load(registry.resolve("www.jlu.edu.cn").configFile);
         QCOMPARE(seed.discoveryEntries.size(), 5);

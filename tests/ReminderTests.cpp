@@ -199,15 +199,32 @@ class ReminderTests final : public QObject {
         QCOMPARE(store.count(), 1);
     }
 
-    void pastRemindersExpireOnStartupAndAfterLongSleepWithoutCatchup() {
+    void recentUndeliveredReminderCatchesUpOnStartupOnce() {
+        QTemporaryDir folder;
+        Store store(folder.filePath("reminders.sqlite"));
+        const auto recent = store.create("recent");
+        int submissions = 0;
+        ReminderScheduler onStartup(store.tasks, store.reminders,
+                                    [&](const PersonalTask &) { ++submissions; });
+        onStartup.poll(utc("2026-10-03T01:00:02Z"));
+        QCOMPARE(submissions, 1);
+        QCOMPARE(store.state(recent).status, QString("submitted"));
+        ReminderScheduler restarted(store.tasks, store.reminders,
+                                    [&](const PersonalTask &) { ++submissions; });
+        restarted.poll(utc("2026-10-03T01:00:03Z"));
+        restarted.poll(utc("2026-10-03T01:00:04Z"));
+        QCOMPARE(submissions, 1);
+        QCOMPARE(store.count(), 1);
+    }
+
+    void remindersOlderThanCatchupWindowExpireOnStartupAndAfterLongSleep() {
         QTemporaryDir folder;
         Store store(folder.filePath("reminders.sqlite"));
         const auto old = store.create("already-past");
         int submissions = 0;
         ReminderScheduler onStartup(store.tasks, store.reminders,
                                     [&](const PersonalTask &) { ++submissions; });
-        // Even a recent reminder is not replayed when the app first starts after its time.
-        onStartup.poll(utc("2026-10-03T01:00:02Z"));
+        onStartup.poll(utc("2026-10-03T01:05:01Z"));
         QCOMPARE(submissions, 0);
         QCOMPARE(store.state(old).status, QString("expired"));
         const auto slept = store.create("slept", "cn-test", "2026-10-03T02:00:00Z");
@@ -218,6 +235,73 @@ class ReminderTests final : public QObject {
         QCOMPARE(submissions, 0);
         QCOMPARE(store.state(slept).status, QString("expired"));
         QCOMPARE(store.count(), 2);
+    }
+
+    void catchupIncludesExactFiveMinuteBoundaryButDoesNotReplayExpiredRecords() {
+        QTemporaryDir folder;
+        Store store(folder.filePath("reminders.sqlite"));
+        const auto edge = store.create("edge");
+        const auto expired = store.create("expired", "cn-test", "2026-10-03T00:59:59Z");
+        int submissions = 0;
+        ReminderScheduler scheduler(store.tasks, store.reminders,
+                                    [&](const PersonalTask &) { ++submissions; });
+        scheduler.poll(utc("2026-10-03T01:05:00Z"));
+        QCOMPARE(submissions, 1);
+        QCOMPARE(store.state(edge).status, QString("submitted"));
+        QCOMPARE(store.state(expired).status, QString("expired"));
+        // Moving the clock back into the window does not replay a persisted decision.
+        scheduler.poll(utc("2026-10-03T01:00:00Z"));
+        QCOMPARE(submissions, 1);
+        QCOMPARE(store.count(), 2);
+    }
+
+    void newlySavedCurrentMinuteReminderIsNotDroppedByPreviousPoll() {
+        QTemporaryDir folder;
+        Store store(folder.filePath("reminders.sqlite"));
+        int submissions = 0;
+        ReminderScheduler scheduler(store.tasks, store.reminders,
+                                    [&](const PersonalTask &) { ++submissions; });
+        scheduler.poll(utc("2026-10-03T01:00:30Z"));
+        const auto task = store.create("current-minute");
+        scheduler.poll(utc("2026-10-03T01:00:31Z"));
+        scheduler.poll(utc("2026-10-03T01:00:32Z"));
+        QCOMPARE(submissions, 1);
+        QCOMPARE(store.state(task).status, QString("submitted"));
+        QCOMPARE(store.count(), 1);
+    }
+
+    void enablingRecentReminderAfterItsTimeStillDeliversOnce() {
+        QTemporaryDir folder;
+        Store store(folder.filePath("reminders.sqlite"));
+        auto task = store.create("enabled-late");
+        task.reminder.enabled = false;
+        task = store.save(task);
+        int submissions = 0;
+        ReminderScheduler scheduler(store.tasks, store.reminders,
+                                    [&](const PersonalTask &) { ++submissions; });
+        scheduler.poll(utc("2026-10-03T01:00:10Z"));
+        QCOMPARE(store.count(), 0);
+        task.reminder.enabled = true;
+        task = store.save(task);
+        scheduler.poll(utc("2026-10-03T01:00:11Z"));
+        scheduler.poll(utc("2026-10-03T01:00:12Z"));
+        QCOMPARE(submissions, 1);
+        QCOMPARE(store.state(task).revision, task.revision);
+    }
+
+    void productionTimerDeliversWithinTwoSecondsAndDoesNotRepeat() {
+        QTemporaryDir folder;
+        Store store(folder.filePath("reminders.sqlite"));
+        const auto at = QDateTime::currentDateTimeUtc().addSecs(1).toString(Qt::ISODate);
+        const auto task = store.create("production-timer", "cn-test", at.toStdString());
+        int submissions = 0;
+        ReminderScheduler scheduler(store.tasks, store.reminders,
+                                    [&](const PersonalTask &) { ++submissions; });
+        scheduler.start();
+        QTRY_COMPARE_WITH_TIMEOUT(submissions, 1, 2500);
+        scheduler.poll(QDateTime::currentDateTimeUtc());
+        QCOMPARE(submissions, 1);
+        QCOMPARE(store.state(task).status, QString("submitted"));
     }
 
     void dateOnlyReminderUsesSchoolTimeZoneWithoutInventingDeadlineTime() {

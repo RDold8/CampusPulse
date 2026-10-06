@@ -1,8 +1,8 @@
 # GitHub 源码保存
 
-2026-10-05，源码仓库为公开的 `RDold8/CampusPulse`，主分支为 `main`。本次 `v0.1.2-r1` 为 0.1.2 更新预览版，保存通用采集、日期证据、学生服务指南及回归样本改进；软件内版本号保持 0.1.2。原 `v0.1.2`、`v0.1.1`、`v0.1.0` 标签与附件保留，不移动既有版本标签。源码通过新的 Git 提交保存，安装包、便携包及依赖源码作为 Release 附件提供。项目采用MIT许可证，大学页面与第三方依赖的权利分别保留。安装包见[Release](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2-r1)与[下载与安装](windows-release.md)。
+2026-10-06，源码仓库为公开的`RDold8/CampusPulse`，主分支为`main`。本次`v0.1.4`发布此前0.1.3本机迭代的AI配置与来源补充、闹钟待办、持续弹窗、托盘和提示音，程序与安装器版本统一0.1.4。原0.1.2-r1、0.1.2、0.1.1、0.1.0标签与附件保留，不移动既有标签；0.1.3仅有本地标签，没有公开Release。源码以新提交保存，安装包、便携包、SHA256SUMS和固定依赖源码作为Release附件提供。见[Release](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.4)、[更新说明](release-0.1.4.md)与[下载与安装](windows-release.md)。
 
-目录外高校接入已通过有界实网测试，具体覆盖、遗漏和构建范围见[五校对比](five-school-universal-validation.md)与[北邮教务指南验收](bupt-generic-crawling-validation.md)。修复后的 AI 检索及来源补充完整链路仍待单独复验；发布程序包不代表全校全量覆盖、手机导入或系统通知已经验证。此前 AI 状态见[验收记录](universal-onboarding-validation.md)。
+目录外高校接入的历史有界实网测试见[五校对比](five-school-universal-validation.md)与[北邮教务指南](bupt-generic-crawling-validation.md)。北京化工大学已完成一次真实DeepSeek搜索与新增来源验证，见[AI补充验收](ai-pending-validation.md)；本次发布未新增AI调用。本版构建、附件与上传验证见[发布验收](release-0.1.4-validation.md)，发布不代表全校全量覆盖、手机导入、系统横幅送达或扬声器可听效果已普遍验证。
 
 ## 保存范围
 

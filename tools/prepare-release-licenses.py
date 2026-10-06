@@ -163,7 +163,8 @@ def main() -> None:
         "Build instructions: https://github.com/RDold8/CampusPulse/blob/main/docs/windows-release.md\n",
         encoding="utf-8",
     )
-    print(json.dumps({"dependency_sources": len(assets), "notice_files": len(list(licenses.rglob('*')))}, indent=2))
+    print(json.dumps({"dependency_sources": len(assets),
+                      "notice_files": sum(path.is_file() for path in licenses.rglob('*'))}, indent=2))
 
 
 if __name__ == "__main__":

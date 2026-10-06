@@ -154,7 +154,7 @@ QObject *PublicUniversityNetwork::get(const QUrl &url, const QString &officialRo
         const auto session = sessions.value(url.host().toLower());
         const bool currentSession = session.expires > QDateTime::currentDateTimeUtc();
         request.setRawHeader("User-Agent", currentSession ? session.userAgent :
-                             QByteArray("CampusPulse/0.1.3 (public university discovery)"));
+                             QByteArray("CampusPulse/0.1.4 (public university discovery)"));
         if (currentSession) {
             const auto cookies = sessionCookies(session, url);
             if (!cookies.isEmpty()) request.setRawHeader("Cookie", cookies);

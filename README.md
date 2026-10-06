@@ -6,9 +6,9 @@
 
 **基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
-**当前工作区：0.1.3 本地桌面预览版。** 本版简化 AI 接口配置、修复本地保存失败，并显示学校接入动画；新增待接入来源的 AI 定向补充与可持久查看的搜索反馈，见 [0.1.3 更新说明](docs/release-0.1.3.md)与 [存储修复验收](docs/ai-storage-fix-validation.md)。本地安装包已更新，GitHub 公开下载仍为下方 0.1.2-r1。
+**当前版本：0.1.4 Windows 桌面预览版。** 这次我把待办简化为闹钟卡片，补上持续显示的提醒弹窗、托盘后台提醒和可试听的提示音；同时发布更简单的 AI 配置、待接入来源补充与搜索反馈。见 [0.1.4 更新说明](docs/release-0.1.4.md)、[声音说明](docs/reminder-sounds.md)和 [存储修复验收](docs/ai-storage-fix-validation.md)。
 
-**Windows 0.1.2 更新预览版（2026-10-05）：**[下载安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-setup.exe) · [下载便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-portable.zip) · [发布说明](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2-r1) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。本次更新改善目录外高校的栏目、通知和资源发现，补充北邮重修、补考等公开办事指南；见[更新说明](docs/release-0.1.2-r1.md)、[五校对比](docs/five-school-universal-validation.md)与[北邮教务指南验收](docs/bupt-generic-crawling-validation.md)。软件内版本号仍为 0.1.2，发布标签为 `v0.1.2-r1`。
+**下载 0.1.4（2026-10-06）：** [安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.4/CampusPulse-0.1.4-windows-x64-setup.exe) · [便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.4/CampusPulse-0.1.4-windows-x64-portable.zip) · [发布页面](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.4) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。原 0.1.2-r1 等版本保留为历史下载。
 
 学校官网里有很多有用的内容：教务通知、考试安排、竞赛报名、奖助学金申请、校园活动、招聘信息，还有图书馆和学习资源入口。它们往往散落在不同部门的网站上，查找费时，也容易漏看。
 
@@ -68,11 +68,11 @@
 
 AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、重修补考与缴费、奖助学金申请、竞赛、活动、学习资源、教务和就业八种搜索模板，按所选类别使用不同提示词定向寻找栏目。我按 DeepSeek 官方接入说明，并参考 LobeHub 与 Cherry Studio 的接口分工，用 Qt 实现仅需地址和 Key 的基础连接。补充功能默认关闭，需要用户主动启用；候选链接仍要经过学校域名检查和真实官网采样，验证通过后才接入。调用会消耗 API token，界面记录实际返回的用量。Key 默认仅保留在当前进程，Windows 可选当前用户 DPAPI 加密保存；明文 Key 不写入数据库或学校配置。
 
-此前版本的真实 DeepSeek 模型列表与短连接请求已返回成功，模型使用 `deepseek-flash`。原生搜索也收到真实工具结果，同时触发搜索次数上限；软件已增加保留真实部分结果和显示上限状态的处理，修复后的完整检索与来源补充链仍待网络恢复后复验。开发工作区已将自定义兼容接口改为真实官网采集加 AI 筛选，不接收网页中未出现的模型地址；这次重构尚未进入已发布的 r1 软件包。另一个“资源说明 AI”方向目前完成了规范与离线测试，尚未接入桌面业务。
+此前已用北京化工大学完成一次真实 DeepSeek 搜索与生产界面验收：返回4个栏目候选，新增1个通过列表和正文校验的学生通知来源，其他入口保留未通过状态，见 [AI 补充验收](docs/ai-pending-validation.md)。0.1.4 包含这些本地改进，本次版本发布没有新增模型调用。兼容接口先读取真实官网，再由模型筛选已经出现的链接；连接成功不能保证任意接口支持原生搜索或找全学校信息。“资源说明 AI”目前只有规范与离线测试，尚未接入桌面业务。
 
 ### 目前的阶段和后续方向
 
-截至 **2026-10-05**，当前提供 **0.1.2 更新桌面预览版（`v0.1.2-r1`）** 的源码、Windows 安装包和便携包；原 `v0.1.2`、0.1.1、0.1.0 保留为历史版本。本轮针对五所目录外高校改进共享采集器，再用北邮教务处验证学生服务索引与重修、补考正文，均不调用模型。最终 CTest 22/22 组通过。五校实网结果冻结于较早的本地整改构建，最终代码另通过共享 DOM 回归；北邮最终资源实网复测保存 57 项入口，其中 13 项完成公开页面核实。详情见[五校对比](docs/five-school-universal-validation.md)、[北邮教务指南验收](docs/bupt-generic-crawling-validation.md)和[此前 AI 验收](docs/universal-onboarding-validation.md)。
+截至 **2026-10-06**，当前版本为 **0.1.4（`v0.1.4`）**，提供源码、Windows 安装包和便携包。待办页可以直接填写事项与日期时刻，点击“提醒声音”选择铃声、音量或静音，点击“测试提醒”检查弹窗。默认重复声音每12秒提示，最多1分钟，停止声音不会完成待办。此前五校通用采集、北邮教务指南和北京化工大学 AI 实网结果保留独立验收记录，不将历史样例当作本次全校覆盖测试；见 [更新说明](docs/release-0.1.4.md)、[五校对比](docs/five-school-universal-validation.md)、[北邮指南](docs/bupt-generic-crawling-validation.md)和 [AI 补充验收](docs/ai-pending-validation.md)。
 
 目前需要注意：
 
@@ -105,9 +105,9 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 **Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
 
-**Current workspace: 0.1.3 local desktop preview.** This version simplifies AI setup, fixes local configuration persistence, and adds animated university-onboarding progress, targeted AI supplementation of pending sources, and persistent search feedback. See the [0.1.3 notes](docs/release-0.1.3.md) and [storage validation](docs/ai-storage-fix-validation.md). Local packages are updated; public GitHub downloads remain at 0.1.2-r1 below.
+**Current version: 0.1.4 Windows desktop preview.** I have simplified tasks into alarm-style cards and added persistent reminder popups, background tray reminders, and previewable sounds. This release also includes simpler AI setup, targeted repair of pending sources, and visible search feedback. See the [0.1.4 notes](docs/release-0.1.4.md), [sound guide](docs/reminder-sounds.md), and [storage validation](docs/ai-storage-fix-validation.md).
 
-**Windows 0.1.2 updated preview (2026-10-05):** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.2-r1/CampusPulse-0.1.2-windows-x64-portable.zip) · [Release notes](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.2-r1) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. This update improves discovery of sections, notices, and resources outside the registry, including public retake and resit guides at BUPT. See the [update notes](docs/release-0.1.2-r1.md), [five-university comparison](docs/five-school-universal-validation.md), and [BUPT guide validation](docs/bupt-generic-crawling-validation.md). The application version remains 0.1.2; the release tag is `v0.1.2-r1`.
+**Download 0.1.4 (October 6, 2026):** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.4/CampusPulse-0.1.4-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.4/CampusPulse-0.1.4-windows-x64-portable.zip) · [Release page](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.4) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. Earlier releases, including 0.1.2-r1, remain available.
 
 University websites contain useful information: academic notices, exam schedules, competition registration, scholarships and financial aid, campus events, recruitment, and library or learning resources. These are often scattered across departmental websites, making them time-consuming to find and easy to miss.
 
@@ -165,15 +165,15 @@ Supporting universities across China is the design goal, with coverage extended 
 
 ### What AI does here
 
-Development-workspace update: AI setup now uses an address and key with automatic connection, plus official-page grounding for compatible routes. The school onboarding page includes an animated loading indicator. These changes are not yet in the published r1 assets.
+Version 0.1.4 includes address-and-key setup with automatic connection checks, official-page evidence for compatible routes, and animated university-onboarding progress.
 
 AI supplements discovery by proposing official sections that the rule-based crawler may have missed. Eight category templates focus prompts on general discovery, retakes and payments, financial aid applications, competitions, campus activities, study resources, teaching administration, and careers. I followed DeepSeek's official API instructions and studied LobeHub and Cherry Studio's provider separation to build a simpler Qt connection form with an address and API key. Supplementation is disabled by default and requires user activation. Candidate links still undergo domain checks and actual website sampling. Calls consume API tokens and show returned usage. Keys stay in process memory by default, with optional current-user Windows DPAPI encryption; plaintext keys are never written to a database or university package.
 
-Earlier builds returned successful live DeepSeek model-list and short connection responses using `deepseek-flash`. Native search returned real tool results alongside a search-use limit error. The application now retains valid partial results and shows that limit; the repaired search-to-source pipeline still needs another live check when networking is restored. Compatible interfaces now select candidates from real official-page evidence collected by CampusPulse; final links still require crawler verification. A separate resource-description AI contract has offline tests but is not connected to the desktop workflow.
+A previous live DeepSeek search and production UI check for Beijing University of Chemical Technology returned four section candidates and added one student-notice source after list and article validation. Other candidates retained unresolved states; see the [AI supplementation validation](docs/ai-pending-validation.md). Version 0.1.4 includes these local improvements; publishing this version made no new model calls. Compatible providers select links observed on actual university pages. A successful connection does not establish native-search support or complete coverage. Resource-description AI has a contract and offline tests but is not connected to the desktop workflow.
 
 ### Current stage and next steps
 
-As of **October 5, 2026**, the current **0.1.2 updated desktop preview (`v0.1.2-r1`)** provides source, a Windows installer, and a portable package. The original `v0.1.2`, 0.1.1, and 0.1.0 remain historical releases. Five universities outside the registry drove improvements to the shared crawler; BUPT then verified student-service indexes and retake/resit article text, without model calls. All 22 final CTest groups passed. The five-university live results are frozen at an earlier local build, with shared DOM regressions passing on the final code. The final BUPT live resource check saved 57 entries and verified 13 public pages. See the [five-university comparison](docs/five-school-universal-validation.md), [BUPT guide validation](docs/bupt-generic-crawling-validation.md), and [earlier AI validation](docs/universal-onboarding-validation.md).
+As of **October 6, 2026**, the current version is **0.1.4 (`v0.1.4`)**, with source, a Windows installer, and a portable package. Tasks use a title and date/time; “Reminder sound” offers tones, volume, mute, and a preview, while “Test reminder” checks the popup. Optional sound repeats run every 12 seconds for at most one minute; stopping sound does not complete a task. Earlier university-crawling, BUPT guide, and BUCT AI checks retain separate evidence and do not establish complete coverage on this release. See the [release notes](docs/release-0.1.4.md), [five-university comparison](docs/five-school-universal-validation.md), [BUPT guides](docs/bupt-generic-crawling-validation.md), and [AI supplementation validation](docs/ai-pending-validation.md).
 
 Current limitations:
 

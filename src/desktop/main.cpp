@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
     QApplication app(argc, argv);
     app.setOrganizationName("CampusPulse");
     app.setApplicationName("CampusPulse");
-    app.setApplicationVersion("0.1.3");
+    app.setApplicationVersion("0.1.4");
     const auto defaultConfig =
         QCoreApplication::applicationDirPath() + "/configs/schools/neepu.example.json";
     QNetworkProxyFactory::setUseSystemConfiguration(true);

@@ -1,6 +1,9 @@
 #include "adapters/RefreshCoordinator.h"
 #include "adapters/UniversityRegistry.h"
 #include "desktop/MainWindow.h"
+#include "desktop/NoticePage.h"
+#include "desktop/BrandTheme.h"
+#include "desktop/OverviewPage.h"
 #include "desktop/SourcePage.h"
 #include "desktop/UniversityPage.h"
 #include "storage/Database.h"
@@ -29,6 +32,13 @@
 #include <QTemporaryDir>
 #include <QTabWidget>
 #include <QTimer>
+#include <QSplitter>
+#include <QScrollArea>
+#include <QScrollBar>
+#include <QTextBrowser>
+#include <QAction>
+#include <QToolButton>
+#include <QTabBar>
 
 using namespace campus;
 
@@ -78,6 +88,179 @@ class DesktopTests final : public QObject {
         output.write(QJsonDocument(result).toJson());
     }
   private slots:
+    void overviewUsesCacheAndOpensSelectedNotice() {
+        BrandTheme::installApplication(*qobject_cast<QApplication *>(QCoreApplication::instance()));
+        const auto school = SchoolPackage::load(CONFIG_FILE);
+        const UniversityRegistry registry(SCHOOL_CONFIG_DIR);
+        QTemporaryDir folder;
+        Database database(folder.filePath("overview.sqlite"));
+        SqliteRepository repository(database);
+        SqliteSourceRepository sourceRepository(database);
+        SqliteSubscriptionRepository subscriptionRepository(database);
+        SqliteTaskRepository taskRepository(database);
+        NoticeService notices(repository, school.id.toStdString());
+        SourceService sources(school.id.toStdString(), school.catalog, sourceRepository);
+        SubscriptionService subscriptions(school.id.toStdString(), subscriptionRepository, notices);
+        TaskService tasks(school.id.toStdString(), school.timeZone.toStdString(), taskRepository, notices);
+        RefreshCoordinator network(school, notices, sources);
+        seed(notices);
+        auto task = tasks.draft("desktop-test-payment");
+        task.title = "核对重修缴费结果";
+        task = tasks.save(task);
+        MainWindow window(school, notices, sources, network, registry, subscriptions, tasks);
+        auto *tabs = control<QTabWidget>(window, "mainTabs");
+        QCOMPARE(tabs->currentWidget()->objectName(), QString("overviewPage"));
+        QCOMPARE(tabs->tabText(0), QString("通知"));
+        QCOMPARE(tabs->tabText(1), QString("来源"));
+        QCOMPARE(tabs->tabText(2), QString("我的订阅"));
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(tabs->tabBar()->isHidden());
+        auto *overviewButton = control<QPushButton>(window, "navigateOverviewButton");
+        auto *noticeButton = control<QPushButton>(window, "navigateNoticesButton");
+        auto *taskButton = control<QPushButton>(window, "navigateTasksButton");
+        QVERIFY(overviewButton->isChecked());
+        QVERIFY(!control<QPushButton>(window, "navigateResourcesButton")->isEnabled());
+        QVERIFY(!control<QPushButton>(window, "overviewResourcesButton")->isEnabled());
+        noticeButton->setFocus();
+        QTest::keyClick(noticeButton, Qt::Key_Space);
+        QCOMPARE(tabs->currentIndex(), 0);
+        QVERIFY(noticeButton->isChecked());
+        QVERIFY(!overviewButton->isChecked());
+        taskButton->click();
+        QCOMPARE(tabs->currentIndex(), 3);
+        QVERIFY(taskButton->isChecked());
+        for (const auto &[name, index] : {std::pair{"navigateSourcesAction", 1},
+                                         {"navigateSubscriptionsAction", 2},
+                                         {"navigateUniversityAction", 4},
+                                         {"navigateAiAction", 5},
+                                         {"navigateCalendarAction", 6}}) {
+            auto *action = window.findChild<QAction *>(QString::fromLatin1(name));
+            QVERIFY(action);
+            action->trigger();
+            QCOMPARE(tabs->currentIndex(), index);
+            QVERIFY(!taskButton->isChecked());
+            QVERIFY(!noticeButton->isChecked());
+        }
+        overviewButton->click();
+        QCOMPARE(tabs->currentWidget()->objectName(), QString("overviewPage"));
+        // Cancel the real manual editor: navigation must not pretend a task was saved.
+        QTimer::singleShot(0, &window, [] {
+            if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget()))
+                dialog->reject();
+        });
+        control<QPushButton>(window, "overviewNewReminderButton")->click();
+        QCOMPARE(tabs->currentWidget()->objectName(), QString("overviewPage"));
+        QCOMPARE(tasks.views().size(), size_t(1));
+        // Offscreen does not reactivate the owner when its modal editor closes.
+        // Establish the active-window precondition before testing keyboard focus.
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        auto *overview = control<OverviewPage>(window, "overviewPage");
+        auto *splitter = control<QSplitter>(window, "overviewSplitter");
+        window.resize(600, 600);
+        QTRY_COMPARE(window.width(), 600);
+        QTRY_COMPARE(splitter->orientation(), Qt::Vertical);
+        auto largeFont = overview->font();
+        largeFont.setPointSizeF((largeFont.pointSizeF() > 0 ? largeFont.pointSizeF() : 10.5) * 1.5);
+        overview->setFont(largeFont);
+        auto *scroll = control<QScrollArea>(window, "overviewScroll");
+        QTRY_VERIFY(scroll->verticalScrollBar()->maximum() > 0);
+        QVERIFY(scroll->widget()->width() <= scroll->viewport()->width());
+        overview->setFont(window.font());
+        window.resize(1800, 1000);
+        QTRY_COMPARE(splitter->orientation(), Qt::Horizontal);
+        QVERIFY(control<QLabel>(window, "overviewSummary")->text().contains("1 项待办未完成"));
+        const auto captures = QString(EVIDENCE_DIR) + "/upgrade-2026-10-14";
+        QVERIFY(QDir().mkpath(captures));
+        QVERIFY(window.grab().save(captures + "/qt-overview.png"));
+        auto *recent = control<QListWidget>(window, "overviewNotices");
+        QCOMPARE(recent->count(), 1);
+        recent->itemActivated(recent->item(0));
+        QCOMPARE(tabs->currentWidget()->objectName(), QString("noticePage"));
+        QVERIFY(!network.busy());
+        auto *page = control<NoticePage>(window, "noticePage");
+        auto *noticeSplitter = control<QSplitter>(window, "noticeSplitter");
+        window.resize(600, 600);
+        QTRY_COMPARE(noticeSplitter->orientation(), Qt::Vertical);
+        QVERIFY(window.grab().save(captures + "/qt-notice-narrow.png"));
+        page->setFont(largeFont);
+        auto *noticeScroll = control<QScrollArea>(window, "noticeScroll");
+        QTRY_VERIFY(noticeScroll->verticalScrollBar()->maximum() > 0);
+        QVERIFY(noticeScroll->widget()->width() <= noticeScroll->viewport()->width());
+        auto *table = control<QTableView>(window, "noticeTable");
+        table->setFocus();
+        QSignalSpy activated(table, &QTableView::activated);
+        QTest::keyClick(table, Qt::Key_Return);
+        QCOMPARE(activated.count(), 1);
+        QTRY_VERIFY(control<QTextBrowser>(window, "noticeBody")->hasFocus());
+        QVERIFY(control<QPushButton>(window, "openNoticeOriginalButton")->isEnabled());
+        control<QLineEdit>(window, "keywordSearch")->setText("不会匹配的测试关键词");
+        QTRY_COMPARE(table->model()->rowCount(), 0);
+        QVERIFY(!control<QPushButton>(window, "openNoticeOriginalButton")->isEnabled());
+        QVERIFY(!control<QPushButton>(window, "addTaskButton")->isEnabled());
+        control<QPushButton>(window, "resetNoticeFiltersButton")->click();
+        QTRY_COMPARE(table->model()->rowCount(), 1);
+        page->setFont(window.font());
+        window.resize(1800, 1000);
+        QTRY_COMPARE(noticeSplitter->orientation(), Qt::Horizontal);
+        tasks.setStatus(task.id, TaskStatus::Completed);
+        control<OverviewPage>(window, "overviewPage")->reload();
+        QVERIFY(control<QLabel>(window, "overviewSummary")->text().contains("0 项待办未完成"));
+        const auto sourceId = school.sources.front().id.toStdString();
+        const auto run = sources.begin(sourceId, "2026-10-14T00:00:00Z");
+        overview->reload();
+        QVERIFY(control<QLabel>(window, "overviewSourceHealth")->text().contains("1 个正在更新"));
+        sources.finish(run, {}, "2026-10-14T00:00:01Z");
+        sources.setPaused(sourceId, true);
+        overview->reload();
+        QVERIFY(control<QLabel>(window, "overviewSourceHealth")->text().contains("1 个已暂停"));
+        QVERIFY(control<QLabel>(window, "overviewSourceHealth")->text().contains("0 个正在更新"));
+    }
+    void resetClearsSourceAndEmptyStateOffersYearRecovery() {
+        BrandTheme::installApplication(*qobject_cast<QApplication *>(QCoreApplication::instance()));
+        const auto school = SchoolPackage::load(CONFIG_FILE);
+        QTemporaryDir folder;
+        Database database(folder.filePath("filter-recovery.sqlite"));
+        SqliteRepository repository(database);
+        SqliteSourceRepository sourceRepository(database);
+        NoticeService notices(repository, school.id.toStdString());
+        SourceService sources(school.id.toStdString(), school.catalog, sourceRepository);
+        RefreshCoordinator network(school, notices, sources);
+        seed(notices);
+        NoticePage page(school, notices, network);
+        page.resize(1280, 800);
+        page.show();
+        auto *source = control<QComboBox>(page, "noticeSourceSelector");
+        auto *search = control<QLineEdit>(page, "keywordSearch");
+        auto *year = control<QComboBox>(page, "yearSelector");
+        auto *table = control<QTableView>(page, "noticeTable");
+        auto *empty = control<QWidget>(page, "noticeEmptyState");
+        auto *allYears = control<QPushButton>(page, "showAllNoticeYearsButton");
+        const int academic = source->findData("academic-affairs-notices");
+        QVERIFY(academic > 0);
+        source->setCurrentIndex(academic);
+        search->setText("不会匹配的关键词");
+        QCOMPARE(table->model()->rowCount(), 0);
+        QVERIFY(!empty->isHidden());
+        control<QPushButton>(page, "resetNoticeFiltersButton")->click();
+        QVERIFY(page.currentQuery().sourceIds.empty());
+        QVERIFY(page.currentQuery().keywordAll.empty());
+        QCOMPARE(source->currentIndex(), 0);
+        QCOMPARE(table->model()->rowCount(), 1);
+        QVERIFY(empty->isHidden());
+        year->addItem("无通知的历史年", QDate::currentDate().year() - 20);
+        year->setCurrentIndex(year->count() - 1);
+        QCOMPARE(table->model()->rowCount(), 0);
+        QVERIFY(!allYears->isHidden());
+        allYears->click();
+        QCOMPARE(page.currentQuery().yearPolicy, YearPolicy::AllYears);
+        QCOMPARE(table->model()->rowCount(), 1);
+        QVERIFY(!network.busy());
+        const auto captureDirectory = QString(EVIDENCE_DIR) + "/upgrade-2026-10-13";
+        QVERIFY(QDir().mkpath(captureDirectory));
+        QVERIFY(page.grab().save(captureDirectory + "/notice-page.png"));
+    }
     void pendingSourceOffersAiWithoutStartingSearch() {
         auto school = SchoolPackage::load(CONFIG_FILE);
         SourceDescription pending;

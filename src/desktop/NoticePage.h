@@ -11,6 +11,10 @@ class QTableView;
 class QTextBrowser;
 class QLabel;
 class QPushButton;
+class QProgressBar;
+class QSplitter;
+class QGridLayout;
+class QBoxLayout;
 namespace campus {
 class NoticePage final : public QWidget {
     Q_OBJECT
@@ -27,7 +31,16 @@ class NoticePage final : public QWidget {
     void saveSubscriptionRequested(campus::NoticeQuery query);
     void addTaskRequested(QString noticeId);
 
+  protected:
+    void resizeEvent(QResizeEvent *event) override;
+    void changeEvent(QEvent *event) override;
   private:
+    void updateLayout();
+    QGridLayout *controls_;
+    QBoxLayout *sourceControls_;
+    QBoxLayout *detailActions_;
+    QSplitter *splitter_;
+    QPushButton *openOriginal_;
     NoticeService &service_;
     RefreshCoordinator &coordinator_;
     NoticeListModel model_;
@@ -40,6 +53,10 @@ class NoticePage final : public QWidget {
     QLabel *count_;
     QLabel *status_;
     QPushButton *refresh_;
+    QWidget *emptyState_;
+    QLabel *emptyMessage_;
+    QPushButton *allYears_;
+    QProgressBar *progress_;
     QPushButton *addTask_, *refreshOriginal_;
     bool detailPending_ = false;
     QString selectedId_;

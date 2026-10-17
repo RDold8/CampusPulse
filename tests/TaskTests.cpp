@@ -106,6 +106,84 @@ void sameLegacy(QJsonObject before, QJsonObject after) {
 class TaskTests final : public QObject {
     Q_OBJECT
   private slots:
+    void manualReminderDoesNotRequireNotice() {
+        QTemporaryDir folder;
+        Store store(folder.filePath("manual.sqlite"));
+        PersonalTask task;
+        task.schoolId = "cn-test";
+        task.title = "去图书馆还书";
+        task.time.timeZone = "Asia/Shanghai";
+        task.time.precision = TimePrecision::DateTime;
+        task.time.utcDateTime = "2026-10-03T01:00:00Z";
+        task.time.confirmation = TimeConfirmation::Personal;
+        task.reminder.enabled = true;
+        task.reminder.minutesBefore = 0;
+        bool saved = false;
+        std::string reason;
+        try { task = store.tasks.save(task, true); saved = true; }
+        catch (const std::exception &error) { reason = error.what(); }
+        QVERIFY2(saved, reason.c_str());
+        QVERIFY(task.noticeId.empty());
+        QCOMPARE(store.notices.list().size(), size_t(0));
+        QCOMPARE(store.tasks.views().size(), size_t(1));
+        QVERIFY(store.tasks.views().front().noticeUrl.empty());
+        const auto uid = task.calendarUid;
+        task.title = "还书并借新书";
+        task = store.tasks.save(task);
+        QCOMPARE(task.calendarUid, uid);
+        QCOMPARE(task.revision, 2);
+        task = store.tasks.setStatus(task.id, TaskStatus::Cancelled);
+        QCOMPARE(task.status, TaskStatus::Cancelled);
+        QSqlQuery check(store.db.connection());
+        QVERIFY(check.exec("PRAGMA foreign_key_check"));
+        QVERIFY(!check.next());
+        QVERIFY(check.exec("PRAGMA foreign_keys"));
+        QVERIFY(check.next());
+        QCOMPARE(check.value(0).toInt(), 1);
+        task.time.confirmation = TimeConfirmation::OriginalText;
+        task.time.evidence = "不能将个人提醒伪装成官网期限";
+        QVERIFY_THROWS_EXCEPTION(std::invalid_argument, store.tasks.save(task, true));
+    }
+    void frozenVersion7PreservesTasksAndDeliveryRecords() {
+        QTemporaryDir folder;
+        const auto file = folder.filePath("version7.sqlite");
+        freeze(file);
+        QFile fixture(QString(DATABASE_FIXTURES) + "/v7-upgrade.sql");
+        QVERIFY(fixture.open(QIODevice::ReadOnly));
+        QStringList commands;
+        for (const auto &sql : QString::fromUtf8(fixture.readAll()).split(';'))
+            if (!sql.trimmed().isEmpty()) commands << sql;
+        commands << "INSERT INTO personal_task VALUES('old-task','cn-test','frozen-v2',1,"
+                    "'旧缴费提醒','保留备注','payment','not_started','datetime','',"
+                    "'2026-10-15T01:00:00Z','Asia/Shanghai','','personal','2026-10-02T02:00:00Z',"
+                    "1,0,0,'09:00','stable-old@campuspulse','2026-10-02T02:00:00Z',"
+                    "'2026-10-02T02:00:00Z',3)";
+        commands << "INSERT INTO reminder_delivery VALUES('old-task','2026-10-15T01:00:00Z',"
+                    "3,'submitted','2026-10-15T01:00:00Z','')";
+        QCOMPARE(snapshot(file, commands)["version"].toInt(), 7);
+        {
+            Store store(file);
+            const auto old = store.tasks.find("old-task");
+            QCOMPARE(old.calendarUid, std::string("stable-old@campuspulse"));
+            QCOMPARE(old.revision, 3);
+            QCOMPARE(old.noticeRevisionId, int64_t(1));
+            QCOMPARE(old.notes, std::string("保留备注"));
+            QSqlQuery query(store.db.connection());
+            QVERIFY(query.exec("SELECT task_revision,status FROM reminder_delivery WHERE task_id='old-task'"));
+            QVERIFY(query.next());
+            QCOMPARE(query.value(0).toInt(), 3);
+            QCOMPARE(query.value(1).toString(), QString("submitted"));
+            QVERIFY(query.exec("PRAGMA foreign_key_check"));
+            QVERIFY(!query.next());
+            auto manual = store.tasks.manualDraft();
+            manual.title = "新个人提醒";
+            store.tasks.save(manual);
+            QCOMPARE(store.tasks.views().size(), size_t(2));
+        }
+        Store reopened(file);
+        QCOMPARE(reopened.tasks.find("old-task").calendarUid, std::string("stable-old@campuspulse"));
+        QCOMPARE(reopened.tasks.list().size(), size_t(2));
+    }
     void draftUnknownDatesSeparateTasksAndRestart() {
         QTemporaryDir folder;
         const auto file = folder.filePath("saved.sqlite");

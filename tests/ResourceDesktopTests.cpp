@@ -380,7 +380,7 @@ class ResourceDesktopTests final : public QObject {
         RefreshCoordinator coordinator(s.school, notices, sources);
         MainWindow window(s.school, notices, sources, coordinator, registry, subscriptions, tasks,
                           &s.resources, &s.discovery);
-        QCOMPARE(control<QTabWidget>(window, "mainTabs")->count(), 8);
+        QCOMPARE(control<QTabWidget>(window, "mainTabs")->count(), 9);
         auto *page = control<ResourcePage>(window, "resourcePage");
         QSignalSpy selected(&window, &MainWindow::universitySelected);
         control<QPushButton>(*page, "discoverResourcesButton")->click();

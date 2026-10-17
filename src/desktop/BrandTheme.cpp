@@ -40,10 +40,10 @@ bool darkAppearance() {
 
 Colors colors() {
     if (darkAppearance())
-        return {"#16202d", "#1d2a3a", "#253448", "#edf3fa", "#b6c7da", "#475a72", "#9dc9ff",
-                "#bbdaff", "#354f70", "#ffffff", "#243a52", "#ffb7b2", "#a8b7c9"};
-    return {"#f4f7fa", "#ffffff", "#eef3f8", "#1c2d40", "#536579", "#bfcbd8", "#225d9c",
-            "#174875", "#dceafb", "#173d68", "#e8f0f8", "#a62735", "#617286"};
+        return {"#17191c", "#222529", "#2d3136", "#ecedef", "#adb2ba", "#454a52", "#9dc9ff",
+                "#bbdaff", "#354f70", "#ffffff", "#2d3136", "#ffb7b2", "#a8b0ba"};
+    return {"#f3f3f0", "#ffffff", "#f0f1f2", "#202124", "#62666b", "#d5d7da", "#225d9c",
+            "#174875", "#dceafb", "#173d68", "#eef0f2", "#a62735", "#617286"};
 }
 
 void setName(QWidget &window, const char *objectName, const QString &name) {
@@ -132,7 +132,15 @@ QLabel#heading, QLabel[brandRole="heading"] {
 }
 QLabel#subtitle { font-size: @subtitlept; color: @muted; }
 QLabel#detailTitle { font-size: @detailpt; font-weight: 600; }
+QWidget#overviewPanel { background: @surface; border: 1px solid @border; border-radius: 3px; }
+QLabel#overviewSummary { color: @muted; padding: 6px 0; }
+QLabel#overviewSourceHealth, QLabel[brandRole="muted"] { color: @muted; }
+QLabel#overviewError { color: @error; }
 QWidget#sourceLoginPanel { background: @informational; border: 1px solid @border; border-radius: 6px; }
+QWidget#noticeEmptyState { background: @informational; border: 1px solid @border; border-radius: 8px; }
+QLabel#noticeEmptyMessage { color: @foreground; }
+QProgressBar#noticeUpdateProgress { background: @subtle; border: 0; border-radius: 2px; }
+QProgressBar#noticeUpdateProgress::chunk { background: @accent; border-radius: 2px; }
 QLabel[brandRole="accessHeading"] { font-size: @subtitlept; font-weight: 600; }
 QLabel#scope { background: @informational; padding: 10px 12px; border-radius: 6px; color: @foreground; }
 QLabel#noticeCount, QLabel#sourceSummary, QLabel#taskSummary, QLabel#subscriptionSummary {
@@ -167,6 +175,15 @@ QPushButton#exportCalendarButton {
 QPushButton#primary:hover, QPushButton#loadUniversityButton:hover, QPushButton#saveTaskButton:hover,
 QPushButton#saveSubscriptionDialogButton:hover, QPushButton#newSubscriptionButton:hover,
 QPushButton#exportCalendarButton:hover { background: @accentHover; border-color: @accentHover; }
+QWidget#primaryNavigation { background: @surface; border-bottom: 1px solid @border; }
+QPushButton[brandRole="navigation"] { background: transparent; border: 1px solid transparent; }
+QPushButton[brandRole="navigation"]:checked { background: @selection; color: @selectedText; border-color: @border; }
+QPushButton[brandRole="navigation"]:focus { border: 2px solid @accent; padding: 6px 11px; }
+QToolButton#secondaryNavigationButton { background: @surface; color: @foreground; border: 1px solid @border; border-radius: 3px; padding: 7px 12px; }
+QToolButton#secondaryNavigationButton:focus { border: 2px solid @accent; padding: 6px 11px; }
+QMenu { background: @surface; color: @foreground; border: 1px solid @border; }
+QMenu::item { padding: 8px 24px; }
+QMenu::item:selected { background: @selection; color: @selectedText; }
 QPushButton:disabled {
     background: @subtle; color: @disabled; border: 1px solid @border; font-weight: 400;
 }

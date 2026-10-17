@@ -96,7 +96,10 @@ class SubscriptionDesktopTests final : public QObject {
             window.show();
             QVERIFY(QTest::qWaitForWindowExposed(&window));
             auto *tabs = control<QTabWidget>(window, "mainTabs");
-            QCOMPARE(tabs->count(), 7);
+            QCOMPARE(tabs->count(), 8);
+            QCOMPARE(tabs->currentWidget()->objectName(), QString("overviewPage"));
+            control<QPushButton>(window, "overviewNoticesButton")->click();
+            QCOMPARE(tabs->currentIndex(), 0);
             control<QComboBox>(window, "themeSelector")->setCurrentText("重修 / 缴费");
             control<QLineEdit>(window, "keywordSearch")->setText("重修 缴费");
             auto *source = control<QComboBox>(window, "noticeSourceSelector");

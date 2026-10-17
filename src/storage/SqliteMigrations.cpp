@@ -156,6 +156,37 @@ void migrateToVersion7(QSqlDatabase &database) {
     execute(database,
             "ALTER TABLE school_resource ADD COLUMN access_evidence TEXT NOT NULL DEFAULT ''");
 }
+void migrateToVersion8(QSqlDatabase &database) {
+    // Rebuild the parent in place; reminder_delivery keeps its original FK target.
+    execute(database, R"SQL(CREATE TABLE personal_task_next(
+      id TEXT PRIMARY KEY,school_id TEXT NOT NULL,notice_id TEXT,notice_revision_id INTEGER,
+      title TEXT NOT NULL,notes TEXT NOT NULL,action TEXT NOT NULL
+        CHECK(action IN('registration','payment','application','check_result','attendance','other')),
+      status TEXT NOT NULL CHECK(status IN('not_started','in_progress','completed','cancelled')),
+      time_precision TEXT NOT NULL CHECK(time_precision IN('unknown','date','datetime')),
+      time_date TEXT NOT NULL,time_utc TEXT NOT NULL,time_zone TEXT NOT NULL,time_evidence TEXT NOT NULL,
+      time_source TEXT NOT NULL CHECK(time_source IN('none','personal','original_text')),
+      time_confirmed_at TEXT NOT NULL,
+      reminder_enabled INTEGER NOT NULL CHECK(reminder_enabled IN(0,1)),
+      reminder_minutes INTEGER NOT NULL CHECK(reminder_minutes BETWEEN 0 AND 525600),
+      reminder_days INTEGER NOT NULL CHECK(reminder_days BETWEEN 0 AND 365),reminder_time TEXT NOT NULL,
+      calendar_uid TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,
+      revision INTEGER NOT NULL CHECK(revision>0),
+      FOREIGN KEY(school_id,notice_id) REFERENCES notices(school_id,id),
+      FOREIGN KEY(notice_id,notice_revision_id) REFERENCES notice_revisions(notice_id,id),
+      CHECK((notice_id IS NULL AND notice_revision_id IS NULL AND time_source<>'original_text')
+         OR (notice_id IS NOT NULL AND length(notice_id)>0)),
+      CHECK((time_precision='unknown' AND time_date='' AND time_utc='' AND time_source='none'
+             AND time_confirmed_at='' AND reminder_enabled=0)
+         OR (time_precision='date' AND time_date<>'' AND time_utc='' AND time_source<>'none'
+             AND time_confirmed_at<>'')
+         OR (time_precision='datetime' AND time_date='' AND time_utc<>'' AND time_source<>'none'
+             AND time_confirmed_at<>''))))SQL");
+    execute(database, "INSERT INTO personal_task_next SELECT * FROM personal_task");
+    execute(database, "DROP TABLE personal_task");
+    execute(database, "ALTER TABLE personal_task_next RENAME TO personal_task");
+    execute(database, "CREATE INDEX task_schools ON personal_task(school_id,status,updated_at DESC)");
+}
 } // namespace
 
 void SqliteMigrations::apply(QSqlDatabase &database) {
@@ -172,8 +203,13 @@ void SqliteMigrations::apply(QSqlDatabase &database) {
         throw std::runtime_error("数据库来自更新版本，请升级软件");
     if (version == CurrentVersion)
         return;
+    // SQLite requires this before BEGIN when rebuilding a referenced table.
+    execute(database, "PRAGMA foreign_keys=OFF");
     if (!database.transaction())
+    {
+        execute(database, "PRAGMA foreign_keys=ON");
         throw std::runtime_error("无法开始迁移事务");
+    }
     try {
         if (version < 1)
             migrateToVersion1(database);
@@ -189,11 +225,20 @@ void SqliteMigrations::apply(QSqlDatabase &database) {
             migrateToVersion6(database);
         if (version < 7)
             migrateToVersion7(database);
+        if (version < 8)
+            migrateToVersion8(database);
+        {
+            QSqlQuery check(database);
+            if (!check.exec("PRAGMA foreign_key_check") || check.next())
+                throw std::runtime_error("迁移后的数据关联校验失败");
+        }
         execute(database, QString("PRAGMA user_version=%1").arg(CurrentVersion));
         if (!database.commit())
             throw std::runtime_error("迁移提交失败");
+        execute(database, "PRAGMA foreign_keys=ON");
     } catch (...) {
         database.rollback();
+        execute(database, "PRAGMA foreign_keys=ON");
         throw;
     }
 }

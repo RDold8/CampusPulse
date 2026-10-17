@@ -47,7 +47,7 @@ QVariantList values(const PersonalTask &t) {
     const auto s = [](const std::string &v) { return QVariant(QString::fromStdString(v)); };
     return {s(t.id),
             s(t.schoolId),
-            s(t.noticeId),
+            t.noticeId.empty() ? QVariant(QMetaType::fromType<QString>()) : s(t.noticeId),
             t.noticeRevisionId > 0 ? QVariant::fromValue<qlonglong>(t.noticeRevisionId)
                                    : QVariant(QMetaType::fromType<qlonglong>()),
             s(t.title),
@@ -95,7 +95,8 @@ std::optional<PersonalTask> SqliteTaskRepository::find(const std::string &school
 PersonalTask SqliteTaskRepository::save(const PersonalTask &input, int expected) {
     auto t = input;
     const bool create = t.id.empty();
-    if (t.schoolId.empty() || t.noticeId.empty() || expected < 0 || expected >= 1000000000 ||
+    if (t.schoolId.empty() || (t.noticeId.empty() && t.noticeRevisionId != 0) ||
+        expected < 0 || expected >= 1000000000 ||
         (create != (expected == 0)))
         throw std::invalid_argument("待办身份或版本无效");
     if (!db_.transaction())
@@ -126,7 +127,7 @@ PersonalTask SqliteTaskRepository::save(const PersonalTask &input, int expected)
                 "time_precision=?,time_date=?,time_utc=?,time_zone=?,time_evidence=?,time_source=?,"
                 "time_confirmed_at=?,reminder_enabled=?,reminder_minutes=?,reminder_days=?,"
                 "reminder_time=?,"
-                "calendar_uid=?,updated_at=?,revision=? WHERE school_id=? AND id=? AND notice_id=? "
+                "calendar_uid=?,updated_at=?,revision=? WHERE school_id=? AND id=? AND notice_id IS ? "
                 "AND revision=?");
             for (int i = 3; i <= 19; ++i)
                 q.addBindValue(data[i]);

@@ -1,5 +1,7 @@
 # CampusPulse 桌面预览版 0.1.1
 
+当前发布版本为0.2.0（2026-10-14），提供可安装的Windows桌面版和便携包。常用导航为概览、通知、学校资源、提醒；大学、来源、订阅、AI与日历在更多菜单。可不关联通知直接新建个人提醒，默认只填标题与日期时间。下载见[Windows安装](windows-release.md)，本轮验证见[发布验收](release-0.2.0-validation.md)。下文原型开发记录保留历史阶段含义。
+
 2026-10-04：C++20 + Qt Widgets + SQLite + Lexbor HTML/CSS选择器 + libical ICS。东北电力大学是第一份学校配置，来源参数独立于核心和界面。本次 0.1.1 桌面预览版增加陌生学校发现、AI 提供方配置、主页面模型选择和八类搜索模板，0.1.0 保留为历史版本。陌生大学完整实网接入与修复后的 AI 补充链路仍待复验；见[下载与安装](windows-release.md)与[本轮验收](universal-onboarding-validation.md)。
 
 ## 使用

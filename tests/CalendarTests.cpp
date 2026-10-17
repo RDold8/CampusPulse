@@ -79,6 +79,27 @@ icalproperty *calendarProperty(icalcomponent *component, icalproperty_kind kind)
 class CalendarTests final : public QObject {
     Q_OBJECT
   private slots:
+    void manualReminderExportsWithoutInventingOfficialUrl() {
+        Session s;
+        auto task = s.tasks.manualDraft();
+        task.title = "图书馆还书";
+        task.time.precision = TimePrecision::DateTime;
+        task.time.utcDateTime = "2026-10-05T01:00:00Z";
+        task.time.confirmation = TimeConfirmation::Personal;
+        task.reminder.enabled = true;
+        task.reminder.minutesBefore = 0;
+        task = s.tasks.save(task, true);
+        const auto items = s.calendar.items();
+        QCOMPARE(items.size(), size_t(1));
+        QVERIFY(items.front().view.noticeUrl.empty());
+        const auto data = IcsExporter::render(items, {true});
+        QVERIFY(data.contains("BEGIN:VALARM"));
+        QVERIFY(!data.contains("\r\nURL:"));
+        QVERIFY(data.contains(QByteArray::fromStdString(task.calendarUid)));
+        s.tasks.setStatus(task.id, TaskStatus::Cancelled);
+        QVERIFY(s.calendar.items().empty());
+        QVERIFY(IcsExporter::render(s.calendar.items(true)).contains("STATUS:CANCELLED"));
+    }
     void projectionUsesTaskFactsAndSchoolTimeZone() {
         Session s;
         const auto first = s.saveDate("【演示】重修缴费");

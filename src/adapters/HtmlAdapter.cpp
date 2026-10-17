@@ -148,6 +148,96 @@ QString textWithout(lxb_dom_node_t *node, const QSet<lxb_dom_node_t *> &excluded
         pieces << textWithout(child, excluded);
     return pieces.join(" ").simplified();
 }
+bool nonArticleContent(lxb_dom_node_t *node) {
+    return node->type == LXB_DOM_NODE_TYPE_ELEMENT &&
+           (node->local_name == LXB_TAG_SCRIPT || node->local_name == LXB_TAG_STYLE ||
+            node->local_name == LXB_TAG_TEMPLATE);
+}
+bool bodyBoundary(lxb_dom_node_t *node) {
+    if (node->type != LXB_DOM_NODE_TYPE_ELEMENT)
+        return false;
+    switch (node->local_name) {
+    case LXB_TAG_ADDRESS: case LXB_TAG_ARTICLE: case LXB_TAG_ASIDE:
+    case LXB_TAG_BLOCKQUOTE: case LXB_TAG_DIV: case LXB_TAG_DL:
+    case LXB_TAG_DT: case LXB_TAG_DD: case LXB_TAG_FIELDSET:
+    case LXB_TAG_FIGURE: case LXB_TAG_FIGCAPTION: case LXB_TAG_HEADER:
+    case LXB_TAG_FOOTER: case LXB_TAG_H1: case LXB_TAG_H2:
+    case LXB_TAG_H3: case LXB_TAG_H4: case LXB_TAG_H5: case LXB_TAG_H6:
+    case LXB_TAG_HR: case LXB_TAG_LI: case LXB_TAG_OL: case LXB_TAG_UL:
+    case LXB_TAG_P: case LXB_TAG_PRE: case LXB_TAG_SECTION:
+    case LXB_TAG_TABLE: case LXB_TAG_CAPTION: case LXB_TAG_THEAD:
+    case LXB_TAG_TBODY: case LXB_TAG_TFOOT: case LXB_TAG_TR:
+    case LXB_TAG_TD: case LXB_TAG_TH: case LXB_TAG_BR:
+        return true;
+    default:
+        return false;
+    }
+}
+QString articleText(lxb_dom_node_t *root) {
+    // Each text node is read once in DOM order. Inline elements do not invent
+    // spaces; block boundaries flush a line without repeating ancestor text.
+    QStringList lines;
+    QString line;
+    const auto flush = [&] {
+        const auto normalized = line.simplified();
+        if (!normalized.isEmpty())
+            lines << normalized;
+        line.clear();
+    };
+    struct Visit { lxb_dom_node_t *node; bool leaving; };
+    std::vector<Visit> pending{{root, false}};
+    while (!pending.empty()) {
+        const auto visit = pending.back();
+        pending.pop_back();
+        auto node = visit.node;
+        if (nonArticleContent(node))
+            continue;
+        if (bodyBoundary(node))
+            flush();
+        if (visit.leaving)
+            continue;
+        if (node->type == LXB_DOM_NODE_TYPE_TEXT) {
+            size_t length = 0;
+            const auto content = lxb_dom_node_text_content(node, &length);
+            if (content)
+                line += QString::fromUtf8(reinterpret_cast<const char *>(content),
+                                          static_cast<qsizetype>(length));
+            continue;
+        }
+        pending.push_back({node, true});
+        for (auto child = node->last_child; child; child = child->prev)
+            pending.push_back({child, false});
+    }
+    flush();
+    return lines.join("\n\n");
+}
+bool within(lxb_dom_node_t *node, lxb_dom_node_t *root) {
+    for (auto parent = node; parent; parent = parent->parent)
+        if (parent == root)
+            return true;
+    return false;
+}
+QString headerPublicationDate(const QString &raw) {
+    // A styled date field may actually be a deadline. Only a publication label
+    // or a date at the beginning of a CMS header establishes publication.
+    static const QRegularExpression label("(?:发布时间|发布日期|发表于)\\s*[:：]?\\s*");
+    static const QRegularExpression leadingDate("^\\s*(?:\\d{4}(?:年|[-/.])|[A-Za-z]{3}\\s+\\d)");
+    const auto match = label.match(raw);
+    if (match.hasMatch()) {
+        const auto value = raw.mid(match.capturedEnd());
+        return leadingDate.match(value).hasMatch() ? publicationDate(value) : QString{};
+    }
+    static const QRegularExpression deadline("截止|期限|报名时间|活动时间|办理时间|公示时间");
+    if (deadline.match(raw).hasMatch())
+        return {};
+    // Keep the existing unambiguous day/year-month and month-day/year cards.
+    static const QRegularExpression splitDate(
+        "^(?:\\d{1,2}[-./]\\d{1,2}\\s*\\d{4}(?:\\s*[-—–]+\\s*[A-Za-z]+)?|"
+        "\\d{1,2}\\s*\\d{4}[-./]\\d{1,2}(?:\\s*星期[一二三四五六日天])?)$");
+    if (splitDate.match(raw.simplified()).hasMatch())
+        return publicationDate(raw);
+    return leadingDate.match(raw).hasMatch() ? publicationDate(raw) : QString{};
+}
 bool isDateField(const QString &raw) {
     static const QRegularExpression dateOnly(
         "^[\\[【(]?\\s*(?:\\d{4}(?:年|[-/.])\\d{1,2}(?:月|[-/.])\\d{1,2}日?"
@@ -309,14 +399,14 @@ std::vector<Notice> HtmlAdapter::parseList(const QByteArray &html,
                 if (!published.isEmpty())
                     break;
                 const auto raw = text(node);
-                if (raw.size() <= 40 && !(published = publicationDate(raw)).isEmpty())
+                if (raw.size() <= 40 && !(published = headerPublicationDate(raw)).isEmpty())
                     break;
             }
             if (published.isEmpty() && !event)
                 for (auto node : doc.select(row, "span")) {
                     const auto raw = text(node);
                     if (raw.size() <= 40 && isDateField(raw) &&
-                        !(published = publicationDate(raw)).isEmpty())
+                        !(published = headerPublicationDate(raw)).isEmpty())
                         break;
                 }
             if (published.isEmpty() && !event) {
@@ -345,7 +435,7 @@ std::vector<Notice> HtmlAdapter::parseList(const QByteArray &html,
             if (published.isEmpty() && !event) {
                 const auto raw = directText(row);
                 if (raw.size() <= 40)
-                    published = publicationDate(raw);
+                    published = headerPublicationDate(raw);
             }
             if (published.isEmpty() && !source.allowUnknownDates)
                 continue;
@@ -415,7 +505,7 @@ std::vector<Notice> HtmlAdapter::parseList(const QByteArray &html,
             throw std::runtime_error("通知行缺少标题链接");
         auto url = source.entry.resolved(QUrl(attribute(anchors.front(), "href", 4)));
         url.setFragment({});
-        const auto published = dates.empty() ? QString{} : publicationDate(text(dates.front()));
+        const auto published = dates.empty() ? QString{} : headerPublicationDate(text(dates.front()));
         // Prefer the full official title when list text is truncated.
         auto title = attribute(anchors.front(), "title", 5).simplified();
         if (title.isEmpty()) {
@@ -483,10 +573,7 @@ Notice HtmlAdapter::parseDetail(const QByteArray &html, const SourceConfig &sour
                  ".m-news-detail article", ".page_article .article", ".item_content", ".content-txt",
                  ".node__content .field--name-body", ".field--name-body", ".view-content"}) {
             for (auto candidate : doc.select(doc.root(), selector)) {
-                QSet<lxb_dom_node_t *> ignored;
-                for (auto node : doc.select(candidate, "script, style"))
-                    ignored.insert(node);
-                if (!textWithout(candidate, ignored).isEmpty()) {
+                if (!articleText(candidate).isEmpty()) {
                     body = candidate;
                     break;
                 }
@@ -501,15 +588,7 @@ Notice HtmlAdapter::parseDetail(const QByteArray &html, const SourceConfig &sour
     }
     if (!body)
         throw std::runtime_error("未找到通知正文，来源结构可能已变化");
-    for (auto node : doc.select(body, "script, style"))
-        lxb_dom_node_destroy_deep(node);
-    QStringList paragraphs;
-    for (auto node : doc.select(body, "p")) {
-        const auto line = text(node);
-        if (!line.isEmpty())
-            paragraphs << line;
-    }
-    notice.body = (paragraphs.isEmpty() ? text(body) : paragraphs.join("\n\n")).toStdString();
+    notice.body = articleText(body).toStdString();
     if (source.autoDetect && notice.publishedDate.empty()) {
         QSet<QString> publicationDates;
         // Publication metadata and CMS submission headers describe publication.
@@ -520,11 +599,13 @@ Notice HtmlAdapter::parseDetail(const QByteArray &html, const SourceConfig &sour
                 ".Article_PublishDate, .article-date, .publication-date, .publish-date, .publish_time, "
                 ".node__submitted time[datetime], .submitted time[datetime], "
                 ".top_misc > .left-attr.first")) {
+            if (within(node, body))
+                continue;
             auto raw = attribute(node, "content", 7);
             if (raw.isEmpty()) raw = attribute(node, "datetime", 8);
             if (raw.isEmpty()) raw = text(node);
             if (raw.size() <= 150) {
-                const auto date = publicationDate(raw);
+                const auto date = headerPublicationDate(raw);
                 if (!date.isEmpty()) publicationDates.insert(date);
             }
         }
@@ -532,10 +613,12 @@ Notice HtmlAdapter::parseDetail(const QByteArray &html, const SourceConfig &sour
              doc.select(doc.root(), ".m-recruit-detail-tips li, .detail-tit, .xq, .ac, "
                                     ".article_author, .news_information, .content-assist, "
                                     ".ny_fbt, .information, h1")) {
+            if (within(node, body))
+                continue;
             const auto raw = text(node);
             if (raw.size() <= 150 &&
                 (raw.contains("发布时间") || raw.contains("发布日期") || raw.contains("发表于"))) {
-                const auto date = publicationDate(raw);
+                const auto date = headerPublicationDate(raw);
                 if (!date.isEmpty()) publicationDates.insert(date);
             }
         }

@@ -15,6 +15,7 @@ class CalendarPage;
 class ResourceService;
 class ResourceDiscovery;
 class ResourcePage;
+class OverviewPage;
 
 class MainWindow final : public QMainWindow {
     Q_OBJECT
@@ -42,6 +43,7 @@ class MainWindow final : public QMainWindow {
     TaskPage *tasks_;
     CalendarPage *calendar_;
     ResourcePage *resources_ = nullptr;
+    OverviewPage *overview_;
     bool backgroundReminders_ = false;
 };
 } // namespace campus

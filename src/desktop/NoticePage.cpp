@@ -7,11 +7,17 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
+#include <QResizeEvent>
+#include <QScrollArea>
+#include <QFontMetrics>
 #include <QSplitter>
 #include <QHeaderView>
 #include <QDesktopServices>
 #include <QDateTime>
 #include <QSignalBlocker>
+#include <QProgressBar>
+#include <QShortcut>
 #include <map>
 #include <QDate>
 #include "domain/Theme.h"
@@ -24,13 +30,24 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
     NoticeQuery rule;
     rule.schoolId = school.id.toStdString();
     filter_.setRule(rule);
-    auto *layout = new QVBoxLayout(this);
+    auto *outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    auto *scroll = new QScrollArea;
+    scroll->setObjectName("noticeScroll");
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    auto *content = new QWidget;
+    scroll->setWidget(content);
+    outer->addWidget(scroll);
+    auto *layout = new QVBoxLayout(content);
     layout->setContentsMargins(24, 20, 24, 16);
     layout->setSpacing(14);
     auto *heading = new QLabel("CampusPulse");
     heading->setObjectName("heading");
-    auto *subtitle = new QLabel(school.name + " · 官方通知桌面原型");
+    auto *subtitle = new QLabel(school.name + " · 校园通知与办理事项");
     subtitle->setObjectName("subtitle");
+    subtitle->setTextFormat(Qt::PlainText);
+    subtitle->setWordWrap(true);
     layout->addWidget(heading);
     layout->addWidget(subtitle);
     QStringList sourceNames;
@@ -43,12 +60,13 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
     scope->setWordWrap(true);
     scope->setObjectName("scope");
     layout->addWidget(scope);
-    auto *controls = new QHBoxLayout;
+    controls_ = new QGridLayout;
+    auto *controls = controls_;
     year_ = new QComboBox;
     year_->setObjectName("yearSelector");
-    year_->setMinimumWidth(190);
-    controls->addWidget(new QLabel("年份"));
-    controls->addWidget(year_);
+    year_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    year_->setMinimumContentsLength(10);
+    year_->setAccessibleName("通知发布年份");
     auto *search = new QLineEdit;
     search->setObjectName("keywordSearch");
     search->setPlaceholderText("搜索标题与主来源：重修、缴费、补考……（多个词用空格分隔）");
@@ -61,23 +79,34 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
             QString::fromUtf8(theme.label.data(), static_cast<int>(theme.label.size())),
             QString::fromUtf8(theme.key.data(), static_cast<int>(theme.key.size())));
     auto *reset = new QPushButton("清除筛选");
+    reset->setObjectName("resetNoticeFiltersButton");
+    reset->setToolTip("恢复今年、全部来源与主题，并清空关键词");
     refresh_ = new QPushButton("更新官网");
     refresh_->setObjectName("primary");
-    controls->addWidget(search, 1);
-    controls->addWidget(category);
-    controls->addWidget(reset);
-    controls->addWidget(refresh_);
+    search->setMinimumWidth(0);
+    search->setToolTip(search->placeholderText());
+    controls->addWidget(search, 0, 0, 1, 4);
+    controls->addWidget(year_, 1, 0);
+    controls->addWidget(category, 1, 1);
+    controls->addWidget(reset, 1, 2);
+    controls->addWidget(refresh_, 1, 3);
+    controls->setColumnStretch(0, 1);
     layout->addLayout(controls);
-    auto *sourceControls = new QHBoxLayout;
+    sourceControls_ = new QBoxLayout(QBoxLayout::LeftToRight);
+    auto *sourceControls = sourceControls_;
     auto *sourceChoice = new QComboBox;
     sourceChoice->setObjectName("noticeSourceSelector");
+    sourceChoice->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    sourceChoice->setMinimumContentsLength(12);
     sourceChoice->addItem("全部来源", "");
     for (const auto &source : school.catalog)
         sourceChoice->addItem(QString::fromStdString(source.name),
                               QString::fromStdString(source.id));
     sourceControls->addWidget(new QLabel("信息来源"));
     sourceControls->addWidget(sourceChoice);
-    sourceControls->addWidget(new QLabel("跨站汇总 · 来源目录与更新状态见“来源”页"));
+    auto *sourceHelp = new QLabel("跨站汇总 · 来源目录与更新状态见“来源”页");
+    sourceHelp->setWordWrap(true);
+    sourceControls->addWidget(sourceHelp);
     sourceControls->addStretch();
     auto *save = new QPushButton("保存为订阅");
     save->setObjectName("saveSubscriptionButton");
@@ -89,9 +118,39 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
         filter_.setSource(sourceChoice->currentData().toString());
         updateCount();
     });
-    connect(reset, &QPushButton::clicked, sourceChoice,
-            [sourceChoice] { sourceChoice->setCurrentIndex(0); });
-    auto *splitter = new QSplitter;
+    auto *searchShortcut = new QShortcut(QKeySequence::Find, this);
+    searchShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(searchShortcut, &QShortcut::activated, search, [search] {
+        search->setFocus();
+        search->selectAll();
+    });
+    emptyState_ = new QWidget;
+    emptyState_->setObjectName("noticeEmptyState");
+    auto *emptyLayout = new QHBoxLayout(emptyState_);
+    emptyLayout->setContentsMargins(16, 12, 16, 12);
+    emptyMessage_ = new QLabel;
+    emptyMessage_->setObjectName("noticeEmptyMessage");
+    emptyMessage_->setWordWrap(true);
+    emptyLayout->addWidget(emptyMessage_, 1);
+    allYears_ = new QPushButton("查看全部年份");
+    allYears_->setObjectName("showAllNoticeYearsButton");
+    emptyLayout->addWidget(allYears_);
+    connect(allYears_, &QPushButton::clicked, this, [this] {
+        year_->setCurrentIndex(year_->findData(0));
+    });
+    layout->addWidget(emptyState_);
+    progress_ = new QProgressBar;
+    progress_->setObjectName("noticeUpdateProgress");
+    progress_->setAccessibleName("官网通知更新进度");
+    progress_->setRange(0, 0);
+    progress_->setTextVisible(false);
+    progress_->setMaximumHeight(5);
+    progress_->hide();
+    layout->addWidget(progress_);
+    splitter_ = new QSplitter;
+    splitter_->setObjectName("noticeSplitter");
+    splitter_->setChildrenCollapsible(false);
+    auto *splitter = splitter_;
     table_ = new QTableView;
     table_->setObjectName("noticeTable");
     filter_.setSourceModel(&model_);
@@ -102,6 +161,8 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
     table_->verticalHeader()->hide();
     table_->setAlternatingRowColors(true);
     table_->setWordWrap(false);
+    table_->setTextElideMode(Qt::ElideRight);
+    table_->horizontalHeader()->setMinimumSectionSize(60);
     table_->setSortingEnabled(true);
     table_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     table_->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
@@ -118,9 +179,12 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
     title_->setWordWrap(true);
     title_->setObjectName("detailTitle");
     dl->addWidget(title_);
-    auto *open = new QPushButton("在浏览器打开官方原文");
+    openOriginal_ = new QPushButton("在浏览器打开官方原文");
+    openOriginal_->setObjectName("openNoticeOriginalButton");
+    auto *open = openOriginal_;
     dl->addWidget(open);
-    auto *detailActions = new QHBoxLayout;
+    detailActions_ = new QBoxLayout(QBoxLayout::LeftToRight);
+    auto *detailActions = detailActions_;
     addTask_ = new QPushButton("加入我的待办");
     addTask_->setObjectName("addTaskButton");
     refreshOriginal_ = new QPushButton("刷新原文");
@@ -160,6 +224,7 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
     layout->addWidget(splitter, 1);
     count_ = new QLabel;
     count_->setObjectName("noticeCount");
+    count_->setWordWrap(true);
     status_ = new QLabel("本地数据就绪；点击更新官网获取最新列表");
     status_->setObjectName("noticeStatus");
     status_->setWordWrap(true);
@@ -181,9 +246,10 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
         filter_.setThemeKey(category->currentData().toString());
         updateCount();
     });
-    connect(reset, &QPushButton::clicked, this, [this, search, category] {
+    connect(reset, &QPushButton::clicked, this, [this, search, category, sourceChoice] {
         search->clear();
         category->setCurrentIndex(0);
+        sourceChoice->setCurrentIndex(0);
         year_->setCurrentIndex(year_->findData(QDate::currentDate().year()));
     });
     connect(refresh_, &QPushButton::clicked, this, [this] {
@@ -195,6 +261,7 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
         }
     });
     connect(&coordinator_, &RefreshCoordinator::started, this, [this] {
+        progress_->show();
         refresh_->setEnabled(false);
         updateDetailActions();
         status_->setText("正在读取官网，每次请求间隔至少3秒……");
@@ -202,6 +269,7 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
     connect(&coordinator_, &RefreshCoordinator::changed, this, &NoticePage::reload);
     connect(&coordinator_, &RefreshCoordinator::message, status_, &QLabel::setText);
     connect(&coordinator_, &RefreshCoordinator::finished, this, [this](int good, int bad) {
+        progress_->hide();
         refresh_->setEnabled(true);
         updateDetailActions();
         status_->setText(
@@ -250,8 +318,65 @@ NoticePage::NoticePage(const SchoolPackage &school, NoticeService &service,
         if (url.scheme() == "https" || url.scheme() == "http")
             QDesktopServices::openUrl(url);
     });
+    connect(table_, &QTableView::activated, body_, [this](const QModelIndex &) {
+        body_->setFocus(Qt::ShortcutFocusReason);
+    });
+    QWidget::setTabOrder(search, year_);
+    QWidget::setTabOrder(year_, category);
+    QWidget::setTabOrder(category, reset);
+    QWidget::setTabOrder(reset, refresh_);
+    QWidget::setTabOrder(refresh_, sourceChoice);
+    QWidget::setTabOrder(sourceChoice, save);
+    QWidget::setTabOrder(save, table_);
+    QWidget::setTabOrder(table_, openOriginal_);
+    QWidget::setTabOrder(openOriginal_, addTask_);
+    QWidget::setTabOrder(addTask_, refreshOriginal_);
+    QWidget::setTabOrder(refreshOriginal_, body_);
+    QWidget::setTabOrder(body_, attachments_);
+    updateLayout();
+    updateDetailActions();
     reload();
 }
+
+void NoticePage::resizeEvent(QResizeEvent *event) {
+    QWidget::resizeEvent(event);
+    updateLayout();
+}
+
+void NoticePage::changeEvent(QEvent *event) {
+    QWidget::changeEvent(event);
+    if (event->type() == QEvent::FontChange)
+        updateLayout();
+}
+
+void NoticePage::updateLayout() {
+    const int breakpoint = qMax(800, fontMetrics().horizontalAdvance(QString(72, QLatin1Char('M'))));
+    const bool narrow = width() < breakpoint;
+    // Move existing widgets, keeping their connections and keyboard traversal order.
+    const char *names[] = {"keywordSearch", "yearSelector", "themeSelector",
+                           "resetNoticeFiltersButton", "primary"};
+    QWidget *widgets[5];
+    for (int i = 0; i < 5; ++i) {
+        widgets[i] = findChild<QWidget *>(QString::fromLatin1(names[i]));
+        controls_->removeWidget(widgets[i]);
+    }
+    controls_->addWidget(widgets[0], 0, 0, 1, narrow ? 2 : 4);
+    controls_->addWidget(widgets[1], 1, 0);
+    controls_->addWidget(widgets[2], 1, 1);
+    controls_->addWidget(widgets[3], narrow ? 2 : 1, narrow ? 0 : 2);
+    controls_->addWidget(widgets[4], narrow ? 2 : 1, narrow ? 1 : 3);
+    sourceControls_->setDirection(narrow ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight);
+    detailActions_->setDirection(narrow ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight);
+    const auto orientation = narrow ? Qt::Vertical : Qt::Horizontal;
+    if (splitter_->orientation() != orientation) {
+        splitter_->setOrientation(orientation);
+        splitter_->setSizes({3, 2});
+    }
+    table_->verticalHeader()->setDefaultSectionSize(fontMetrics().lineSpacing() + 18);
+    table_->setMinimumHeight(fontMetrics().lineSpacing() * 6);
+    body_->setMinimumHeight(fontMetrics().lineSpacing() * 8);
+}
+
 void NoticePage::reload() {
     try {
         const QString selectedId = selectedId_;
@@ -317,6 +442,12 @@ void NoticePage::reload() {
     }
 }
 void NoticePage::updateCount() {
+    const bool empty = filter_.rowCount() == 0;
+    emptyState_->setVisible(empty);
+    allYears_->setVisible(model_.rowCount() > 0 && filter_.query().yearPolicy != YearPolicy::AllYears);
+    emptyMessage_->setText(model_.rowCount() == 0
+        ? "还没有保存通知。点击“更新官网”读取已接入栏目；来源未接入或访问失败时，请在“来源”页查看原因。"
+        : "当前条件下没有匹配通知。可以查看全部年份，或使用“清除筛选”恢复今年与全部来源、主题。");
     count_->setText(
         QString("显示 %1 条 / 本地共 %2 条 · %3 · 关键词分类仅供筛选%4")
             .arg(filter_.rowCount())
@@ -347,6 +478,7 @@ void NoticePage::selectedChanged() {
     }
 }
 void NoticePage::updateDetailActions() {
+    openOriginal_->setEnabled(!selectedId_.isEmpty() && !selected_.url.empty());
     addTask_->setEnabled(!selectedId_.isEmpty());
     refreshOriginal_->setEnabled(!selectedId_.isEmpty() && !coordinator_.busy() && !detailPending_);
 }

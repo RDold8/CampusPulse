@@ -55,7 +55,7 @@ struct TaskView {
     std::string noticeTitle, noticeUrl;
     std::int64_t currentNoticeRevision = 0;
     bool needsReview() const {
-        return currentNoticeRevision != task.noticeRevisionId;
+        return !task.noticeId.empty() && currentNoticeRevision != task.noticeRevisionId;
     }
 };
 class TaskRepository {

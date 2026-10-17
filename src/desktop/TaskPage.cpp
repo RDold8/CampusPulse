@@ -112,15 +112,19 @@ TaskPage::TaskPage(const SchoolPackage &school, TaskService &service,
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(24, 20, 24, 16);
     layout->setSpacing(14);
-    auto *heading = new QLabel("我的待办");
+    auto *heading = new QLabel("我的提醒");
     heading->setObjectName("heading");
     layout->addWidget(heading);
     auto *scope = new QLabel(
         school.name +
-        " · 从通知加入待办，设置日期和时间，到点弹出提醒。软件运行时提醒，可在托盘后台运行。");
+        " · 新建提醒或从通知加入，设置时间后到点提醒。软件运行时提醒，可在托盘后台运行。");
     scope->setObjectName("scope");
     scope->setWordWrap(true);
     layout->addWidget(scope);
+    auto *create = new QPushButton("新建提醒");
+    create->setObjectName("newManualReminderButton");
+    layout->addWidget(create, 0, Qt::AlignLeft);
+    connect(create, &QPushButton::clicked, this, [this] { createManual(); });
     auto *filters = new QHBoxLayout;
     search_ = new QLineEdit;
     search_->setObjectName("taskSearch");
@@ -264,7 +268,7 @@ TaskPage::TaskPage(const SchoolPackage &school, TaskService &service,
             [this] { changeStatus(TaskStatus::NotStarted); });
     connect(review_, &QPushButton::clicked, this, &TaskPage::acknowledge);
     connect(open_, &QPushButton::clicked, this, [this] {
-        if (const auto *v = selected())
+        if (const auto *v = selected(); v && !v->task.noticeId.empty())
             emit noticeRequested(QString::fromStdString(v->task.noticeId));
     });
     connect(&coordinator, &RefreshCoordinator::changed, this, [this] { reload(); });
@@ -318,7 +322,7 @@ void TaskPage::rebuildCards() {
     }
     if (visibleIds_.empty()) {
         auto *empty = new QLabel("还没有符合条件的待办\n\n"
-                                "在通知详情点击“加入待办”，选好日期和时间即可。\n"
+                                "点击“新建提醒”，或从通知详情加入，选好时间即可。\n"
                                 "已有待办？试试清空搜索或调整筛选。");
         empty->setObjectName("taskCardsEmpty");
         empty->setAlignment(Qt::AlignCenter);
@@ -406,6 +410,7 @@ void TaskPage::rebuildCards() {
         more->setObjectName("taskCardMoreButton");
         auto *menu = new QMenu(more);
         auto *notice = menu->addAction("查看关联通知");
+        notice->setEnabled(!task.noticeId.empty());
         connect(notice, &QAction::triggered, this, [this, id] {
             selectTask(id);
             if (const auto *view = selected())
@@ -522,7 +527,7 @@ void TaskPage::selectionChanged() {
     }
     const auto &t = v->task;
     edit_->setEnabled(true);
-    open_->setEnabled(true);
+    open_->setEnabled(!t.noticeId.empty());
     review_->setEnabled(v->needsReview());
     start_->setEnabled(t.status == TaskStatus::NotStarted);
     complete_->setEnabled(TaskService::active(t.status));
@@ -548,11 +553,25 @@ void TaskPage::selectionChanged() {
         QString::fromStdString(v->noticeTitle) + "\n" +
         (v->needsReview()
              ? QString("原文有更新，请核对办理事项与已确认时间；核对后可确认当前原文。")
-             : QString("关联原文暂无新版本。")) +
+             : t.noticeId.empty() ? QString("个人提醒，没有关联官方通知。")
+                                 : QString("关联原文暂无新版本。")) +
         "\n\n提醒偏好：" + reminder + "\n" + actualReminderText(t) +
         "\n软件运行时检查提醒，可在托盘后台运行；完全退出期间不检查。");
     status_->setText(v->needsReview() ? "原文更新提醒：已确认时间与办理状态保留，请复核。"
                                       : "状态与时间保存在本机。完成状态由你记录。");
+}
+bool TaskPage::createManual() {
+    try {
+        TaskEditorDialog dialog(school_, service_, service_.manualDraft(), {}, this);
+        if (dialog.exec() == QDialog::Accepted) {
+            reload(QString::fromStdString(dialog.saved().id));
+            emit tasksChanged();
+            return true;
+        }
+    } catch (const std::exception &error) {
+        status_->setText("保存提醒失败：" + QString::fromUtf8(error.what()));
+    }
+    return false;
 }
 bool TaskPage::createForNotice(const QString &id) {
     try {

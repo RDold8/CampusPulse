@@ -131,6 +131,12 @@ PersonalTask TaskService::draft(const std::string &id) const {
     task.time.timeZone = timeZone_;
     return task;
 }
+PersonalTask TaskService::manualDraft() const {
+    PersonalTask task;
+    task.schoolId = schoolId_;
+    task.time.timeZone = timeZone_;
+    return task;
+}
 std::vector<TaskView> TaskService::views() const {
     const auto notices = notices_.list();
     std::unordered_map<std::string, const Notice *> byId;
@@ -139,6 +145,10 @@ std::vector<TaskView> TaskService::views() const {
             byId.emplace(n.id, &n);
     std::vector<TaskView> result;
     for (auto task : list()) {
+        if (task.noticeId.empty()) {
+            result.push_back({std::move(task), "个人提醒", "", 0});
+            continue;
+        }
         const auto found = byId.find(task.noticeId);
         if (found == byId.end())
             throw std::runtime_error("待办关联通知缺失");
@@ -164,7 +174,12 @@ PersonalTask TaskService::save(PersonalTask task, bool confirmTime) {
         task.createdAt = previous->createdAt;
         task.updatedAt = previous->updatedAt;
     }
-    const auto n = notice(task.noticeId);
+    const auto n = task.noticeId.empty() ? std::optional<Notice>{}
+                                        : std::optional<Notice>{notice(task.noticeId)};
+    if (!n && task.time.confirmation == TimeConfirmation::OriginalText)
+        throw std::invalid_argument("个人提醒不能标记为官方原文时间");
+    if (!n)
+        task.noticeRevisionId = 0;
     task.title = trim(task.title);
     task.notes = trim(task.notes);
     task.time.evidence = trim(task.time.evidence);
@@ -220,7 +235,7 @@ PersonalTask TaskService::save(PersonalTask task, bool confirmTime) {
     if (!validUtc(now))
         throw std::runtime_error("当前时刻无效");
     if (!previous) {
-        task.noticeRevisionId = n.revisionId;
+        task.noticeRevisionId = n ? n->revisionId : 0;
         task.createdAt = now;
         task.revision = 0;
         task.calendarUid.clear();
@@ -235,6 +250,8 @@ PersonalTask TaskService::setStatus(const std::string &id, TaskStatus status) {
 }
 PersonalTask TaskService::acknowledgeNotice(const std::string &id) {
     auto task = find(id);
+    if (task.noticeId.empty())
+        throw std::invalid_argument("个人提醒没有需要核对的官方原文");
     const auto head = notice(task.noticeId).revisionId;
     if (head == task.noticeRevisionId)
         return task;

@@ -128,8 +128,8 @@ QByteArray IcsExporter::render(const std::vector<CalendarItem> &items, IcsExport
             !identities.insert(task.calendarUid).second)
             throw std::invalid_argument("日历UID或任务版本无效或重复");
         const QUrl url(QString::fromStdString(item.view.noticeUrl), QUrl::StrictMode);
-        if (!url.isValid() || url.host().isEmpty() ||
-            (url.scheme() != "https" && url.scheme() != "http") || !url.userInfo().isEmpty())
+        if (!task.noticeId.empty() && (!url.isValid() || url.host().isEmpty() ||
+            (url.scheme() != "https" && url.scheme() != "http") || !url.userInfo().isEmpty()))
             throw std::invalid_argument("关联原文网址无效");
         auto event = component(ICAL_VEVENT_COMPONENT);
         add(event.get(), icalproperty_new_uid(task.calendarUid.c_str()));
@@ -147,7 +147,8 @@ QByteArray IcsExporter::render(const std::vector<CalendarItem> &items, IcsExport
                                   "\n\n个人备注：\n" + task.notes + "\n\n关联通知：" +
                                   item.view.noticeTitle + "\n" + item.view.noticeUrl;
         add(event.get(), icalproperty_new_description(normalized(description).c_str()));
-        add(event.get(), icalproperty_new_url(url.toEncoded().constData()));
+        if (!task.noticeId.empty())
+            add(event.get(), icalproperty_new_url(url.toEncoded().constData()));
         add(event.get(),
             icalproperty_new_status(task.status == TaskStatus::Cancelled ? ICAL_STATUS_CANCELLED
                                                                          : ICAL_STATUS_CONFIRMED));

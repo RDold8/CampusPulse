@@ -13,6 +13,7 @@ class TaskService {
     std::vector<TaskView> views() const;
     PersonalTask find(const std::string &id) const;
     PersonalTask draft(const std::string &noticeId) const;
+    PersonalTask manualDraft() const;
     PersonalTask save(PersonalTask task, bool confirmTime = false);
     PersonalTask setStatus(const std::string &id, TaskStatus status);
     PersonalTask acknowledgeNotice(const std::string &id);

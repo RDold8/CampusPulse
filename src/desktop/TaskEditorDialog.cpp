@@ -27,8 +27,8 @@ TaskEditorDialog::TaskEditorDialog(const SchoolPackage &school, TaskService &ser
     if (!zone_.isValid())
         throw std::invalid_argument("待办学校时区无效");
     setObjectName("taskEditor");
-    setWindowTitle(initial_.id.empty() ? "加入我的待办" : "编辑我的待办");
-    resize(690, 350);
+    setWindowTitle(initial_.id.empty() ? "新建提醒" : "编辑提醒");
+    resize(initial_.noticeId.empty() ? 560 : 690, initial_.noticeId.empty() ? 250 : 350);
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(14, 14, 14, 14);
     layout->setSpacing(10);
@@ -41,7 +41,7 @@ TaskEditorDialog::TaskEditorDialog(const SchoolPackage &school, TaskService &ser
     form_->setVerticalSpacing(10);
     form_->setHorizontalSpacing(12);
     form_->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-    auto *origin = new QLabel("关联通知：" + noticeTitle);
+    auto *origin = new QLabel(initial_.noticeId.empty() ? "个人提醒" : "关联通知：" + noticeTitle);
     origin->setTextFormat(Qt::PlainText);
     origin->setWordWrap(true);
     form_->addRow(origin);
@@ -49,7 +49,7 @@ TaskEditorDialog::TaskEditorDialog(const SchoolPackage &school, TaskService &ser
     title_->setObjectName("taskTitle");
     title_->setMaxLength(160);
     title_->setPlaceholderText("例如：完成重修缴费、提交奖学金申请材料");
-    form_->addRow("办理事项", title_);
+    form_->addRow("提醒什么", title_);
     scheduled_ = new QCheckBox("安排时间（取消勾选可暂不安排）");
     scheduled_->setObjectName("taskTimeScheduled");
     form_->addRow(scheduled_);
@@ -78,7 +78,7 @@ TaskEditorDialog::TaskEditorDialog(const SchoolPackage &school, TaskService &ser
                                                        Qt::ISODate)
                                      .toTimeZone(zone_));
     dateTime_->installEventFilter(this);
-    form_->addRow("办理时间", dateTime_);
+    form_->addRow("什么时候", dateTime_);
     reminderPreset_ = new QComboBox;
     reminderPreset_->setObjectName("taskReminderPreset");
     form_->addRow("提醒我", reminderPreset_);
@@ -158,7 +158,8 @@ TaskEditorDialog::TaskEditorDialog(const SchoolPackage &school, TaskService &ser
     source_ = new QComboBox;
     source_->setObjectName("taskTimeSource");
     source_->addItem("个人计划时间", "personal");
-    source_->addItem("核对原文后的时间", "original_text");
+    if (!initial_.noticeId.empty())
+        source_->addItem("核对原文后的时间", "original_text");
     source_->setCurrentIndex(initial_.time.confirmation == TimeConfirmation::OriginalText ? 1 : 0);
     advancedForm_->addRow("时间来源", source_);
     evidence_ = new QTextEdit;
@@ -174,6 +175,20 @@ TaskEditorDialog::TaskEditorDialog(const SchoolPackage &school, TaskService &ser
     advancedForm_->addRow(confirmed_);
     form_->addRow(advanced_);
     advanced_->hide();
+    if (initial_.noticeId.empty()) {
+        const auto moveToAdvanced = [this](QWidget *field, const QString &label) {
+            const auto row = form_->takeRow(field);
+            if (row.labelItem) {
+                delete row.labelItem->widget();
+                delete row.labelItem;
+            }
+            delete row.fieldItem;
+            if (label.isEmpty()) advancedForm_->addRow(field);
+            else advancedForm_->addRow(label, field);
+        };
+        moveToAdvanced(scheduled_, {});
+        moveToAdvanced(reminderPreset_, "提醒方式");
+    }
     if (fresh && initial_.time.precision == TimePrecision::Unknown) {
         minutes_->setValue(0);
         days_->setValue(0);
@@ -190,7 +205,7 @@ TaskEditorDialog::TaskEditorDialog(const SchoolPackage &school, TaskService &ser
     layout->addWidget(error_);
     error_->hide();
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel);
-    buttons->button(QDialogButtonBox::Save)->setText("保存待办");
+    buttons->button(QDialogButtonBox::Save)->setText("保存提醒");
     buttons->button(QDialogButtonBox::Save)->setObjectName("saveTaskButton");
     buttons->button(QDialogButtonBox::Cancel)->setText("取消");
     layout->addWidget(buttons);
@@ -199,7 +214,7 @@ TaskEditorDialog::TaskEditorDialog(const SchoolPackage &school, TaskService &ser
     connect(more_, &QToolButton::toggled, this, [this](bool expanded) {
         advanced_->setVisible(expanded);
         more_->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
-        resize(width(), expanded ? 610 : 350);
+        resize(width(), expanded ? 610 : (initial_.noticeId.empty() ? 250 : 350));
     });
     connect(scheduled_, &QCheckBox::toggled, this, [this](bool scheduled) {
         if (!scheduled)

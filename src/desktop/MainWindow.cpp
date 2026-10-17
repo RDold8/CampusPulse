@@ -8,6 +8,7 @@
 #include "desktop/CalendarPage.h"
 #include "desktop/ResourcePage.h"
 #include "desktop/BrandTheme.h"
+#include "desktop/OverviewPage.h"
 #include "adapters/SchoolPackage.h"
 #include "adapters/RefreshCoordinator.h"
 #include "adapters/ResourceDiscovery.h"
@@ -15,9 +16,16 @@
 #include <memory>
 #include <utility>
 #include <QTabWidget>
+#include <QTabBar>
 #include <QStatusBar>
 #include <QSettings>
 #include <QCloseEvent>
+#include <QPushButton>
+#include <QToolButton>
+#include <QMenu>
+#include <QAction>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 
 namespace campus {
 MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, SourceService &sources,
@@ -30,6 +38,15 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
     resize(1380, 880);
     auto *pages = new QTabWidget;
     pages->setObjectName("mainTabs");
+    pages->tabBar()->setUsesScrollButtons(true);
+    pages->tabBar()->setExpanding(false);
+    // Only the responsive readers may ignore inactive settings pages' minimum size.
+    connect(pages, &QTabWidget::currentChanged, pages, [pages](int) {
+        const auto name = pages->currentWidget()->objectName();
+        const auto policy = name == "overviewPage" || name == "noticePage"
+                                ? QSizePolicy::Ignored : QSizePolicy::Preferred;
+        pages->setSizePolicy(policy, policy);
+    });
     notices_ = new NoticePage(school, notices, coordinator);
     pages->addTab(notices_, "通知");
     auto *sourcePage = new SourcePage(school, sources, coordinator);
@@ -71,6 +88,7 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
             pages->setCurrentWidget(ai);
         });
     QSettings navigationSettings;
+    const bool pendingAiResults = navigationSettings.value("pendingAiResultsSchool").toString() == school.id;
     if (navigationSettings.value("pendingAiResultsSchool").toString() == school.id) {
         navigationSettings.remove("pendingAiResultsSchool");
         pages->setCurrentWidget(ai);
@@ -99,6 +117,30 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
                             "universities", "ai",      "calendar", "sources"};
     for (int i = 0; i < pages->count(); ++i)
         pages->setTabIcon(i, BrandTheme::navigationIcon(icons.at(i)));
+    overview_ = new OverviewPage(school, notices, sources, tasks);
+    pages->addTab(overview_, BrandTheme::navigationIcon("universities"), "校园概览");
+    pages->setCurrentWidget(pendingAiResults ? static_cast<QWidget *>(ai) : overview_);
+    overview_->setResourcesAvailable(resources_ != nullptr);
+    connect(overview_, &OverviewPage::noticesRequested, this, [this, pages] { pages->setCurrentWidget(notices_); });
+    connect(overview_, &OverviewPage::sourcesRequested, sourcePage, [pages, sourcePage] { pages->setCurrentWidget(sourcePage); });
+    connect(overview_, &OverviewPage::resourcesRequested, this, [this, pages] {
+        if (resources_) pages->setCurrentWidget(resources_);
+    });
+    connect(overview_, &OverviewPage::newReminderRequested, this, [this, pages] {
+        if (tasks_->createManual()) pages->setCurrentWidget(tasks_);
+    });
+    connect(overview_, &OverviewPage::tasksRequested, this, [this] { showTask(); });
+    connect(overview_, &OverviewPage::taskRequested, this, &MainWindow::showTask);
+    connect(overview_, &OverviewPage::noticeRequested, this, [this, pages](const QString &id) {
+        if (notices_->showNotice(id)) pages->setCurrentWidget(notices_);
+    });
+    connect(&coordinator, &RefreshCoordinator::changed, overview_, &OverviewPage::reload);
+    connect(&coordinator, &RefreshCoordinator::sourcesChanged, overview_, &OverviewPage::reload);
+    connect(tasks_, &TaskPage::tasksChanged, overview_, &OverviewPage::reload);
+    connect(calendar_, &CalendarPage::tasksChanged, overview_, &OverviewPage::reload);
+    connect(pages, &QTabWidget::currentChanged, overview_, [this, pages](int) {
+        if (pages->currentWidget() == overview_) overview_->reload();
+    });
     auto pendingAiConfig = std::make_shared<QString>();
     const auto applyPendingAiConfig = [this, &coordinator, resourceDiscovery, pendingAiConfig] {
         if (pendingAiConfig->isEmpty() || coordinator.busy() ||
@@ -139,10 +181,67 @@ MainWindow::MainWindow(const SchoolPackage &school, NoticeService &notices, Sour
         connect(resourceDiscovery, &ResourceDiscovery::failed, universities,
                 [updateUniversityBusy](const QString &) { updateUniversityBusy(); });
     }
-    setCentralWidget(pages);
+    // Preserve page indices and all existing routes. The compact navigation replaces
+    // the long tab strip; secondary tools remain available from a keyboard menu.
+    pages->tabBar()->hide();
+    auto *shell = new QWidget;
+    shell->setObjectName("mainShell");
+    auto *shellLayout = new QVBoxLayout(shell);
+    shellLayout->setContentsMargins(0, 0, 0, 0);
+    shellLayout->setSpacing(0);
+    auto *navigation = new QWidget;
+    navigation->setObjectName("primaryNavigation");
+    auto *navigationLayout = new QHBoxLayout(navigation);
+    navigationLayout->setContentsMargins(12, 10, 12, 10);
+    navigationLayout->setSpacing(6);
+    const auto addNavigation = [pages, navigationLayout](const char *name, const QString &text,
+                                                        QWidget *target) {
+        auto *button = new QPushButton(text);
+        button->setObjectName(QString::fromLatin1(name));
+        button->setProperty("brandRole", "navigation");
+        button->setCheckable(true);
+        button->setEnabled(target != nullptr);
+        if (!target) button->setToolTip("学校资源服务尚未启用");
+        navigationLayout->addWidget(button);
+        QObject::connect(button, &QPushButton::clicked, pages, [pages, target] {
+            if (target) pages->setCurrentWidget(target);
+        });
+        const auto update = [pages, button, target] {
+            button->setChecked(target && pages->currentWidget() == target);
+        };
+        QObject::connect(pages, &QTabWidget::currentChanged, button, [update](int) { update(); });
+        update();
+    };
+    addNavigation("navigateOverviewButton", "概览", overview_);
+    addNavigation("navigateNoticesButton", "通知", notices_);
+    addNavigation("navigateResourcesButton", "学校资源", resources_);
+    addNavigation("navigateTasksButton", "提醒", tasks_);
+    navigationLayout->addStretch();
+    auto *more = new QToolButton;
+    more->setObjectName("secondaryNavigationButton");
+    more->setText("更多");
+    more->setAccessibleName("更多功能：切换大学、来源、订阅、AI补充与日历");
+    more->setPopupMode(QToolButton::InstantPopup);
+    auto *menu = new QMenu(more);
+    const auto addSecondary = [pages, menu](const char *name, const QString &text, QWidget *target) {
+        auto *action = menu->addAction(text);
+        action->setObjectName(QString::fromLatin1(name));
+        QObject::connect(action, &QAction::triggered, pages, [pages, target] { pages->setCurrentWidget(target); });
+    };
+    addSecondary("navigateUniversityAction", "切换大学", universities);
+    addSecondary("navigateSourcesAction", "来源与更新状态", sourcePage);
+    addSecondary("navigateSubscriptionsAction", "我的订阅", subscriptionPage);
+    addSecondary("navigateAiAction", "AI 补充", ai);
+    addSecondary("navigateCalendarAction", "日历与导出", calendar_);
+    more->setMenu(menu);
+    navigationLayout->addWidget(more);
+    shellLayout->addWidget(navigation);
+    shellLayout->addWidget(pages, 1);
+    setCentralWidget(shell);
     BrandTheme::applyWindow(*this);
 }
 void MainWindow::reload() {
+    overview_->reload();
     notices_->reload();
     tasks_->reload();
     calendar_->reload();

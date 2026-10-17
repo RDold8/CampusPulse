@@ -139,6 +139,44 @@ class DetailServer : public QObject {
 class TaskDesktopTests final : public QObject {
     Q_OBJECT
   private slots:
+    void manualReminderUsesTwoFieldsAndPersistsWithoutNotice() {
+        BrandTheme::installApplication(*qobject_cast<QApplication *>(QCoreApplication::instance()));
+        const auto school = SchoolPackage::load(CONFIG_FILE);
+        QTemporaryDir folder;
+        const auto file = folder.filePath("manual-ui.sqlite");
+        {
+            Session s(file, school);
+            const UniversityRegistry registry(SCHOOL_CONFIG_DIR);
+            MainWindow window(school, s.notices, s.sources, s.coordinator, registry,
+                              s.subscriptions, s.tasks);
+            window.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&window));
+            QTimer::singleShot(0, &window, [&] {
+                auto *editor = activeEditor();
+                QVERIFY(editor);
+                const auto cleanup = qScopeGuard([&] { if (editor->isVisible()) editor->reject(); });
+                QVERIFY(!control<QWidget>(*editor, "taskAdvancedOptions")->isVisible());
+                QVERIFY(!control<QCheckBox>(*editor, "taskTimeScheduled")->isVisible());
+                QVERIFY(!control<QComboBox>(*editor, "taskReminderPreset")->isVisible());
+                control<QLineEdit>(*editor, "taskTitle")->setText("去图书馆还书");
+                control<QDateTimeEdit>(*editor, "taskDateTime")->setDateTime(
+                    QDateTime::currentDateTimeUtc().addSecs(3600));
+                QVERIFY(QDir().mkpath(QString(EVIDENCE_DIR) + "/release-0.2.0"));
+                QVERIFY(editor->grab().save(QString(EVIDENCE_DIR) + "/release-0.2.0/manual-editor.png"));
+                control<QPushButton>(*editor, "saveTaskButton")->click();
+                QCOMPARE(editor->result(), int(QDialog::Accepted));
+            });
+            control<QPushButton>(window, "overviewNewReminderButton")->click();
+            QCOMPARE(s.tasks.list().size(), size_t(1));
+            QVERIFY(s.tasks.list().front().noticeId.empty());
+            QVERIFY(s.notices.list().empty());
+            QCOMPARE(control<QTabWidget>(window, "mainTabs")->currentIndex(), 3);
+            QVERIFY(!control<QPushButton>(window, "openTaskNoticeButton")->isEnabled());
+        }
+        Session reopened(file, school);
+        QCOMPARE(reopened.tasks.views().size(), size_t(1));
+        QCOMPARE(reopened.tasks.list().front().title, std::string("去图书馆还书"));
+    }
     void initTestCase() {
         QNetworkProxy::setApplicationProxy(QNetworkProxy::NoProxy);
     }
@@ -156,7 +194,7 @@ class TaskDesktopTests final : public QObject {
             window.show();
             QVERIFY(QTest::qWaitForWindowExposed(&window));
             auto *tabs = control<QTabWidget>(window, "mainTabs");
-            QCOMPARE(tabs->count(), 7);
+            QCOMPARE(tabs->count(), 8);
             QVERIFY(!control<QPushButton>(window, "addTaskButton")->isEnabled());
             selectNotice(window);
             QTimer::singleShot(0, &window, [&] {

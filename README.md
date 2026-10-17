@@ -6,9 +6,9 @@
 
 **基于同学忘记缴费有感而发，我开始开发 CampusPulse，希望帮助大学生更好地查找学校官网的信息。**
 
-**当前版本：0.1.4 Windows 桌面预览版。** 这次我把待办简化为闹钟卡片，补上持续显示的提醒弹窗、托盘后台提醒和可试听的提示音；同时发布更简单的 AI 配置、待接入来源补充与搜索反馈。见 [0.1.4 更新说明](docs/release-0.1.4.md)、[声音说明](docs/reminder-sounds.md)和 [存储修复验收](docs/ai-storage-fix-validation.md)。
+**当前版本：0.2.0 Windows 桌面版。** 这次我把首页与导航整理得更清爽，让看通知、找资源、新建提醒直接可达。提醒可以独立创建，只填写标题和时间；原有通知待办、提示音、日历、ICS 和 AI 补充仍然保留，并改进通用正文解析。见 [0.2.0 更新说明](docs/release-0.2.0.md)与[分层验收](docs/release-0.2.0-validation.md)。
 
-**下载 0.1.4（2026-10-06）：** [安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.1.4/CampusPulse-0.1.4-windows-x64-setup.exe) · [便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.1.4/CampusPulse-0.1.4-windows-x64-portable.zip) · [发布页面](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.4) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。原 0.1.2-r1 等版本保留为历史下载。
+**下载 0.2.0（2026-10-14）：** [安装包](https://github.com/RDold8/CampusPulse/releases/download/v0.2.0/CampusPulse-0.2.0-windows-x64-setup.exe) · [便携版](https://github.com/RDold8/CampusPulse/releases/download/v0.2.0/CampusPulse-0.2.0-windows-x64-portable.zip) · [发布页面](https://github.com/RDold8/CampusPulse/releases/tag/v0.2.0) · [安装说明](docs/windows-release.md)。支持 Windows 10 1809+ / Windows 11 x64，按当前用户安装，无需 Python 或 Qt SDK。原 0.1.2-r1 等版本保留为历史下载。
 
 学校官网里有很多有用的内容：教务通知、考试安排、竞赛报名、奖助学金申请、校园活动、招聘信息，还有图书馆和学习资源入口。它们往往散落在不同部门的网站上，查找费时，也容易漏看。
 
@@ -27,7 +27,7 @@
 - **集中查看学校通知。** 整理已接入官网栏目的标题、发布日期、正文和原文链接，关注考试、竞赛、奖助学金、校园活动、教务通知和就业招聘。
 - **更方便地查找信息。** 默认优先显示当前年份，支持按年份、来源、主题和关键词筛选。标题里有“重修”“补考”“缴费”时，会分别显示提示；同时出现时用 ` / ` 连接。
 - **保存自己的关注方向。** 把来源、主题和关键词保存为本地订阅，更新官网后查看符合规则的通知。
-- **跟进需要办理的事情。** 从通知建立闹钟待办卡片，填写事项并选择日期时刻即可保存，默认到时间提醒；卡片直接显示实际提醒时间，可修改时间或标记完成。原文变化后，相关待办会提示复核。
+- **跟进需要办理的事情。** 直接新建提醒，或从通知建立闹钟待办卡片，填写事项并选择日期时刻即可保存，默认到时间提醒；卡片直接显示实际提醒时间，可修改时间或标记完成。原文变化后，相关待办会提示复核。
 - **使用日历和提醒。** 已确认日期的待办进入内置日历，可以导出 ICS 文件供手机日历手动导入。桌面程序运行期间可以触发已启用的本地提醒，带独立弹窗和三种可试听的提示音，可调整音量、静音或停止当前声音。
 - **查找学校资源。** 在独立的“学校资源”页查看图书馆、课程与培养信息、竞赛、升学、就业等学习和办事入口，按类别与学习阶段筛选，并收藏常用链接。
 - **尝试接入目录外的大学。** 输入尚未收录的 `.edu.cn` 学校官网首页，程序识别首页名称，建立本机学校草案，再发现公开栏目；无需先手工编写学校配置。识别成功仍需栏目和正文校验，无法访问的页面会保留原因。
@@ -72,7 +72,7 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 ### 目前的阶段和后续方向
 
-截至 **2026-10-06**，当前版本为 **0.1.4（`v0.1.4`）**，提供源码、Windows 安装包和便携包。待办页可以直接填写事项与日期时刻，点击“提醒声音”选择铃声、音量或静音，点击“测试提醒”检查弹窗。默认重复声音每12秒提示，最多1分钟，停止声音不会完成待办。此前五校通用采集、北邮教务指南和北京化工大学 AI 实网结果保留独立验收记录，不将历史样例当作本次全校覆盖测试；见 [更新说明](docs/release-0.1.4.md)、[五校对比](docs/five-school-universal-validation.md)、[北邮指南](docs/bupt-generic-crawling-validation.md)和 [AI 补充验收](docs/ai-pending-validation.md)。
+截至 **2026-10-14**，当前版本为 **0.2.0（`v0.2.0`）**，提供源码、Windows 安装包和便携包。四个常用入口连接通知、资源与提醒，个人提醒不再必须依赖学校通知；旧数据升级到数据库版本8，保留事项、日历UID和投递记录。本轮 Release 编译与26组CTest通过；部署、原生运行与未验证边界单独记录，见[发布验收](docs/release-0.2.0-validation.md)。此前五校采集与AI结果保留历史验收，不代表本次全校覆盖测试。
 
 目前需要注意：
 
@@ -105,9 +105,9 @@ AI 负责补充寻找规则爬虫可能遗漏的官网栏目。内置综合、�
 
 **Inspired by a fellow student missing a payment, I started developing CampusPulse to help university students find information on their university's official websites more easily.**
 
-**Current version: 0.1.4 Windows desktop preview.** I have simplified tasks into alarm-style cards and added persistent reminder popups, background tray reminders, and previewable sounds. This release also includes simpler AI setup, targeted repair of pending sources, and visible search feedback. See the [0.1.4 notes](docs/release-0.1.4.md), [sound guide](docs/reminder-sounds.md), and [storage validation](docs/ai-storage-fix-validation.md).
+**Current version: 0.2.0 Windows desktop release.** I have simplified the overview and navigation so notices, resources, and a new reminder are immediately accessible. Reminders can now be created independently with a title and time. Notice-based tasks, sounds, the calendar, ICS, and optional AI remain available, with improvements to shared HTML parsing. See the [0.2.0 notes](docs/release-0.2.0.md) and [validation report](docs/release-0.2.0-validation.md).
 
-**Download 0.1.4 (October 6, 2026):** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.1.4/CampusPulse-0.1.4-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.1.4/CampusPulse-0.1.4-windows-x64-portable.zip) · [Release page](https://github.com/RDold8/CampusPulse/releases/tag/v0.1.4) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. Earlier releases, including 0.1.2-r1, remain available.
+**Download 0.2.0 (October 14, 2026):** [Installer](https://github.com/RDold8/CampusPulse/releases/download/v0.2.0/CampusPulse-0.2.0-windows-x64-setup.exe) · [Portable ZIP](https://github.com/RDold8/CampusPulse/releases/download/v0.2.0/CampusPulse-0.2.0-windows-x64-portable.zip) · [Release page](https://github.com/RDold8/CampusPulse/releases/tag/v0.2.0) · [Installation guide](docs/windows-release.md). Windows 10 1809+ / Windows 11 x64; per-user installation, with no Python or Qt SDK required. Earlier releases, including 0.1.2-r1, remain available.
 
 University websites contain useful information: academic notices, exam schedules, competition registration, scholarships and financial aid, campus events, recruitment, and library or learning resources. These are often scattered across departmental websites, making them time-consuming to find and easy to miss.
 
@@ -126,7 +126,7 @@ I chose Northeast Electric Power University as the first example. My goal is a g
 - **Browse university notices in one place.** Organize titles, publication dates, article text, and original links from connected sources, covering exams, competitions, scholarships and financial aid, campus events, academic affairs, and recruitment.
 - **Find information more easily.** Show the current year by default and filter by year, source, topic, or keyword. Chinese titles mentioning retakes, resit exams, or payments receive individual labels, combined with ` / ` when several apply.
 - **Save your interests.** Store sources, topics, and keywords as local subscriptions, then review matching notices after updating from the websites.
-- **Track actions.** Create alarm-style task cards from notices, enter an action and a date/time, then save. New tasks default to an at-time reminder. Cards show the actual reminder time, offer quick editing and completion, and retain review flags when the original article changes.
+- **Track actions.** Create a reminder independently or from a notice, enter an action and a date/time, then save. New tasks default to an at-time reminder. Cards show the actual reminder time, offer quick editing and completion, and retain review flags when the original article changes.
 - **Use a calendar and reminders.** Put tasks with confirmed dates in the built-in calendar and export ICS files for manual import into a phone calendar. Enabled local reminders can trigger while the desktop application is running, with a persistent popup and three previewable tones, adjustable volume, mute, and a stop-sound control.
 - **Discover university resources.** Find library services, curriculum information, competitions, further study, career resources, and other learning or practical links in a dedicated page. Filter by category or study stage and save favorites.
 - **Try a university outside the registry.** Enter an unconfigured `.edu.cn` university homepage. The application identifies its homepage name, saves a local draft, and discovers public sections without a manually written package. Lists and articles still require validation; inaccessible pages retain their failure reasons.
@@ -173,7 +173,7 @@ A previous live DeepSeek search and production UI check for Beijing University o
 
 ### Current stage and next steps
 
-As of **October 6, 2026**, the current version is **0.1.4 (`v0.1.4`)**, with source, a Windows installer, and a portable package. Tasks use a title and date/time; “Reminder sound” offers tones, volume, mute, and a preview, while “Test reminder” checks the popup. Optional sound repeats run every 12 seconds for at most one minute; stopping sound does not complete a task. Earlier university-crawling, BUPT guide, and BUCT AI checks retain separate evidence and do not establish complete coverage on this release. See the [release notes](docs/release-0.1.4.md), [five-university comparison](docs/five-school-universal-validation.md), [BUPT guides](docs/bupt-generic-crawling-validation.md), and [AI supplementation validation](docs/ai-pending-validation.md).
+As of **October 14, 2026**, the current version is **0.2.0 (`v0.2.0`)**, with source, a Windows installer, and a portable ZIP. Four primary destinations connect notices, resources, and reminders. Personal reminders no longer require a university notice. Database version 8 preserves existing tasks, calendar UIDs, and delivery records. Release compilation and all 26 CTest suites passed; packaging, native execution, and remaining limits are recorded separately in the [validation report](docs/release-0.2.0-validation.md). Earlier university and AI checks remain historical evidence, not exhaustive tests of this release.
 
 Current limitations:
 

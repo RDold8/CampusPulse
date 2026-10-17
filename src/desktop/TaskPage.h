@@ -19,6 +19,7 @@ class TaskPage final : public QWidget {
     TaskPage(const SchoolPackage &school, TaskService &service, RefreshCoordinator &coordinator,
              QWidget *parent = nullptr);
     bool createForNotice(const QString &noticeId);
+    bool createManual();
     void reload(const QString &selectId = {});
   signals:
     void tasksChanged();

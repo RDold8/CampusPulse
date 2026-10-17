@@ -53,6 +53,7 @@ if ($outputPath.Equals($packagePath, [StringComparison]::OrdinalIgnoreCase) -or
 $requiredFiles = @(
     'CampusPulse.exe', 'Qt6Core.dll', 'Qt6Gui.dll', 'Qt6Widgets.dll',
     'Qt6Network.dll', 'Qt6Sql.dll', 'platforms\qwindows.dll',
+    'vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll',
     'sqldrivers\qsqlite.dll', 'configs\schools\neepu.example.json',
     'LICENSE', 'THIRD_PARTY_NOTICES.md', 'INSTALL-README.txt',
     'licenses\INSTALLATION-LICENSES.txt'

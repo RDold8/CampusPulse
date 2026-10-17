@@ -37,6 +37,108 @@ Notice emptyNotice(const char *path = "/info/1001/1002.htm") {
 class HtmlTemplateTests final : public QObject {
     Q_OBJECT
   private slots:
+    void completeBodyInDomOrder_data() {
+        QTest::addColumn<bool>("autoDetect");
+        QTest::addColumn<QByteArray>("html");
+        QTest::addColumn<QString>("expected");
+        const QString mixed = QStringList{
+            "开头直接文本。", "首段加粗与内联文字。", "办理材料", "材料表", "项目", "要求",
+            "身份证", "原件一份", "复印件一份", "第一项说明", "嵌套子项", "父项续文",
+            "第二项", "独立容器内联内容", "换行内容", "报名截止：2026-10-31",
+            "末尾直接文本。", "重复合法正文。", "重复合法正文。"}.join("\n\n");
+        const QString paragraphs = QStringList{
+            "各位同学：", "请于2026-10-31前完成报名。", "English inline words & 中文实体。"}.join("\n\n");
+        for (const bool mode : {true, false}) {
+            const auto prefix = mode ? QByteArray("automatic-") : QByteArray("explicit-");
+            QTest::newRow((prefix + "mixed").constData())
+                << mode << fixture("synthetic-mixed-detail.html") << mixed;
+            QTest::newRow((prefix + "paragraphs").constData())
+                << mode << fixture("synthetic-paragraph-detail.html") << paragraphs;
+            QTest::newRow((prefix + "no-paragraph").constData()) << mode
+                << QByteArray("<div class='article-content'>直接<strong>文字</strong>。"
+                              "<h2>标题</h2><ul><li>清单</li></ul>末尾</div>")
+                << QString("直接文字。\n\n标题\n\n清单\n\n末尾");
+            QTest::newRow((prefix + "inline-scripts").constData()) << mode
+                << QByteArray("<div class='article-content'><p>前<script>secret()</script>"
+                              "<style>.secret{}</style><span>后</span></p></div>")
+                << QString("前后");
+        }
+    }
+    void completeBodyInDomOrder() {
+        QFETCH(bool, autoDetect);
+        QFETCH(QByteArray, html);
+        QFETCH(QString, expected);
+        auto source = automatic();
+        source.autoDetect = autoDetect;
+        source.bodySelector = ".article-content";
+        source.attachmentSelector = ".attachment a[href]";
+        const auto notice = HtmlAdapter{}.parseDetail(html, source, emptyNotice());
+        QCOMPARE(QString::fromStdString(notice.body), expected);
+    }
+    void emptyExecutableBodyIsRejected_data() {
+        QTest::addColumn<bool>("autoDetect");
+        QTest::newRow("automatic") << true;
+        QTest::newRow("explicit") << false;
+    }
+    void emptyExecutableBodyIsRejected() {
+        QFETCH(bool, autoDetect);
+        auto source = automatic();
+        source.autoDetect = autoDetect;
+        source.bodySelector = ".article-content";
+        source.attachmentSelector = ".attachment a[href]";
+        QVERIFY_EXCEPTION_THROWN(HtmlAdapter{}.parseDetail(
+            "<div class='article-content'><script>secret()</script><style>.x{}</style>"
+            "<template><p>hidden text</p></template></div>", source, emptyNotice()), std::runtime_error);
+    }
+    void styledDeadlinesAreNotPublicationDates() {
+        const auto detail = HtmlAdapter{}.parseDetail(fixture("synthetic-mixed-detail.html"),
+                                                     automatic(), emptyNotice());
+        QCOMPARE(detail.publishedDate, std::string("2026-10-01"));
+        for (const auto &header : {
+                 QByteArray("<div class='article-date'>报名截止：2026-10-31</div>"),
+                 QByteArray("<div class='article-date'>2026-10-31 报名截止</div>"),
+                 QByteArray("<div class='article-date'>办理期限：2026-10-31</div>"),
+                 QByteArray("<div class='article-date'>发布日期待定；报名截止2026-10-31</div>"),
+                 QByteArray("<div class='article-date'>活动时间：2026-10-31</div>")}) {
+            const auto notice = HtmlAdapter{}.parseDetail(header +
+                "<div class='article-content'><p>公开办事正文。</p>"
+                "<span class='publish-date'>2026-11-01</span></div>", automatic(), emptyNotice());
+            QVERIFY(notice.publishedDate.empty());
+        }
+        const auto header = HtmlAdapter{}.parseDetail(
+            "<div class='information'>办理截止：2026-10-31；发布日期：2026-10-01</div>"
+            "<div class='article-content'><p>公开办事正文。</p></div>", automatic(), emptyNotice());
+        QCOMPARE(header.publishedDate, std::string("2026-10-01"));
+        auto listed = emptyNotice();
+        listed.publishedDate = "2026-09-30";
+        const auto preserved = HtmlAdapter{}.parseDetail(fixture("synthetic-mixed-detail.html"),
+                                                        automatic(), listed);
+        QCOMPARE(preserved.publishedDate, std::string("2026-09-30"));
+    }
+    void listDeadlineLabelsDoNotEstablishPublication_data() {
+        QTest::addColumn<bool>("autoDetect");
+        QTest::newRow("automatic") << true;
+        QTest::newRow("explicit") << false;
+    }
+    void listDeadlineLabelsDoNotEstablishPublication() {
+        QFETCH(bool, autoDetect);
+        auto source = automatic();
+        source.autoDetect = autoDetect;
+        source.itemSelector = "li";
+        source.titleSelector = "a[href]";
+        source.dateSelector = ".date";
+        const auto rows = HtmlAdapter{}.parseList(
+            "<ul><li><a href='/info/1/1.htm'>第一条公开办事通知</a>"
+            "<span class='date'>报名截止2026-10-31</span></li>"
+            "<li><a href='/info/1/2.htm'>第二条公开办事通知</a>"
+            "<span class='date'>2026-10-31 办理期限</span></li>"
+            "<li><a href='/info/1/3.htm'>第三条公开办事通知</a>"
+            "<span class='date'>发布日期：2026-10-01</span></li></ul>", source);
+        QCOMPARE(rows.size(), size_t(3));
+        QVERIFY(rows.at(0).publishedDate.empty());
+        QVERIFY(rows.at(1).publishedDate.empty());
+        QCOMPARE(rows.at(2).publishedDate, std::string("2026-10-01"));
+    }
     void brokenCmsMenuTargetsAreIgnoredWithoutLosingStudentServices() {
         const auto links = HtmlAdapter{}.links(fixture("vsb-student-menu.html"),
                                               QUrl("https://jwc.example.edu.cn/"));

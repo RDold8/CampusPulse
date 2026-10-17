@@ -106,5 +106,21 @@
     "verified_at": "2026-10-05",
     "reduction": "Actual student-service navigation/list/body DOM. Only the first introductory guide paragraph retained; scripts/styles omitted. Relative paths retained.",
     "published_fixture_sha256": "cb9cf951bb7395ff9f17de624f2cd6abf60c057f4996f5121910823383489e44"
+  },
+  {
+    "fixture": "synthetic-mixed-detail.html",
+    "source_type": "synthetic",
+    "created_at": "2026-10-13",
+    "source": "Manually authored from the shared DOM extraction regression contract; no live university source.",
+    "purpose": "Mixed DOM order, tables, nested lists, headings, direct text, executable exclusions, legitimate repeated paragraphs and a styled deadline.",
+    "published_fixture_sha256": "4b1e6d519f09b8e6ea2b3875cf83210e956d846c38dcd8e16dac30cf81f972c6"
+  },
+  {
+    "fixture": "synthetic-paragraph-detail.html",
+    "source_type": "synthetic",
+    "created_at": "2026-10-13",
+    "source": "Manually authored pure-paragraph regression; no live university source.",
+    "purpose": "Paragraph separation, inline adjacency, English whitespace, entity decoding and empty paragraphs.",
+    "published_fixture_sha256": "cff2163ff585d0594dbc4c4cbc446fc11bdf1229bd508782977607331a76082c"
   }
 ]

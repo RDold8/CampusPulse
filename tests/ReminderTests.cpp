@@ -95,6 +95,33 @@ struct Store {
 class ReminderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void manualReminderDeliversOnceAndCancellationSuppressesIt() {
+        QTemporaryDir folder;
+        Store s(folder.filePath("manual-alarm.sqlite"));
+        NoticeService notices(s.notices, "cn-test");
+        TaskService tasks("cn-test", "Asia/Shanghai", s.tasks, notices,
+                          [] { return "2026-10-02T00:00:00Z"; });
+        auto task = tasks.manualDraft();
+        task.title = "个人闹钟";
+        task.time.precision = TimePrecision::DateTime;
+        task.time.utcDateTime = "2026-10-03T01:00:00Z";
+        task.time.confirmation = TimeConfirmation::Personal;
+        task.reminder.enabled = true;
+        task.reminder.minutesBefore = 0;
+        task = tasks.save(task, true);
+        int deliveries = 0;
+        ReminderScheduler scheduler(s.tasks, s.reminders, [&](const PersonalTask &) { ++deliveries; });
+        scheduler.poll(utc("2026-10-03T01:00:00Z"));
+        scheduler.poll(utc("2026-10-03T01:00:01Z"));
+        QCOMPARE(deliveries, 1);
+        QCOMPARE(s.count(), 1);
+        task.time.utcDateTime = "2026-10-03T02:00:00Z";
+        task = tasks.save(task, true);
+        tasks.setStatus(task.id, TaskStatus::Cancelled);
+        scheduler.poll(utc("2026-10-03T02:00:00Z"));
+        QCOMPARE(deliveries, 1);
+        QVERIFY(notices.list().empty());
+    }
     void realDatabaseDeduplicatesConcurrentSchedulersAndTaskEdits() {
         QTemporaryDir folder;
         Store store(folder.filePath("reminders.sqlite"));

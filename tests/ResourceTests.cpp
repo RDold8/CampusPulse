@@ -60,6 +60,17 @@ QJsonObject legacySnapshot(const QString &path) {
         result[table] = queryRows(raw.db, "SELECT * FROM " + table + " ORDER BY rowid");
     return result;
 }
+void allowVersion8TaskSchema(QJsonObject &snapshot) {
+    // v8 deliberately changes only this table's definition, never its stored rows.
+    // All other schema objects and all legacy data remain compared byte-for-byte.
+    QJsonArray schema;
+    for (const auto &value : snapshot["schema"].toArray()) {
+        const auto row = value.toArray();
+        if (row.at(0).toString() != "table" || row.at(1).toString() != "personal_task")
+            schema.append(value);
+    }
+    snapshot["schema"] = schema;
+}
 void createVersion5(const QString &path, bool conflict = false) {
     RawDatabase raw(path);
     // Frozen schema captured from an actual v5 database, independent of today's migration code.
@@ -188,6 +199,8 @@ class ResourceTests final : public QObject {
                  SqliteMigrations::CurrentVersion);
         before.remove("version");
         after.remove("version");
+        allowVersion8TaskSchema(before);
+        allowVersion8TaskSchema(after);
         QCOMPARE(after, before);
         {
             Database reopened(path);
@@ -195,6 +208,7 @@ class ResourceTests final : public QObject {
         }
         auto restarted = legacySnapshot(path);
         restarted.remove("version");
+        allowVersion8TaskSchema(restarted);
         QCOMPARE(restarted, before);
     }
     void migrationConflictRollsBackAndLeavesVersion5() {
@@ -234,9 +248,11 @@ class ResourceTests final : public QObject {
             QVERIFY(queryRows(database.connection(), "PRAGMA foreign_key_check").isEmpty());
         }
         auto after = legacySnapshot(path);
-        QCOMPARE(after.value("version").toArray().at(0).toArray().at(0).toInt(), 7);
+        QCOMPARE(after.value("version").toArray().at(0).toArray().at(0).toInt(), SqliteMigrations::CurrentVersion);
         before.remove("version");
         after.remove("version");
+        allowVersion8TaskSchema(before);
+        allowVersion8TaskSchema(after);
         QCOMPARE(after, before);
         QCOMPARE(version6ResourceRows(path), resourcesBefore);
         {
@@ -245,6 +261,7 @@ class ResourceTests final : public QObject {
         }
         auto restarted = legacySnapshot(path);
         restarted.remove("version");
+        allowVersion8TaskSchema(restarted);
         QCOMPARE(restarted, before);
         QCOMPARE(version6ResourceRows(path), resourcesBefore);
     }

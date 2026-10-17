@@ -28,7 +28,7 @@
 using namespace campus;
 
 // Native acceptance uses production scheduling and the production popup only.
-// Its temporary database contains one explicitly marked test notice/task. It
+// Its temporary database contains one explicitly marked manual test task. It
 // never loads ordinary settings, providers, API keys, or a school/network client.
 int main(int argc, char **argv) {
     QApplication application(argc, argv);
@@ -61,18 +61,8 @@ int main(int argc, char **argv) {
         SqliteReminderRepository reminderRepository(database.connection());
         NoticeService notices(noticeRepository, "cn-reminder-probe");
         TaskService tasks("cn-reminder-probe", "Asia/Shanghai", taskRepository, notices);
-        Notice notice;
-        notice.id = "reminder-native-test-notice";
-        notice.schoolId = "cn-reminder-probe";
-        notice.sourceId = "test-source";
-        notice.sourceName = "[测试] 本地提醒验收";
-        notice.title = "[测试] 提醒界面验收，不是真实学校通知";
-        notice.url = "https://school.example.edu.cn/test.htm";
-        notice.publishedDate = QDateTime::currentDateTimeUtc().date().toString(Qt::ISODate)
-                                   .toStdString();
-        notices.ingest({notice});
         const auto fire = QDateTime::currentDateTimeUtc().addSecs(6);
-        auto task = tasks.draft(notice.id);
+        auto task = tasks.manualDraft();
         task.title = "[测试] 到点提醒：这是独立验收样例";
         task.time.precision = TimePrecision::DateTime;
         task.time.utcDateTime = fire.toUTC().toString(Qt::ISODate).toStdString();
@@ -114,10 +104,12 @@ int main(int argc, char **argv) {
                 auto *items = popup.findChild<QListWidget *>("reminderPopupItems");
                 const bool testTitleVisible = items && items->count() == 1 &&
                                               items->item(0)->text().contains("[测试] 到点提醒");
-                passed = deliveries == 1 && submitted == 1 && popup.isVisible() &&
+                const bool manualWithoutNotice = task.noticeId.empty() && notices.list().empty();
+                passed = manualWithoutNotice && deliveries == 1 && submitted == 1 && popup.isVisible() &&
                          popup.reminderCount() == 1 && testTitleVisible && screenshotSaved &&
                          failure.isEmpty() && firstDeliveryMs >= 0 && firstDeliveryMs <= 8000;
                 const QJsonObject proof{{"passed", passed},
+                                        {"manual_without_notice", manualWithoutNotice},
                                         {"test_only", true},
                                         {"temporary_database", databasePath},
                                         {"temporary_database_auto_removed_on_exit", true},

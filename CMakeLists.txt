@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CampusPulse VERSION 0.1.4 LANGUAGES C CXX)
+project(CampusPulse VERSION 0.2.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -80,6 +80,7 @@ target_compile_definitions(campus_adapters PRIVATE LIBICAL_ICAL_STATIC_DEFINE)
 add_library(campus_presentation src/desktop/NoticeListModel.cpp src/desktop/NoticeFilter.cpp)
 target_link_libraries(campus_presentation PUBLIC campus_application Qt6::Gui)
 add_library(campus_desktop src/desktop/MainWindow.cpp
+    src/desktop/OverviewPage.cpp
     src/desktop/NoticePage.cpp src/desktop/SourcePage.cpp src/desktop/UniversityPage.cpp
     src/desktop/SubscriptionEditorDialog.cpp src/desktop/SubscriptionPage.cpp
     src/desktop/TaskDisplay.cpp src/desktop/TaskEditorDialog.cpp src/desktop/TaskPage.cpp src/desktop/AiSourcesPage.cpp src/desktop/CalendarPage.cpp src/desktop/ResourcePage.cpp src/desktop/BrandTheme.cpp src/desktop/DesktopWorkspace.cpp assets/campuspulse.qrc)

@@ -19,6 +19,10 @@
 | 远端CI | NOT_RUN。本地工作流草稿尚未发布；当前GitHub授权不包含workflow范围，源码发布不包含该草稿。没有把本地CTest写成GitHub Actions已通过。 |
 | 外部效果 | 新一轮多校实网全覆盖、真实付费AI、手机ICS导入、系统横幅送达、移动同步均NOT_RUN或未实现。 |
 
+2026-10-17发布后复核：GitHub `v0.2.0` 已公开（预发布），源码标签为 `ffeda931f647427fe42117311bc56c1f6ec54cb6`。从GitHub全新克隆该提交，在本机Qt/MSVC环境使用固定依赖源码缓存重新编译成功，CTest26/26（28.25秒）、AI资源离线契约41项、配置2份均通过。这不代表干净Windows安装或GitHub Actions运行通过。
+
+七份Release附件已重新下载，校验文件与本机一致，其中六份内容附件逐项SHA-256匹配；便携ZIP的180个文件逐项匹配发布清单，CRC检查通过。安装器13,574,418字节，便携包16,644,255字节。证明见本机`github-publication-proof.json`、`clone-build.txt`、`clone-ctest.txt`、`clone-config-check.txt`及`clone-ai-check.txt`。发行程序的源代码基线为上述标签提交，后续主分支文档更新不移动标签。
+
 ## 发布与恢复入口
 
 下载见[Windows安装](windows-release.md)和[Release](https://github.com/RDold8/CampusPulse/releases/tag/v0.2.0)。源码按新提交保存，旧标签与发布保留。二进制、依赖源码与SHA256SUMS放在Release附件，不进入Git历史。发布后另核对远端提交、Release附件列表与下载哈希；克隆验证结果以发布后的证据为准。

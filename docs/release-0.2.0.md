@@ -1,6 +1,6 @@
 # CampusPulse 0.2.0 · 清爽首页与独立提醒
 
-2026-10-14。Windows 10 1809+ / Windows 11 x64 桌面版，提供安装程序和便携 ZIP。沿用 C++20、Qt 6.8.3 和 SQLite，无需安装 Python 或 Qt SDK。移动 App 与同步仍在后续计划中。
+2026-10-14完成本机构建，2026-10-17公开发布。Windows 10 1809+ / Windows 11 x64 桌面预发布版，提供安装程序和便携 ZIP。沿用 C++20、Qt 6.8.3 和 SQLite，无需安装 Python 或 Qt SDK。移动 App 与同步仍在后续计划中。
 
 ## 这次可以直接使用什么
 
